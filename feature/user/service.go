@@ -5,10 +5,11 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 
+	"CredChain_Golang/config"
 	"CredChain_Golang/domain"
+	"CredChain_Golang/infrastructure/chain"
 	"CredChain_Golang/infrastructure/database"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -17,29 +18,47 @@ import (
 	"go.uber.org/fx"
 )
 
+type UserService interface {
+	CreateUsers(ctx context.Context, newUsers []CreateUserRequest) ([]domain.User, error)
+	GetUsers(ctx context.Context, query domain.Query) ([]domain.User, int, error)
+	GetUserByID(ctx context.Context, id string) (*domain.User, error)
+	UpdateProfile(ctx context.Context, id string, name, number, phoneNumber *string, meta *domain.JSONB) (*domain.User, error)
+	UpdateEmail(ctx context.Context, id string, email string) (string, error)
+	BatchUpdateRole(ctx context.Context, callerID string, updates []domain.UserRoleUpdate) error
+	DeleteUsersBatch(ctx context.Context, callerID string, userIDs []string) error
+}
+
 type Service struct {
-	userRepo domain.UserRepository
+	userRepo            domain.UserRepository
+	walletEncryptionKey string
+	chainClient         *chain.Client
 }
 
 type UserServiceParams struct {
 	fx.In
-	UserRepo domain.UserRepository
+	UserRepo    domain.UserRepository
+	Config      *config.Config
+	ChainClient *chain.Client
 }
 
 func NewService(p UserServiceParams) *Service {
-	return &Service{userRepo: p.UserRepo}
+	return &Service{
+		userRepo:            p.UserRepo,
+		walletEncryptionKey: p.Config.WalletEncryptionKey,
+		chainClient:         p.ChainClient,
+	}
 }
 
 // ... Implementation ...
 
 func (s *Service) CreateUsers(ctx context.Context, newUsers []CreateUserRequest) ([]domain.User, error) {
-	jwtSecret := os.Getenv("JWT_SECRET")
-	if jwtSecret == "" {
-		return nil, fmt.Errorf("missing JWT_SECRET env var required for encryption")
+	encKey := s.walletEncryptionKey
+	if encKey == "" {
+		return nil, fmt.Errorf("missing WALLET_ENCRYPTION_KEY env var required for encryption")
 	}
 
 	encryptionKey := make([]byte, 32)
-	copy(encryptionKey, []byte(jwtSecret))
+	copy(encryptionKey, []byte(encKey))
 
 	var domainUsers []domain.User
 
@@ -77,8 +96,8 @@ func (s *Service) CreateUsers(ctx context.Context, newUsers []CreateUserRequest)
 	return s.userRepo.BatchCreate(ctx, domainUsers)
 }
 
-func (s *Service) GetUsers(ctx context.Context) ([]domain.User, error) {
-	return s.userRepo.GetUsers(ctx)
+func (s *Service) GetUsers(ctx context.Context, query domain.Query) ([]domain.User, int, error) {
+	return s.userRepo.GetUsers(ctx, query)
 }
 
 func (s *Service) GetUserByID(ctx context.Context, id string) (*domain.User, error) {
@@ -107,7 +126,7 @@ func (s *Service) BatchUpdateRole(ctx context.Context, callerRole domain.Role, u
 	if err != nil {
 		return err
 	}
-	
+
 	targetUserMap := make(map[string]domain.User)
 	for _, tu := range targetUsers {
 		targetUserMap[tu.ID] = tu

@@ -55,7 +55,7 @@ type User struct {
 
 // UserRepository defines the database contract for the User Domain
 type UserRepository interface {
-	GetUsers(ctx context.Context) ([]User, error)
+	GetUsers(ctx context.Context, query Query) ([]User, int, error)
 	GetUserByID(ctx context.Context, id string) (*User, error)
 	GetUserByEmail(ctx context.Context, email string) (*User, error)
 	GetUsersByIDs(ctx context.Context, ids []string) ([]User, error)
@@ -63,4 +63,5 @@ type UserRepository interface {
 	UpdateEmail(ctx context.Context, id string, email string) (string, error)
 	BatchUpdateRole(ctx context.Context, updates []UserRoleUpdate) error
 	BatchCreate(ctx context.Context, users []User) ([]User, error)
+	DeleteUsersBatch(ctx context.Context, ids []string) error
 }

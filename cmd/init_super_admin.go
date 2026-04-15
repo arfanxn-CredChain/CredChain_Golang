@@ -21,7 +21,7 @@ func init() {
 }
 
 func initSuperAdmin(db *database.DB, cfg *config.Config, logger *zap.Logger) error {
-	if cfg.InitialSuperAdminEmail == "" || cfg.InitialSuperAdminPrivKey == "" || cfg.JWTSecret == "" {
+	if cfg.InitialSuperAdminEmail == "" || cfg.InitialSuperAdminPrivKey == "" || cfg.WalletEncryptionKey == "" {
 		return fmt.Errorf("missing core environment variables for Super Admin initialization")
 	}
 
@@ -39,7 +39,7 @@ func initSuperAdmin(db *database.DB, cfg *config.Config, logger *zap.Logger) err
 	walletAddress := crypto.PubkeyToAddress(*publicKeyECDSA).Hex()
 
 	encryptionKey := make([]byte, 32)
-	copy(encryptionKey, []byte(cfg.JWTSecret))
+	copy(encryptionKey, []byte(cfg.WalletEncryptionKey))
 
 	var existingID string
 	err = db.Get(&existingID, "SELECT id FROM users WHERE email = $1", cfg.InitialSuperAdminEmail)

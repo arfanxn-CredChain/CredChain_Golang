@@ -13,13 +13,13 @@ import (
 )
 
 type Handler struct {
-	userSvc  *Service
+	userSvc  UserService
 	credRepo domain.CredentialRepository
 }
 
 type UserHandlerParams struct {
 	fx.In
-	UserSvc  *Service
+	UserSvc  UserService
 	CredRepo domain.CredentialRepository
 }
 

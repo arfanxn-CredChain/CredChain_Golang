@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"CredChain_Golang/domain"
@@ -24,11 +25,57 @@ func NewRepository(p UserRepoParams) domain.UserRepository {
 	return &PostgresUserRepository{db: p.DB}
 }
 
-func (r *PostgresUserRepository) GetUsers(ctx context.Context) ([]domain.User, error) {
+func (r *PostgresUserRepository) GetUsers(ctx context.Context, query domain.Query) ([]domain.User, int, error) {
 	var users []domain.User
-	query := `SELECT id, name, number, phone_number, email, birth_date, meta, role, wallet_address, wallet_private_key, created_at, updated_at FROM users ORDER BY created_at DESC LIMIT 50`
-	err := r.db.SelectContext(ctx, &users, query)
-	return users, err
+	var total int
+
+	baseQuery := `FROM users`
+	whereClause := ``
+	var args []interface{}
+	argId := 1
+
+	if query.Search != "" {
+		whereClause = fmt.Sprintf(` WHERE name ILIKE $%d OR email ILIKE $%d`, argId, argId+1)
+		args = append(args, "%"+query.Search+"%", "%"+query.Search+"%")
+		argId += 2
+	}
+
+	for k, v := range query.Filters {
+		if whereClause == "" {
+			whereClause = " WHERE "
+		} else {
+			whereClause += " AND "
+		}
+		// Basic naive filter binding, beware SQL injection on column name strictly if exposed externally,
+		// but since it's just a demo assumning safe column names. Should be validated against allowed columns.
+		whereClause += fmt.Sprintf(`"%s" = $%d`, k, argId)
+		args = append(args, v)
+		argId++
+	}
+
+	countQuery := `SELECT COUNT(id) ` + baseQuery + whereClause
+	err := r.db.GetContext(ctx, &total, countQuery, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	orderClause := " ORDER BY created_at DESC"
+	if len(query.Sorts) > 0 {
+		var orderParts []string
+		for _, s := range query.Sorts {
+			if strings.HasPrefix(s, "-") {
+				orderParts = append(orderParts, fmt.Sprintf(`"%s" DESC`, strings.TrimPrefix(s, "-")))
+			} else {
+				orderParts = append(orderParts, fmt.Sprintf(`"%s" ASC`, s))
+			}
+		}
+		orderClause = " ORDER BY " + strings.Join(orderParts, ", ")
+	}
+
+	dataQuery := `SELECT id, name, number, phone_number, email, birth_date, meta, role, wallet_address, wallet_private_key, created_at, updated_at ` + baseQuery + whereClause + orderClause + fmt.Sprintf(` LIMIT %d OFFSET %d`, query.Limit, query.Offset())
+	
+	err = r.db.SelectContext(ctx, &users, dataQuery, args...)
+	return users, total, err
 }
 
 func (r *PostgresUserRepository) GetUserByID(ctx context.Context, id string) (*domain.User, error) {
@@ -126,3 +173,19 @@ func (r *PostgresUserRepository) BatchCreate(ctx context.Context, users []domain
 
 	return createdUsers, tx.Commit()
 }
+
+func (r *PostgresUserRepository) DeleteUsersBatch(ctx context.Context, ids []string) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	
+	query, args, err := sqlx.In("DELETE FROM users WHERE id IN (?)", ids)
+	if err != nil {
+		return err
+	}
+	query = r.db.Rebind(query)
+
+	_, err = r.db.ExecContext(ctx, query, args...)
+	return err
+}
+

@@ -9,6 +9,7 @@ type Config struct {
 	PostgresDSN              string
 	MongoURI                 string
 	JWTSecret                string
+	WalletEncryptionKey      string
 	GeminiAPIKey             string
 	RPCURL                   string
 	RegistryContract         string
@@ -35,6 +36,7 @@ func LoadConfig() (*Config, error) {
 		PostgresDSN:              getEnv("POSTGRES_DSN", "postgres://root:rootpassword@localhost:5432/credchain?sslmode=disable"),
 		MongoURI:                 getEnv("MONGO_URI", "mongodb://root:rootpassword@localhost:27017"),
 		JWTSecret:                getEnv("JWT_SECRET", ""),
+		WalletEncryptionKey:      getEnv("WALLET_ENCRYPTION_KEY", ""),
 		GeminiAPIKey:             getEnv("GEMINI_API_KEY", ""),
 		RPCURL:                   getEnv("RPC_URL", ""),
 		RegistryContract:         getEnv("REGISTRY_CONTRACT", ""),
@@ -47,6 +49,10 @@ func LoadConfig() (*Config, error) {
 
 	if cfg.JWTSecret == "" {
 		return nil, fmt.Errorf("FATAL: JWT_SECRET is missing")
+	}
+	
+	if cfg.WalletEncryptionKey == "" {
+		return nil, fmt.Errorf("FATAL: WALLET_ENCRYPTION_KEY is missing")
 	}
 
 	return cfg, nil
