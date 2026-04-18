@@ -9,10 +9,14 @@ import (
 
 	"CredChain_Golang/config"
 	"CredChain_Golang/domain"
+	domainQuery "CredChain_Golang/domain/query"
 	"CredChain_Golang/infrastructure/chain"
 	"CredChain_Golang/infrastructure/database"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/oklog/ulid/v2"
 	"go.uber.org/fx"
@@ -20,12 +24,12 @@ import (
 
 type UserService interface {
 	CreateUsers(ctx context.Context, newUsers []CreateUserRequest) ([]domain.User, error)
-	GetUsers(ctx context.Context, query domain.Query) ([]domain.User, int, error)
+	GetUsers(ctx context.Context, query *domainQuery.Query) ([]domain.User, int, error)
 	GetUserByID(ctx context.Context, id string) (*domain.User, error)
 	UpdateProfile(ctx context.Context, id string, name, number, phoneNumber *string, meta *domain.JSONB) (*domain.User, error)
 	UpdateEmail(ctx context.Context, id string, email string) (string, error)
 	BatchUpdateRole(ctx context.Context, callerID string, updates []domain.UserRoleUpdate) error
-	DeleteUsersBatch(ctx context.Context, callerID string, userIDs []string) error
+	BatchDeleteUsers(ctx context.Context, callerID string, userIDs []string) error
 }
 
 type Service struct {
@@ -96,7 +100,7 @@ func (s *Service) CreateUsers(ctx context.Context, newUsers []CreateUserRequest)
 	return s.userRepo.BatchCreate(ctx, domainUsers)
 }
 
-func (s *Service) GetUsers(ctx context.Context, query domain.Query) ([]domain.User, int, error) {
+func (s *Service) GetUsers(ctx context.Context, query *domainQuery.Query) ([]domain.User, int, error) {
 	return s.userRepo.GetUsers(ctx, query)
 }
 
@@ -112,8 +116,13 @@ func (s *Service) UpdateEmail(ctx context.Context, id string, email string) (str
 	return s.userRepo.UpdateEmail(ctx, id, email)
 }
 
-func (s *Service) BatchUpdateRole(ctx context.Context, callerRole domain.Role, updates []domain.UserRoleUpdate) error {
-	if callerRole.Rank() < domain.RoleAdmin.Rank() {
+func (s *Service) BatchUpdateRole(ctx context.Context, callerID string, updates []domain.UserRoleUpdate) error {
+	callerUser, err := s.userRepo.GetUserByID(ctx, callerID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch caller: %w", err)
+	}
+
+	if callerUser.Role.Rank() < domain.RoleAdmin.Rank() {
 		return fmt.Errorf("%d", domain.CodeUserRoleSignerAdminRequiredForbidden)
 	}
 
@@ -138,7 +147,7 @@ func (s *Service) BatchUpdateRole(ctx context.Context, callerRole domain.Role, u
 			return errors.New("target user not found")
 		}
 
-		if callerRole.Rank() == domain.RoleAdmin.Rank() {
+		if callerUser.Role.Rank() == domain.RoleAdmin.Rank() {
 			if targetUser.Role.Rank() >= domain.RoleAdmin.Rank() {
 				return fmt.Errorf("%d", domain.CodeUserRoleAdminUpdatePeerForbidden)
 			}
@@ -148,5 +157,161 @@ func (s *Service) BatchUpdateRole(ctx context.Context, callerRole domain.Role, u
 		}
 	}
 
+	encKey := s.walletEncryptionKey
+	if encKey == "" {
+		return fmt.Errorf("missing WALLET_ENCRYPTION_KEY env var")
+	}
+	encryptionKey := make([]byte, 32)
+	copy(encryptionKey, []byte(encKey))
+
+	decryptedKey, err := database.Decrypt(callerUser.WalletPrivateKey, encryptionKey)
+	if err != nil {
+		return fmt.Errorf("failed to decrypt caller private key: %w", err)
+	}
+	privateKey, err := crypto.HexToECDSA(strings.TrimPrefix(string(decryptedKey), "0x"))
+	if err != nil {
+		return fmt.Errorf("failed to parse caller private key: %w", err)
+	}
+
+	callerWallet := common.HexToAddress(callerUser.WalletAddress)
+	nonce, err := s.chainClient.FetchNonce(ctx, callerWallet)
+	if err != nil {
+		return fmt.Errorf("failed to fetch nonce: %w", err)
+	}
+
+	var packed []byte
+	packed = append(packed, chain.EncodeAddress(callerUser.WalletAddress)...)
+	for _, targetUser := range targetUsers {
+		packed = append(packed, chain.EncodeAddress(targetUser.WalletAddress)...)
+	}
+	for _, update := range updates {
+		packed = append(packed, byte(update.Role.Rank()))
+	}
+	nonceBytes, err := chain.EncodeUint256(nonce.String())
+	if err != nil {
+		return fmt.Errorf("failed to encode nonce: %w", err)
+	}
+	packed = append(packed, nonceBytes...)
+
+	signature, err := chain.PackAndSign(privateKey, packed)
+	if err != nil {
+		return fmt.Errorf("failed to sign payload: %w", err)
+	}
+
+	targetAddrs := make([]common.Address, len(targetUsers))
+	for i, tu := range targetUsers {
+		targetAddrs[i] = common.HexToAddress(tu.WalletAddress)
+	}
+
+	newRoles := make([]uint8, len(updates))
+	for i, u := range updates {
+		newRoles[i] = uint8(u.Role.Rank())
+	}
+
+	tx, err := s.chainClient.DispatchRelayerTx(ctx, func(opts *bind.TransactOpts) (*types.Transaction, error) {
+		return s.chainClient.Authority.BatchUpdateUserRoleWithSignature(
+			opts,
+			callerWallet,
+			targetAddrs,
+			newRoles,
+			nonce,
+			signature,
+		)
+	})
+	if err != nil {
+		return fmt.Errorf("failed to dispatch blockchain transaction: %w", err)
+	}
+
+	_ = tx
+
 	return s.userRepo.BatchUpdateRole(ctx, updates)
+}
+
+func (s *Service) BatchDeleteUsers(ctx context.Context, callerID string, userIDs []string) error {
+	callerUser, err := s.userRepo.GetUserByID(ctx, callerID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch caller: %w", err)
+	}
+
+	if callerUser.Role.Rank() < domain.RoleAdmin.Rank() {
+		return fmt.Errorf("%d", domain.CodeUserRoleSignerAdminRequiredForbidden)
+	}
+
+	targetUsers, err := s.userRepo.GetUsersByIDs(ctx, userIDs)
+	if err != nil {
+		return err
+	}
+
+	if len(targetUsers) == 0 {
+		return nil
+	}
+
+	encKey := s.walletEncryptionKey
+	if encKey == "" {
+		return fmt.Errorf("missing WALLET_ENCRYPTION_KEY env var")
+	}
+	encryptionKey := make([]byte, 32)
+	copy(encryptionKey, []byte(encKey))
+
+	decryptedKey, err := database.Decrypt(callerUser.WalletPrivateKey, encryptionKey)
+	if err != nil {
+		return fmt.Errorf("failed to decrypt caller private key: %w", err)
+	}
+	privateKey, err := crypto.HexToECDSA(strings.TrimPrefix(string(decryptedKey), "0x"))
+	if err != nil {
+		return fmt.Errorf("failed to parse caller private key: %w", err)
+	}
+
+	callerWallet := common.HexToAddress(callerUser.WalletAddress)
+	nonce, err := s.chainClient.FetchNonce(ctx, callerWallet)
+	if err != nil {
+		return fmt.Errorf("failed to fetch nonce: %w", err)
+	}
+
+	var packed []byte
+	packed = append(packed, chain.EncodeAddress(callerUser.WalletAddress)...)
+	for _, targetUser := range targetUsers {
+		packed = append(packed, chain.EncodeAddress(targetUser.WalletAddress)...)
+	}
+	for i := 0; i < len(targetUsers); i++ {
+		packed = append(packed, byte(0))
+	}
+	nonceBytes, err := chain.EncodeUint256(nonce.String())
+	if err != nil {
+		return fmt.Errorf("failed to encode nonce: %w", err)
+	}
+	packed = append(packed, nonceBytes...)
+
+	signature, err := chain.PackAndSign(privateKey, packed)
+	if err != nil {
+		return fmt.Errorf("failed to sign payload: %w", err)
+	}
+
+	targetAddrs := make([]common.Address, len(targetUsers))
+	for i, tu := range targetUsers {
+		targetAddrs[i] = common.HexToAddress(tu.WalletAddress)
+	}
+
+	newRoles := make([]uint8, len(targetUsers))
+	for i := range targetUsers {
+		newRoles[i] = 0
+	}
+
+	tx, err := s.chainClient.DispatchRelayerTx(ctx, func(opts *bind.TransactOpts) (*types.Transaction, error) {
+		return s.chainClient.Authority.BatchUpdateUserRoleWithSignature(
+			opts,
+			callerWallet,
+			targetAddrs,
+			newRoles,
+			nonce,
+			signature,
+		)
+	})
+	if err != nil {
+		return fmt.Errorf("failed to dispatch blockchain transaction: %w", err)
+	}
+
+	_ = tx
+
+	return s.userRepo.BatchDeleteUsers(ctx, userIDs)
 }

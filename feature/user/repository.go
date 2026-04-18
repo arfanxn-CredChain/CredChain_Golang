@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"CredChain_Golang/domain"
+	domainQuery "CredChain_Golang/domain/query"
 	"CredChain_Golang/infrastructure/database"
 
 	"github.com/jmoiron/sqlx"
@@ -25,32 +26,141 @@ func NewRepository(p UserRepoParams) domain.UserRepository {
 	return &PostgresUserRepository{db: p.DB}
 }
 
-func (r *PostgresUserRepository) GetUsers(ctx context.Context, query domain.Query) ([]domain.User, int, error) {
+func (r *PostgresUserRepository) GetUsers(ctx context.Context, query *domainQuery.Query) ([]domain.User, int, error) {
 	var users []domain.User
 	var total int
 
 	baseQuery := `FROM users`
-	whereClause := ``
+	whereClause := ""
 	var args []interface{}
 	argId := 1
 
-	if query.Search != "" {
-		whereClause = fmt.Sprintf(` WHERE name ILIKE $%d OR email ILIKE $%d`, argId, argId+1)
+	if query == nil {
+		countQuery := `SELECT COUNT(id) ` + baseQuery
+		err := r.db.GetContext(ctx, &total, countQuery)
+		if err != nil {
+			return nil, 0, err
+		}
+
+		dataQuery := `SELECT id, name, number, phone_number, email, birth_date, meta, role, wallet_address, wallet_private_key, created_at, updated_at ` + baseQuery + ` ORDER BY created_at DESC`
+		err = r.db.SelectContext(ctx, &users, dataQuery)
+		return users, total, err
+	}
+
+	if query.HasSearch() {
+		whereClause = fmt.Sprintf(` WHERE (name ILIKE $%d OR email ILIKE $%d)`, argId, argId+1)
 		args = append(args, "%"+query.Search+"%", "%"+query.Search+"%")
 		argId += 2
 	}
 
-	for k, v := range query.Filters {
+	for _, filter := range query.Filters {
 		if whereClause == "" {
 			whereClause = " WHERE "
 		} else {
 			whereClause += " AND "
 		}
-		// Basic naive filter binding, beware SQL injection on column name strictly if exposed externally,
-		// but since it's just a demo assumning safe column names. Should be validated against allowed columns.
-		whereClause += fmt.Sprintf(`"%s" = $%d`, k, argId)
-		args = append(args, v)
-		argId++
+
+		switch filter.Operator {
+		case domainQuery.OperatorEqual:
+			whereClause += fmt.Sprintf(`"%s" = $%d`, filter.Column, argId)
+			args = append(args, filter.Values[0])
+			argId++
+
+		case domainQuery.OperatorNotEqual:
+			whereClause += fmt.Sprintf(`"%s" != $%d`, filter.Column, argId)
+			args = append(args, filter.Values[0])
+			argId++
+
+		case domainQuery.OperatorGreaterThan:
+			whereClause += fmt.Sprintf(`"%s" > $%d`, filter.Column, argId)
+			args = append(args, filter.Values[0])
+			argId++
+
+		case domainQuery.OperatorLessThan:
+			whereClause += fmt.Sprintf(`"%s" < $%d`, filter.Column, argId)
+			args = append(args, filter.Values[0])
+			argId++
+
+		case domainQuery.OperatorGreaterThanOrEqual:
+			whereClause += fmt.Sprintf(`"%s" >= $%d`, filter.Column, argId)
+			args = append(args, filter.Values[0])
+			argId++
+
+		case domainQuery.OperatorLessThanOrEqual:
+			whereClause += fmt.Sprintf(`"%s" <= $%d`, filter.Column, argId)
+			args = append(args, filter.Values[0])
+			argId++
+
+		case domainQuery.OperatorLike:
+			value := filter.Values[0]
+			if !strings.Contains(value, "%") {
+				value = "%" + value + "%"
+			}
+			whereClause += fmt.Sprintf(`"%s" LIKE $%d`, filter.Column, argId)
+			args = append(args, value)
+			argId++
+
+		case domainQuery.OperatorILike:
+			value := filter.Values[0]
+			if !strings.Contains(value, "%") {
+				value = "%" + value + "%"
+			}
+			whereClause += fmt.Sprintf(`"%s" ILIKE $%d`, filter.Column, argId)
+			args = append(args, value)
+			argId++
+
+		case domainQuery.OperatorNotLike:
+			value := filter.Values[0]
+			if !strings.Contains(value, "%") {
+				value = "%" + value + "%"
+			}
+			whereClause += fmt.Sprintf(`"%s" NOT LIKE $%d`, filter.Column, argId)
+			args = append(args, value)
+			argId++
+
+		case domainQuery.OperatorNotILike:
+			value := filter.Values[0]
+			if !strings.Contains(value, "%") {
+				value = "%" + value + "%"
+			}
+			whereClause += fmt.Sprintf(`"%s" NOT ILIKE $%d`, filter.Column, argId)
+			args = append(args, value)
+			argId++
+
+		case domainQuery.OperatorIn:
+			placeholders := make([]string, len(filter.Values))
+			for i, v := range filter.Values {
+				placeholders[i] = fmt.Sprintf("$%d", argId+i)
+				args = append(args, v)
+			}
+			whereClause += fmt.Sprintf(`"%s" IN (%s)`, filter.Column, strings.Join(placeholders, ", "))
+			argId += len(filter.Values)
+
+		case domainQuery.OperatorNotIn:
+			placeholders := make([]string, len(filter.Values))
+			for i, v := range filter.Values {
+				placeholders[i] = fmt.Sprintf("$%d", argId+i)
+				args = append(args, v)
+			}
+			whereClause += fmt.Sprintf(`"%s" NOT IN (%s)`, filter.Column, strings.Join(placeholders, ", "))
+			argId += len(filter.Values)
+
+		case domainQuery.OperatorBetween:
+			whereClause += fmt.Sprintf(`"%s" BETWEEN $%d AND $%d`, filter.Column, argId, argId+1)
+			args = append(args, filter.Values[0], filter.Values[1])
+			argId += 2
+
+		case domainQuery.OperatorNotBetween:
+			whereClause += fmt.Sprintf(`"%s" NOT BETWEEN $%d AND $%d`, filter.Column, argId, argId+1)
+			args = append(args, filter.Values[0], filter.Values[1])
+			argId += 2
+
+		case domainQuery.OperatorNull:
+			whereClause += fmt.Sprintf(`"%s" IS NULL`, filter.Column)
+
+		case domainQuery.OperatorNotNull:
+			whereClause += fmt.Sprintf(`"%s" IS NOT NULL`, filter.Column)
+		}
 	}
 
 	countQuery := `SELECT COUNT(id) ` + baseQuery + whereClause
@@ -60,20 +170,25 @@ func (r *PostgresUserRepository) GetUsers(ctx context.Context, query domain.Quer
 	}
 
 	orderClause := " ORDER BY created_at DESC"
-	if len(query.Sorts) > 0 {
+	if query.HasSorts() {
 		var orderParts []string
-		for _, s := range query.Sorts {
-			if strings.HasPrefix(s, "-") {
-				orderParts = append(orderParts, fmt.Sprintf(`"%s" DESC`, strings.TrimPrefix(s, "-")))
-			} else {
-				orderParts = append(orderParts, fmt.Sprintf(`"%s" ASC`, s))
+		for _, sort := range query.Sorts {
+			if sort.Column == "name" || sort.Column == "created_at" {
+				orderParts = append(orderParts, fmt.Sprintf(`"%s" %s`, sort.Column, sort.Order))
 			}
 		}
-		orderClause = " ORDER BY " + strings.Join(orderParts, ", ")
+		if len(orderParts) > 0 {
+			orderClause = " ORDER BY " + strings.Join(orderParts, ", ")
+		}
 	}
 
-	dataQuery := `SELECT id, name, number, phone_number, email, birth_date, meta, role, wallet_address, wallet_private_key, created_at, updated_at ` + baseQuery + whereClause + orderClause + fmt.Sprintf(` LIMIT %d OFFSET %d`, query.Limit, query.Offset())
-	
+	limitClause := ""
+	if query.HasPagination() {
+		limitClause = fmt.Sprintf(` LIMIT %d OFFSET %d`, query.Limit, query.Offset())
+	}
+
+	dataQuery := `SELECT id, name, number, phone_number, email, birth_date, meta, role, wallet_address, wallet_private_key, created_at, updated_at ` + baseQuery + whereClause + orderClause + limitClause
+
 	err = r.db.SelectContext(ctx, &users, dataQuery, args...)
 	return users, total, err
 }
@@ -119,7 +234,7 @@ func (r *PostgresUserRepository) GetUsersByIDs(ctx context.Context, ids []string
 	if len(ids) == 0 {
 		return []domain.User{}, nil
 	}
-	
+
 	query, args, err := sqlx.In("SELECT id, name, number, phone_number, email, birth_date, meta, role, wallet_address, wallet_private_key, created_at, updated_at FROM users WHERE id IN (?)", ids)
 	if err != nil {
 		return nil, err
@@ -174,11 +289,11 @@ func (r *PostgresUserRepository) BatchCreate(ctx context.Context, users []domain
 	return createdUsers, tx.Commit()
 }
 
-func (r *PostgresUserRepository) DeleteUsersBatch(ctx context.Context, ids []string) error {
+func (r *PostgresUserRepository) BatchDeleteUsers(ctx context.Context, ids []string) error {
 	if len(ids) == 0 {
 		return nil
 	}
-	
+
 	query, args, err := sqlx.In("DELETE FROM users WHERE id IN (?)", ids)
 	if err != nil {
 		return err
@@ -188,4 +303,3 @@ func (r *PostgresUserRepository) DeleteUsersBatch(ctx context.Context, ids []str
 	_, err = r.db.ExecContext(ctx, query, args...)
 	return err
 }
-

@@ -75,3 +75,13 @@ func (r BatchUpdateRoleRequest) Validate() error {
 		validation.Field(&r.UserRoles, validation.Required.Error("validation_required")),
 	)
 }
+
+type BatchDeleteUsersRequest struct {
+	UserIDs []string `json:"user_ids"`
+}
+
+func (r BatchDeleteUsersRequest) Validate() error {
+	return validation.ValidateStruct(&r,
+		validation.Field(&r.UserIDs, validation.Required.Error("validation_required")),
+	)
+}

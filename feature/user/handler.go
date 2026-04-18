@@ -6,6 +6,7 @@ import (
 
 	"CredChain_Golang/domain"
 	"CredChain_Golang/infrastructure/http/middleware"
+	queryRequest "CredChain_Golang/infrastructure/http/request/query"
 	"CredChain_Golang/infrastructure/http/responder"
 
 	"github.com/gin-gonic/gin"
@@ -30,16 +31,33 @@ func NewHandler(p UserHandlerParams) *Handler {
 // ... Logic ...
 
 func (h *Handler) GetUsers(c *gin.Context) {
-	users, err := h.userSvc.GetUsers(c.Request.Context())
+	var req queryRequest.QueryRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.Error(fmt.Errorf("GetUsers: bind failed: %w", err))
+		responder.SendError(c, domain.CodeSystemValidation)
+		return
+	}
+
+	if err := req.Validate(); err != nil {
+		responder.SendValidationError(c, err)
+		return
+	}
+
+	query, err := req.ToDomain()
 	if err != nil {
-		c.Error(fmt.Errorf("GetUsers: %w", err)) //nolint:errcheck
+		c.Error(fmt.Errorf("GetUsers: ToDomain failed: %w", err))
+		responder.SendError(c, domain.CodeSystemValidation)
+		return
+	}
+
+	users, total, err := h.userSvc.GetUsers(c.Request.Context(), query)
+	if err != nil {
+		c.Error(fmt.Errorf("GetUsers: %w", err))
 		responder.SendError(c, domain.CodeSystemInternal)
 		return
 	}
-	if users == nil {
-		users = []domain.User{}
-	}
-	responder.Send(c, domain.CodeUserFetchSuccess, users)
+
+	responder.SendPaginated(c, domain.CodeUserFetchSuccess, users, total, *query)
 }
 
 func (h *Handler) GetSelf(c *gin.Context) {
@@ -186,7 +204,7 @@ func (h *Handler) BatchUpdateRole(c *gin.Context) {
 		})
 	}
 
-	err := h.userSvc.BatchUpdateRole(c.Request.Context(), domain.Role(claims.Role), domainUpdates)
+	err := h.userSvc.BatchUpdateRole(c.Request.Context(), claims.UserID, domainUpdates)
 	if err != nil {
 		c.Error(fmt.Errorf("BatchUpdateRole: %w", err)) //nolint:errcheck
 		if strings.Contains(err.Error(), fmt.Sprintf("%d", domain.CodeUserRoleAdminUpdatePeerForbidden)) {
@@ -203,3 +221,30 @@ func (h *Handler) BatchUpdateRole(c *gin.Context) {
 	responder.Send(c, domain.CodeUserRoleSuccess, nil)
 }
 
+func (h *Handler) BatchDeleteUsers(c *gin.Context) {
+	claims := middleware.GetUserClaims(c)
+	if claims == nil {
+		responder.SendError(c, domain.CodeAuthLoginUnauthorized)
+		return
+	}
+
+	var req BatchDeleteUsersRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.Error(fmt.Errorf("BatchDeleteUsers: bind failed: %w", err))
+		responder.SendError(c, domain.CodeSystemValidation)
+		return
+	}
+	if err := req.Validate(); err != nil {
+		responder.SendValidationError(c, err)
+		return
+	}
+
+	err := h.userSvc.BatchDeleteUsers(c.Request.Context(), claims.UserID, req.UserIDs)
+	if err != nil {
+		c.Error(fmt.Errorf("BatchDeleteUsers: %w", err))
+		responder.SendError(c, domain.CodeUserBatchDeleteFailed)
+		return
+	}
+
+	responder.Send(c, domain.CodeUserBatchDeleteSuccess, nil)
+}

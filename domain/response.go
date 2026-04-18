@@ -32,20 +32,22 @@ const (
 	CodeAuthLoginJWTFailed    = 200150
 
 	// ── User (30) ────────────────────────────────────────────────────────────
-	CodeUserFetchSuccess    = 300100
-	CodeUserFetchNotFound   = 300140
-	CodeUserCreateSuccess   = 300200
-	CodeUserCreateFailed    = 300240
-	CodeUserProfileSuccess  = 300300
-	CodeUserProfileFailed   = 300340
-	CodeUserEmailSuccess    = 300400
-	CodeUserEmailConflict   = 300440
+	CodeUserFetchSuccess                     = 300100
+	CodeUserFetchNotFound                    = 300140
+	CodeUserCreateSuccess                    = 300200
+	CodeUserCreateFailed                     = 300240
+	CodeUserProfileSuccess                   = 300300
+	CodeUserProfileFailed                    = 300340
+	CodeUserEmailSuccess                     = 300400
+	CodeUserEmailConflict                    = 300440
 	CodeUserRoleSuccess                      = 300500
 	CodeUserRoleFailed                       = 300540
 	CodeUserRoleAdminUpdatePeerForbidden     = 300541
 	CodeUserRoleSignerAdminRequiredForbidden = 300542
-	CodeUserCredsFetchSuccess = 300600
-	CodeUserCredsFetchFailed  = 300640
+	CodeUserCredsFetchSuccess                = 300600
+	CodeUserCredsFetchFailed                 = 300640
+	CodeUserBatchDeleteSuccess               = 300700
+	CodeUserBatchDeleteFailed                = 300740
 
 	// ── Credential (40) ──────────────────────────────────────────────────────
 	CodeCredFetchSuccess  = 400100
@@ -70,20 +72,22 @@ var MessageKeys = map[int]string{
 	CodeAuthLoginForbidden:    "error_unauthorized_email",
 	CodeAuthLoginJWTFailed:    "error_token_issue_failed",
 
-	CodeUserFetchSuccess:      "success_user_fetched",
-	CodeUserFetchNotFound:     "error_user_not_found",
-	CodeUserCreateSuccess:     "success_users_created",
-	CodeUserCreateFailed:      "error_create_users_failed",
-	CodeUserProfileSuccess:    "success_profile_updated",
-	CodeUserProfileFailed:     "error_update_profile_failed",
-	CodeUserEmailSuccess:      "success_email_updated",
-	CodeUserEmailConflict:     "error_update_email_failed",
+	CodeUserFetchSuccess:                     "success_user_fetched",
+	CodeUserFetchNotFound:                    "error_user_not_found",
+	CodeUserCreateSuccess:                    "success_users_created",
+	CodeUserCreateFailed:                     "error_create_users_failed",
+	CodeUserProfileSuccess:                   "success_profile_updated",
+	CodeUserProfileFailed:                    "error_update_profile_failed",
+	CodeUserEmailSuccess:                     "success_email_updated",
+	CodeUserEmailConflict:                    "error_update_email_failed",
 	CodeUserRoleSuccess:                      "success_role_updated",
 	CodeUserRoleFailed:                       "error_update_role_failed",
 	CodeUserRoleAdminUpdatePeerForbidden:     "error_admin_update_peer_role_forbidden",
 	CodeUserRoleSignerAdminRequiredForbidden: "error_signer_admin_required_forbidden",
-	CodeUserCredsFetchSuccess: "success_creds_fetched",
-	CodeUserCredsFetchFailed:  "error_fetch_creds_failed",
+	CodeUserCredsFetchSuccess:                "success_creds_fetched",
+	CodeUserCredsFetchFailed:                 "error_fetch_creds_failed",
+	CodeUserBatchDeleteSuccess:               "success_users_batch_deleted",
+	CodeUserBatchDeleteFailed:                "error_batch_delete_users_failed",
 
 	CodeCredFetchSuccess:  "success_cred_fetched",
 	CodeCredFetchNotFound: "error_cred_not_found",
