@@ -1,0 +1,69 @@
+package model
+
+import (
+	"CredChain_Golang/domain"
+	"encoding/json"
+	"gorm.io/datatypes"
+	"time"
+)
+
+type User struct {
+	Id               string         `gorm:"primaryKey;type:varchar(255);column:id" json:"id"`
+	Name             *string        `gorm:"type:varchar(255);column:name" json:"name"`
+	Number           *string        `gorm:"type:varchar(50);column:number" json:"number"`
+	PhoneNumber      *string        `gorm:"type:varchar(50);column:phone_number" json:"phone_number"`
+	Email            string         `gorm:"type:varchar(255);uniqueIndex;column:email" json:"email"`
+	BirthDate        *time.Time     `gorm:"column:birth_date" json:"birth_date"`
+	Meta             datatypes.JSON `gorm:"type:jsonb;column:meta" json:"meta"`
+	Role             string         `gorm:"type:varchar(50);column:role" json:"role"`
+	WalletAddress    string         `gorm:"type:varchar(255);column:wallet_address" json:"wallet_address"`
+	WalletPrivateKey string         `gorm:"-" json:"-"`
+	CreatedAt        time.Time      `gorm:"autoCreateTime;column:created_at" json:"created_at"`
+	UpdatedAt        *time.Time     `gorm:"autoUpdateTime;column:updated_at" json:"updated_at"`
+}
+
+func (m *User) ToDomain() domain.User {
+	var meta *domain.JSONB
+	if m.Meta != nil {
+		metaData := make(domain.JSONB)
+		json.Unmarshal(m.Meta, &metaData)
+		meta = &metaData
+	}
+
+	return domain.User{
+		Id:               m.Id,
+		Name:             m.Name,
+		Number:           m.Number,
+		PhoneNumber:      m.PhoneNumber,
+		Email:            m.Email,
+		BirthDate:        m.BirthDate,
+		Meta:             meta,
+		Role:             domain.Role(m.Role),
+		WalletAddress:    m.WalletAddress,
+		WalletPrivateKey: m.WalletPrivateKey,
+		CreatedAt:        m.CreatedAt,
+		UpdatedAt:        m.UpdatedAt,
+	}
+}
+
+func FromDomainUser(u domain.User) User {
+	var meta datatypes.JSON
+	if u.Meta != nil {
+		meta, _ = json.Marshal(*u.Meta)
+	}
+
+	return User{
+		Id:               u.Id,
+		Name:             u.Name,
+		Number:           u.Number,
+		PhoneNumber:      u.PhoneNumber,
+		Email:            u.Email,
+		BirthDate:        u.BirthDate,
+		Meta:             meta,
+		Role:             string(u.Role),
+		WalletAddress:    u.WalletAddress,
+		WalletPrivateKey: u.WalletPrivateKey,
+		CreatedAt:        u.CreatedAt,
+		UpdatedAt:        u.UpdatedAt,
+	}
+}

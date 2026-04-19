@@ -17,7 +17,7 @@ type CredHandlerParams struct {
 	CredSvc *Service
 }
 
-func NewHandler(p CredHandlerParams) *Handler {
+func NewCredentialHandler(p CredHandlerParams) *Handler {
 	return &Handler{credSvc: p.CredSvc}
 }
 

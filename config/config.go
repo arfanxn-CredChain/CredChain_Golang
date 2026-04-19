@@ -3,6 +3,9 @@ package config
 import (
 	"fmt"
 	"os"
+	"strconv"
+
+	"github.com/joho/godotenv"
 )
 
 type Config struct {
@@ -18,20 +21,33 @@ type Config struct {
 	InitialSuperAdminEmail   string
 	InitialSuperAdminPrivKey string
 	AppPort                  string
+
+	// Database connection pool settings
+	DBMaxOpenConns    int
+	DBMaxIdleConns    int
+	DBConnMaxLifetime int // in minutes
 }
 
-func getEnv(key string, fallback string) string {
+func getIntEnv(key string, defaultVal int) int {
 	val := os.Getenv(key)
 	if val == "" {
-		if fallback != "" {
-			return fallback
-		}
-		return ""
+		return defaultVal
 	}
-	return val
+	intVal, err := strconv.Atoi(val)
+	if err != nil {
+		return defaultVal
+	}
+	return intVal
 }
 
-func LoadConfig() (*Config, error) {
+// NewConfig loads configuration from .env file
+func NewConfig(envPath string) (*Config, error) {
+	// Load .env file from specified path
+	err := godotenv.Load(envPath)
+	if err != nil {
+		// Continue anyway - env vars might be set directly
+	}
+
 	cfg := &Config{
 		PostgresDSN:              getEnv("POSTGRES_DSN", "postgres://root:rootpassword@localhost:5432/credchain?sslmode=disable"),
 		MongoURI:                 getEnv("MONGO_URI", "mongodb://root:rootpassword@localhost:27017"),
@@ -45,15 +61,31 @@ func LoadConfig() (*Config, error) {
 		InitialSuperAdminEmail:   getEnv("INITIAL_SUPER_ADMIN_EMAIL", ""),
 		InitialSuperAdminPrivKey: getEnv("INITIAL_SUPER_ADMIN_PRIVATE_KEY", ""),
 		AppPort:                  getEnv("PORT", "8080"),
+
+		// Database connection pool
+		DBMaxOpenConns:    getIntEnv("DB_MAX_OPEN_CONNS", 25),
+		DBMaxIdleConns:    getIntEnv("DB_MAX_IDLE_CONNS", 25),
+		DBConnMaxLifetime: getIntEnv("DB_CONN_MAX_LIFETIME", 5),
 	}
 
 	if cfg.JWTSecret == "" {
 		return nil, fmt.Errorf("FATAL: JWT_SECRET is missing")
 	}
-	
+
 	if cfg.WalletEncryptionKey == "" {
 		return nil, fmt.Errorf("FATAL: WALLET_ENCRYPTION_KEY is missing")
 	}
 
 	return cfg, nil
+}
+
+func getEnv(key string, fallback string) string {
+	val := os.Getenv(key)
+	if val == "" {
+		if fallback != "" {
+			return fallback
+		}
+		return ""
+	}
+	return val
 }

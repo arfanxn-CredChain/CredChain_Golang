@@ -14,8 +14,3 @@ func I18nMiddleware(bundle *i18n.Bundle) gin.HandlerFunc {
 		c.Next()
 	}
 }
-
-// GetLocalizer is now a shim for appI18n.GetLocalizer to avoid breaking middleware package callers
-func GetLocalizer(c *gin.Context) *i18n.Localizer {
-	return appI18n.GetLocalizer(c)
-}

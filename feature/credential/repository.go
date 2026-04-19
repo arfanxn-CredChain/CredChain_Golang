@@ -4,35 +4,33 @@ import (
 	"context"
 
 	"CredChain_Golang/domain"
-	"CredChain_Golang/infrastructure/database"
+	domainQuery "CredChain_Golang/domain/query"
+	"CredChain_Golang/infrastructure/gorm"
 
 	"go.uber.org/fx"
 )
 
-type PostgresCredRepository struct {
-	db *database.DB
+type GormCredRepository struct {
+	db *gorm.GormDB
 }
 
-type CredRepoParams struct {
+type GormCredRepoParams struct {
 	fx.In
-	DB *database.DB
+	DB *gorm.GormDB
 }
 
-func NewRepository(p CredRepoParams) domain.CredentialRepository {
-	return &PostgresCredRepository{db: p.DB}
+func NewGormCredentialRepository(p GormCredRepoParams) domain.CredentialRepository {
+	return &GormCredRepository{db: p.DB}
 }
 
-func (r *PostgresCredRepository) GetCredentials(ctx context.Context) ([]domain.Credential, error) {
-	return nil, nil // Phase stub
+func (r *GormCredRepository) Get(ctx context.Context, query *domainQuery.Query) ([]domain.Credential, int, error) {
+	return nil, 0, nil // TODO: Implement later
 }
 
-func (r *PostgresCredRepository) GetCredentialByID(ctx context.Context, id string) (*domain.Credential, error) {
-	return nil, nil // Phase stub
+func (r *GormCredRepository) Find(ctx context.Context, id string) (*domain.Credential, error) {
+	return nil, nil // TODO: Implement later
 }
 
-func (r *PostgresCredRepository) GetCredentialsByHolder(ctx context.Context, holderID string) ([]domain.Credential, error) {
-	var creds []domain.Credential
-	query := `SELECT * FROM credentials WHERE holder_user_id = $1 ORDER BY issued_at DESC`
-	err := r.db.SelectContext(ctx, &creds, query, holderID)
-	return creds, err
+func (r *GormCredRepository) FindByHolder(ctx context.Context, holderID string) ([]domain.Credential, error) {
+	return nil, nil // TODO: Implement later
 }

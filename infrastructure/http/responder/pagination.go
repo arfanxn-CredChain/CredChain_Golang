@@ -3,8 +3,8 @@ package responder
 import (
 	"fmt"
 	"math"
+	"strconv"
 
-	"CredChain_Golang/domain"
 	"github.com/gin-gonic/gin"
 )
 
@@ -23,18 +23,19 @@ type PaginatedData[T any] struct {
 	Total        int     `json:"total"`
 }
 
-// BuildPaginated constructs a PaginatedData struct based on items, total, and original query.
-func BuildPaginated[T any](c *gin.Context, items []T, total int, query domain.Query) PaginatedData[T] {
+// BuildPaginated constructs a PaginatedData struct based on items, total, and gin context.
+func BuildPaginated[T any](c *gin.Context, items []T, total int) PaginatedData[T] {
 	if items == nil {
 		items = make([]T, 0)
 	}
 
-	page := query.Page
-	if page < 1 {
+	// Extract page and limit from gin context
+	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if err != nil || page < 1 {
 		page = 1
 	}
-	limit := query.Limit
-	if limit < 1 {
+	limit, err := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	if err != nil || limit < 1 {
 		limit = 10
 	}
 
@@ -43,7 +44,7 @@ func BuildPaginated[T any](c *gin.Context, items []T, total int, query domain.Qu
 		lastPage = 1
 	}
 
-	from := (page - 1) * limit + 1
+	from := (page-1)*limit + 1
 	to := page * limit
 	if total == 0 {
 		from = 0
@@ -64,12 +65,12 @@ func BuildPaginated[T any](c *gin.Context, items []T, total int, query domain.Qu
 
 	firstPageUrl := buildURL(1)
 	lastPageUrl := buildURL(lastPage)
-	
+
 	var prevPageUrl *string
 	if page > 1 {
 		prevPageUrl = buildURL(page - 1)
 	}
-	
+
 	var nextPageUrl *string
 	if page < lastPage {
 		nextPageUrl = buildURL(page + 1)
@@ -91,7 +92,7 @@ func BuildPaginated[T any](c *gin.Context, items []T, total int, query domain.Qu
 }
 
 // SendPaginated wraps PaginatedData in standard Response
-func SendPaginated[T any](c *gin.Context, code int, items []T, total int, query domain.Query) {
-	data := BuildPaginated(c, items, total, query)
+func SendPaginated[T any](c *gin.Context, code int, items []T, total int) {
+	data := BuildPaginated(c, items, total)
 	Send(c, code, data)
 }

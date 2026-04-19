@@ -3,6 +3,8 @@ package domain
 import (
 	"context"
 	"time"
+
+	domainQuery "CredChain_Golang/domain/query"
 )
 
 // Credential represents a row in the credentials table
@@ -21,7 +23,7 @@ type Credential struct {
 
 // CredentialRepository defines the database contract for the Credential Domain
 type CredentialRepository interface {
-	GetCredentials(ctx context.Context) ([]Credential, error)
-	GetCredentialByID(ctx context.Context, id string) (*Credential, error)
-	GetCredentialsByHolder(ctx context.Context, holderID string) ([]Credential, error)
+	Get(ctx context.Context, query *domainQuery.Query) ([]Credential, int, error)
+	Find(ctx context.Context, id string) (*Credential, error)
+	FindByHolder(ctx context.Context, holderID string) ([]Credential, error)
 }

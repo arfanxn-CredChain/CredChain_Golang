@@ -41,29 +41,37 @@ type UserRoleUpdate struct {
 
 // User represents a row in the users table
 type User struct {
-	ID               string     `db:"id" json:"id"`
-	Name             *string    `db:"name" json:"name"`
-	Number           *string    `db:"number" json:"number"`
-	PhoneNumber      *string    `db:"phone_number" json:"phone_number"`
-	Email            string     `db:"email" json:"email"`
-	BirthDate        *time.Time `db:"birth_date" json:"birth_date"`
-	Meta             *JSONB     `db:"meta" json:"meta"`
-	Role             Role       `db:"role" json:"role"`
-	WalletAddress    string     `db:"wallet_address" json:"wallet_address"`
-	WalletPrivateKey string     `db:"wallet_private_key" json:"-"` // never expose private key in json
-	CreatedAt        time.Time  `db:"created_at" json:"created_at"`
-	UpdatedAt        *time.Time `db:"updated_at" json:"updated_at"`
+	Id               string     `json:"id"`
+	Name             *string    `json:"name"`
+	Number           *string    `json:"number"`
+	PhoneNumber      *string    `json:"phone_number"`
+	Email            string     `json:"email"`
+	BirthDate        *time.Time `json:"birth_date"`
+	Meta             *JSONB     `json:"meta"`
+	Role             Role       `json:"role"`
+	WalletAddress    string     `json:"wallet_address"`
+	WalletPrivateKey string     `json:"-"`
+	CreatedAt        time.Time  `json:"created_at"`
+	UpdatedAt        *time.Time `json:"updated_at"`
 }
 
 // UserRepository defines the database contract for the User Domain
 type UserRepository interface {
-	GetUsers(ctx context.Context, query *domainQuery.Query) ([]User, int, error)
-	GetUserByID(ctx context.Context, id string) (*User, error)
-	GetUserByEmail(ctx context.Context, email string) (*User, error)
-	GetUsersByIDs(ctx context.Context, ids []string) ([]User, error)
-	UpdateProfile(ctx context.Context, id string, name, number, phoneNumber *string, meta *JSONB) (*User, error)
-	UpdateEmail(ctx context.Context, id string, email string) (string, error)
-	BatchUpdateRole(ctx context.Context, updates []UserRoleUpdate) error
-	BatchCreate(ctx context.Context, users []User) ([]User, error)
-	BatchDeleteUsers(ctx context.Context, ids []string) error
+	// Query-based retrieval
+	Get(ctx context.Context, query *domainQuery.Query) ([]User, int, error)
+
+	// Single item lookups
+	Find(ctx context.Context, id string) (*User, error)
+	FindByEmail(ctx context.Context, email string) (*User, error)
+
+	// Multiple item lookups
+	FindByIds(ctx context.Context, ids ...string) ([]User, error)
+
+	// CRUD operations
+	Update(ctx context.Context, user User) (*User, error)
+	Store(ctx context.Context, users ...User) ([]User, error)
+	Destroy(ctx context.Context, ids ...string) error
+
+	// Specialized operations
+	UpdateRole(ctx context.Context, updates []UserRoleUpdate) error
 }

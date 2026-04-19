@@ -13,12 +13,12 @@ import (
 )
 
 // Send writes a unified success or informational response.
-func Send(c *gin.Context, code int, data any) {
+func Send[T any](c *gin.Context, code int, data T) {
 	localizer := appI18n.GetLocalizer(c)
 	msgKey := getMessageKey(c, code)
 	message := localize(c, localizer, msgKey, nil)
 
-	c.JSON(HttpCodeFromCode(code), domain.Response{
+	c.JSON(HttpCodeFromCode(code), domain.Response[T]{
 		Code:    code,
 		Message: message,
 		Data:    data,
@@ -31,7 +31,7 @@ func SendError(c *gin.Context, code int) {
 	msgKey := getMessageKey(c, code)
 	message := localize(c, localizer, msgKey, nil)
 
-	c.JSON(HttpCodeFromCode(code), domain.Response{
+	c.JSON(HttpCodeFromCode(code), domain.Response[any]{
 		Code:    code,
 		Message: message,
 	})
@@ -72,7 +72,7 @@ func SendValidationError(c *gin.Context, err error) {
 	msgKey := getMessageKey(c, domain.CodeSystemValidation)
 	message := localize(c, localizer, msgKey, nil)
 
-	c.JSON(HttpCodeFromCode(domain.CodeSystemValidation), domain.Response{
+	c.JSON(HttpCodeFromCode(domain.CodeSystemValidation), domain.Response[any]{
 		Code:    domain.CodeSystemValidation,
 		Message: message,
 		Errors:  errors,

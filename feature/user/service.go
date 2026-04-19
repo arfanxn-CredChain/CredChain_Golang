@@ -2,7 +2,6 @@ package user
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"errors"
 	"fmt"
 	"strings"
@@ -11,25 +10,36 @@ import (
 	"CredChain_Golang/domain"
 	domainQuery "CredChain_Golang/domain/query"
 	"CredChain_Golang/infrastructure/chain"
-	"CredChain_Golang/infrastructure/database"
+	cryptoInfra "CredChain_Golang/infrastructure/crypto"
+	httpContext "CredChain_Golang/infrastructure/http/context"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/oklog/ulid/v2"
 	"go.uber.org/fx"
 )
 
 type UserService interface {
-	CreateUsers(ctx context.Context, newUsers []CreateUserRequest) ([]domain.User, error)
-	GetUsers(ctx context.Context, query *domainQuery.Query) ([]domain.User, int, error)
-	GetUserByID(ctx context.Context, id string) (*domain.User, error)
+	// Query-based retrieval
+	Paginate(ctx context.Context, query *domainQuery.Query) ([]domain.User, int, error)
+
+	// Single item lookups
+	Find(ctx context.Context, id string) (*domain.User, error)
+	FindByEmail(ctx context.Context, email string) (*domain.User, error)
+
+	// Multiple item lookups
+	FindByIds(ctx context.Context, ids ...string) ([]domain.User, error)
+
+	// Update operations
+	Update(ctx context.Context, user domain.User) (*domain.User, error)
 	UpdateProfile(ctx context.Context, id string, name, number, phoneNumber *string, meta *domain.JSONB) (*domain.User, error)
 	UpdateEmail(ctx context.Context, id string, email string) (string, error)
-	BatchUpdateRole(ctx context.Context, callerID string, updates []domain.UserRoleUpdate) error
-	BatchDeleteUsers(ctx context.Context, callerID string, userIDs []string) error
+	UpdateRole(ctx context.Context, updates ...domain.UserRoleUpdate) error
+
+	// CRUD operations
+	Store(ctx context.Context, users ...domain.User) ([]domain.User, error)
+	Destroy(ctx context.Context, ids ...string) error
 }
 
 type Service struct {
@@ -45,7 +55,7 @@ type UserServiceParams struct {
 	ChainClient *chain.Client
 }
 
-func NewService(p UserServiceParams) *Service {
+func NewUserService(p UserServiceParams) *Service {
 	return &Service{
 		userRepo:            p.UserRepo,
 		walletEncryptionKey: p.Config.WalletEncryptionKey,
@@ -55,69 +65,59 @@ func NewService(p UserServiceParams) *Service {
 
 // ... Implementation ...
 
-func (s *Service) CreateUsers(ctx context.Context, newUsers []CreateUserRequest) ([]domain.User, error) {
-	encKey := s.walletEncryptionKey
-	if encKey == "" {
-		return nil, fmt.Errorf("missing WALLET_ENCRYPTION_KEY env var required for encryption")
-	}
-
-	encryptionKey := make([]byte, 32)
-	copy(encryptionKey, []byte(encKey))
-
-	var domainUsers []domain.User
-
-	for _, nu := range newUsers {
-		email := strings.ToLower(nu.Email)
-		privateKey, err := crypto.GenerateKey()
-		if err != nil {
-			return nil, fmt.Errorf("failed to generate ethereum wallet: %v", err)
-		}
-		privateKeyBytes := crypto.FromECDSA(privateKey)
-		privateKeyHex := hexutil.Encode(privateKeyBytes)
-
-		publicKey := privateKey.Public()
-		publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
-		if !ok {
-			return nil, fmt.Errorf("failed to cast public key")
-		}
-		walletAddress := crypto.PubkeyToAddress(*publicKeyECDSA).Hex()
-
-		encryptedKey, err := database.Encrypt([]byte(privateKeyHex), encryptionKey)
-		if err != nil {
-			return nil, fmt.Errorf("failed to encrypt wallet key: %v", err)
-		}
-
-		domainUsers = append(domainUsers, domain.User{
-			ID:               ulid.Make().String(),
-			Name:             &nu.Name,
-			Email:            email,
-			Role:             nu.Role,
-			WalletAddress:    strings.ToLower(walletAddress),
-			WalletPrivateKey: encryptedKey,
-		})
-	}
-
-	return s.userRepo.BatchCreate(ctx, domainUsers)
+func (s *Service) Store(ctx context.Context, users ...domain.User) ([]domain.User, error) {
+	return s.userRepo.Store(ctx, users...)
 }
 
-func (s *Service) GetUsers(ctx context.Context, query *domainQuery.Query) ([]domain.User, int, error) {
-	return s.userRepo.GetUsers(ctx, query)
+func (s *Service) Paginate(ctx context.Context, query *domainQuery.Query) ([]domain.User, int, error) {
+	return s.userRepo.Get(ctx, query)
 }
 
-func (s *Service) GetUserByID(ctx context.Context, id string) (*domain.User, error) {
-	return s.userRepo.GetUserByID(ctx, id)
+func (s *Service) Find(ctx context.Context, id string) (*domain.User, error) {
+	return s.userRepo.Find(ctx, id)
+}
+
+func (s *Service) FindByEmail(ctx context.Context, email string) (*domain.User, error) {
+	return s.userRepo.FindByEmail(ctx, email)
+}
+
+func (s *Service) FindByIds(ctx context.Context, ids ...string) ([]domain.User, error) {
+	return s.userRepo.FindByIds(ctx, ids...)
+}
+
+func (s *Service) Update(ctx context.Context, user domain.User) (*domain.User, error) {
+	return s.userRepo.Update(ctx, user)
 }
 
 func (s *Service) UpdateProfile(ctx context.Context, id string, name, number, phoneNumber *string, meta *domain.JSONB) (*domain.User, error) {
-	return s.userRepo.UpdateProfile(ctx, id, name, number, phoneNumber, meta)
+	return s.userRepo.Update(ctx, domain.User{
+		Id:          id,
+		Name:        name,
+		Number:      number,
+		PhoneNumber: phoneNumber,
+		Meta:        meta,
+	})
 }
 
 func (s *Service) UpdateEmail(ctx context.Context, id string, email string) (string, error) {
-	return s.userRepo.UpdateEmail(ctx, id, email)
+	updated, err := s.userRepo.Update(ctx, domain.User{
+		Id:    id,
+		Email: email,
+	})
+	if err != nil {
+		return "", err
+	}
+	return updated.Email, nil
 }
 
-func (s *Service) BatchUpdateRole(ctx context.Context, callerID string, updates []domain.UserRoleUpdate) error {
-	callerUser, err := s.userRepo.GetUserByID(ctx, callerID)
+func (s *Service) UpdateRole(ctx context.Context, updates ...domain.UserRoleUpdate) error {
+	// Extract userId from context (auth middleware injected it)
+	userId, err := httpContext.GetUserId(ctx)
+	if err != nil {
+		return fmt.Errorf("missing user context: %w", err)
+	}
+
+	callerUser, err := s.userRepo.Find(ctx, userId)
 	if err != nil {
 		return fmt.Errorf("failed to fetch caller: %w", err)
 	}
@@ -131,14 +131,14 @@ func (s *Service) BatchUpdateRole(ctx context.Context, callerID string, updates 
 		userIDs = append(userIDs, u.UserID)
 	}
 
-	targetUsers, err := s.userRepo.GetUsersByIDs(ctx, userIDs)
+	targetUsers, err := s.userRepo.FindByIds(ctx, userIDs...)
 	if err != nil {
 		return err
 	}
 
 	targetUserMap := make(map[string]domain.User)
 	for _, tu := range targetUsers {
-		targetUserMap[tu.ID] = tu
+		targetUserMap[tu.Id] = tu
 	}
 
 	for _, update := range updates {
@@ -164,7 +164,7 @@ func (s *Service) BatchUpdateRole(ctx context.Context, callerID string, updates 
 	encryptionKey := make([]byte, 32)
 	copy(encryptionKey, []byte(encKey))
 
-	decryptedKey, err := database.Decrypt(callerUser.WalletPrivateKey, encryptionKey)
+	decryptedKey, err := cryptoInfra.Decrypt(callerUser.WalletPrivateKey, encryptionKey)
 	if err != nil {
 		return fmt.Errorf("failed to decrypt caller private key: %w", err)
 	}
@@ -224,11 +224,17 @@ func (s *Service) BatchUpdateRole(ctx context.Context, callerID string, updates 
 
 	_ = tx
 
-	return s.userRepo.BatchUpdateRole(ctx, updates)
+	return s.userRepo.UpdateRole(ctx, updates)
 }
 
-func (s *Service) BatchDeleteUsers(ctx context.Context, callerID string, userIDs []string) error {
-	callerUser, err := s.userRepo.GetUserByID(ctx, callerID)
+func (s *Service) Destroy(ctx context.Context, ids ...string) error {
+	// Extract userId from context (auth middleware injected it)
+	userId, err := httpContext.GetUserId(ctx)
+	if err != nil {
+		return fmt.Errorf("missing user context: %w", err)
+	}
+
+	callerUser, err := s.userRepo.Find(ctx, userId)
 	if err != nil {
 		return fmt.Errorf("failed to fetch caller: %w", err)
 	}
@@ -237,13 +243,29 @@ func (s *Service) BatchDeleteUsers(ctx context.Context, callerID string, userIDs
 		return fmt.Errorf("%d", domain.CodeUserRoleSignerAdminRequiredForbidden)
 	}
 
-	targetUsers, err := s.userRepo.GetUsersByIDs(ctx, userIDs)
+	// Users cannot delete themselves (any role)
+	for _, id := range ids {
+		if id == userId {
+			return fmt.Errorf("users cannot delete their own account")
+		}
+	}
+
+	targetUsers, err := s.userRepo.FindByIds(ctx, ids...)
 	if err != nil {
 		return err
 	}
 
 	if len(targetUsers) == 0 {
 		return nil
+	}
+
+	// Admins cannot delete other admins
+	if callerUser.Role.Rank() == domain.RoleAdmin.Rank() {
+		for _, target := range targetUsers {
+			if target.Role.Rank() >= domain.RoleAdmin.Rank() {
+				return fmt.Errorf("admins cannot delete admin or super admin users")
+			}
+		}
 	}
 
 	encKey := s.walletEncryptionKey
@@ -253,7 +275,7 @@ func (s *Service) BatchDeleteUsers(ctx context.Context, callerID string, userIDs
 	encryptionKey := make([]byte, 32)
 	copy(encryptionKey, []byte(encKey))
 
-	decryptedKey, err := database.Decrypt(callerUser.WalletPrivateKey, encryptionKey)
+	decryptedKey, err := cryptoInfra.Decrypt(callerUser.WalletPrivateKey, encryptionKey)
 	if err != nil {
 		return fmt.Errorf("failed to decrypt caller private key: %w", err)
 	}
@@ -313,5 +335,5 @@ func (s *Service) BatchDeleteUsers(ctx context.Context, callerID string, userIDs
 
 	_ = tx
 
-	return s.userRepo.BatchDeleteUsers(ctx, userIDs)
+	return s.userRepo.Destroy(ctx, ids...)
 }

@@ -1,80 +1,86 @@
 package middleware
 
 import (
-	"fmt"
+	"context"
 	"strings"
 
 	"CredChain_Golang/config"
 	"CredChain_Golang/domain"
+	httpContext "CredChain_Golang/infrastructure/http/context"
 	"CredChain_Golang/infrastructure/http/responder"
 	"CredChain_Golang/infrastructure/security"
 
 	"github.com/gin-gonic/gin"
 )
 
-const (
-	UserContextKey = "user_claims"
-)
-
-// RequireAuth extracts the Bearer token, validates it, and injects JWTClaims into gin context.
-func RequireAuth(cfg *config.Config) gin.HandlerFunc {
+// AuthMiddleware validates JWT token and stores claims in both Gin and Go contexts
+func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+		if authHeader == "" {
+			c.Abort()
 			responder.SendError(c, domain.CodeAuthLoginUnauthorized)
 			return
 		}
 
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-
-		claims, err := security.ValidateJWT(tokenString, []byte(cfg.JWTSecret))
-		if err != nil {
-			c.Error(fmt.Errorf("RequireAuth: JWT validation failed: %w", err)) //nolint:errcheck
-			responder.SendError(c, domain.CodeAuthLoginInvalidToken)
-			return
-		}
-
-		c.Set(UserContextKey, claims)
-		c.Next()
-	}
-}
-
-// RequireMinRole ensures the authenticated user's role rank is at least the required role's rank.
-func RequireMinRole(minRole domain.Role) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		claimsInterface, exists := c.Get(UserContextKey)
-		if !exists {
+		if tokenString == authHeader {
+			c.Abort()
 			responder.SendError(c, domain.CodeAuthLoginUnauthorized)
 			return
 		}
 
-		claims, ok := claimsInterface.(*security.JWTClaims)
-		if !ok || claims == nil {
-			c.Error(fmt.Errorf("RequireMinRole: type assertion failed, got %T", claimsInterface)) //nolint:errcheck
-			responder.SendError(c, domain.CodeSystemInternal)
+		// Parse and extract JWT claims
+		claims, err := parseJWTClaims(tokenString, cfg.JWTSecret)
+		if err != nil {
+			c.Abort()
+			responder.SendError(c, domain.CodeAuthLoginInvalidToken)
 			return
 		}
 
-		userRole := domain.Role(claims.Role)
-		if userRole.Rank() >= minRole.Rank() {
-			c.Next()
-			return
+		// Create user claims for context (map from JWT claims to UserClaims)
+		userClaims := &httpContext.UserClaims{
+			Id:    claims.UserID,
+			Role:  domain.Role(claims.Role),
+			Email: claims.Email,
 		}
 
-		responder.SendError(c, domain.CodeAuthLoginForbidden)
+		// Store in Gin context using type-safe key
+		c.Set(httpContext.UserClaimsKey, userClaims)
+
+		// Store in Go context (for service layer)
+		ctx := context.WithValue(c.Request.Context(), httpContext.UserClaimsKey, userClaims)
+		c.Request = c.Request.WithContext(ctx)
+
+		c.Next()
 	}
 }
 
-// GetUserClaims retrieves the typed JWTClaims from the gin context.
-func GetUserClaims(c *gin.Context) *security.JWTClaims {
-	claimsInterface, exists := c.Get(UserContextKey)
-	if !exists {
-		return nil
+// parseJWTClaims parses and validates the JWT token, extracting claims
+func parseJWTClaims(tokenString string, secret string) (*security.JWTClaims, error) {
+	claims, err := security.ValidateJWT(tokenString, []byte(secret))
+	if err != nil {
+		return nil, err
 	}
-	claims, ok := claimsInterface.(*security.JWTClaims)
-	if !ok {
-		c.Error(fmt.Errorf("GetUserClaims: type assertion failed, got %T", claimsInterface)) //nolint:errcheck
-		return nil
+	return claims, nil
+}
+
+// RequireMinRole returns a middleware that enforces a minimum role requirement
+func RequireMinRole(minRole domain.Role) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		claims, err := httpContext.GetUserClaims(c.Request.Context())
+		if err != nil {
+			responder.SendError(c, domain.CodeAuthLoginUnauthorized)
+			c.Abort()
+			return
+		}
+
+		if claims.Role.Rank() < minRole.Rank() {
+			responder.SendError(c, domain.CodeAuthLoginForbidden)
+			c.Abort()
+			return
+		}
+
+		c.Next()
 	}
-	return claims
 }

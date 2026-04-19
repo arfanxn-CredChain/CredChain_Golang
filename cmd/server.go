@@ -10,7 +10,7 @@ import (
 	"CredChain_Golang/feature/user"
 	"CredChain_Golang/infrastructure/ai"
 	"CredChain_Golang/infrastructure/chain"
-	"CredChain_Golang/infrastructure/database"
+	"CredChain_Golang/infrastructure/gorm"
 	apphttp "CredChain_Golang/infrastructure/http"
 	"CredChain_Golang/infrastructure/i18n"
 	applogger "CredChain_Golang/infrastructure/logger"
@@ -25,9 +25,9 @@ func init() {
 	rootCmd.AddCommand(serverCmd)
 }
 
-func checkSystemInitialized(db *database.DB, cfg *config.Config, logger *zap.Logger) error {
-	var count int
-	err := db.Get(&count, "SELECT COUNT(*) FROM users WHERE role = $1", domain.RoleSuperAdmin)
+func checkSystemInitialized(db *gorm.GormDB, cfg *config.Config, logger *zap.Logger) error {
+	var count int64
+	err := db.Table("users").Where("role = ?", domain.RoleSuperAdmin).Count(&count).Error
 	if err != nil {
 		return fmt.Errorf("failed to verify system initialization state: %v", err)
 	}
@@ -48,21 +48,26 @@ var serverCmd = &cobra.Command{
 		fx.New(
 			applogger.Module,
 			fx.Provide(
-				config.LoadConfig,
+				func() *config.Config {
+					cfg, err := config.NewConfig(".env")
+					if err != nil {
+						panic(err)
+					}
+					return cfg
+				},
 				i18n.NewBundle,
-				database.ConnectPostgres,
-				database.ConnectMongo,
+				gorm.NewGorm,
 				storage.NewStorage,
 				storage.NewIPFSClient,
 				ai.NewClient,
 				chain.NewClient,
-				user.NewRepository,
-				credential.NewRepository,
-				auth.NewHandler,
-				user.NewService,
-				user.NewHandler,
-				credential.NewService,
-				credential.NewHandler,
+				user.NewGormUserRepository,
+				credential.NewGormCredentialRepository,
+				auth.NewAuthHandler,
+				user.NewUserService,
+				user.NewUserHandler,
+				credential.NewCredentialService,
+				credential.NewCredentialHandler,
 				apphttp.NewGinRouter,
 			),
 			fx.Invoke(checkSystemInitialized),
@@ -70,4 +75,3 @@ var serverCmd = &cobra.Command{
 		).Run()
 	},
 }
-

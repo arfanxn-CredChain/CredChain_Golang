@@ -56,7 +56,7 @@ func RegisterRoutes(p RouteParams) {
 
 		// Secure routes
 		secure := api.Group("/")
-		secure.Use(middleware.RequireAuth(p.Config))
+		secure.Use(middleware.AuthMiddleware(p.Config))
 		{
 			requireAdminOrHigher := middleware.RequireMinRole(domain.RoleAdmin)
 			requireIssuerOrHigher := middleware.RequireMinRole(domain.RoleIssuer)
@@ -64,12 +64,12 @@ func RegisterRoutes(p RouteParams) {
 			// Users API
 			users := secure.Group("/users")
 			{
-				users.GET("", requireAdminOrHigher, p.UserHandler.GetUsers)
-				users.GET("/self", p.UserHandler.GetSelf)
+				users.GET("", requireAdminOrHigher, p.UserHandler.Paginate)
+				users.GET("/self", p.UserHandler.Find)
 				users.GET("/self/credentials", p.UserHandler.GetSelfCredentials)
 				users.PUT("/self/profile", p.UserHandler.UpdateSelfProfile)
 				users.PUT("/self/email", p.UserHandler.UpdateSelfEmail)
-				users.GET("/:id", requireAdminOrHigher, p.UserHandler.GetUserByID)
+				users.GET("/:id", requireAdminOrHigher, p.UserHandler.FindByAdmin)
 				users.POST("/batch", requireAdminOrHigher, p.UserHandler.BatchCreateUsers)
 				users.PUT("/batch/role", requireAdminOrHigher, p.UserHandler.BatchUpdateRole)
 			}

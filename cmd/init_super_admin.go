@@ -3,14 +3,16 @@ package cmd
 import (
 	"context"
 	"crypto/ecdsa"
+	"database/sql"
 	"fmt"
 	"strings"
 
 	"CredChain_Golang/config"
 	"CredChain_Golang/domain"
-	"CredChain_Golang/infrastructure/database"
+	cryptoInfra "CredChain_Golang/infrastructure/crypto"
 
 	"github.com/ethereum/go-ethereum/crypto"
+	_ "github.com/lib/pq"
 	"github.com/oklog/ulid/v2"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -20,7 +22,7 @@ func init() {
 	rootCmd.AddCommand(initSuperAdminCmd)
 }
 
-func initSuperAdmin(db *database.DB, cfg *config.Config, logger *zap.Logger) error {
+func initSuperAdmin(db *sql.DB, cfg *config.Config, logger *zap.Logger) error {
 	if cfg.InitialSuperAdminEmail == "" || cfg.InitialSuperAdminPrivKey == "" || cfg.WalletEncryptionKey == "" {
 		return fmt.Errorf("missing core environment variables for Super Admin initialization")
 	}
@@ -42,7 +44,7 @@ func initSuperAdmin(db *database.DB, cfg *config.Config, logger *zap.Logger) err
 	copy(encryptionKey, []byte(cfg.WalletEncryptionKey))
 
 	var existingID string
-	err = db.Get(&existingID, "SELECT id FROM users WHERE email = $1", cfg.InitialSuperAdminEmail)
+	err = db.QueryRow("SELECT id FROM users WHERE email = $1", cfg.InitialSuperAdminEmail).Scan(&existingID)
 	if err == nil {
 		logger.Info("super admin already exists, skipping initialization")
 		return nil
@@ -50,7 +52,7 @@ func initSuperAdmin(db *database.DB, cfg *config.Config, logger *zap.Logger) err
 
 	logger.Info("super admin not found, initializing")
 
-	encryptedKey, err := database.Encrypt([]byte(cfg.InitialSuperAdminPrivKey), encryptionKey)
+	encryptedKey, err := cryptoInfra.Encrypt([]byte(cfg.InitialSuperAdminPrivKey), encryptionKey)
 	if err != nil {
 		return fmt.Errorf("failed to encrypt super admin private key: %v", err)
 	}
@@ -76,7 +78,7 @@ var initSuperAdminCmd = &cobra.Command{
 	Short: "Initializes the Super Admin based on .env config",
 	Long:  "Creates the inaugural Super Admin securely in Postgres parsing the Ethereum Wallet automatically from the given initial Private Key.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cfg, err := config.LoadConfig()
+		cfg, err := config.NewConfig(".env")
 		if err != nil {
 			return fmt.Errorf("failed to load config: %v", err)
 		}
@@ -84,12 +86,17 @@ var initSuperAdminCmd = &cobra.Command{
 		logger, _ := zap.NewProduction()
 		defer logger.Sync()
 
-		db, err := database.ConnectPostgres(database.PostgresParams{Config: cfg})
+		db, err := sql.Open("postgres", cfg.PostgresDSN)
 		if err != nil {
 			logger.Error("failed to connect to postgres", zap.Error(err))
 			return err
 		}
 		defer db.Close()
+
+		if err := db.Ping(); err != nil {
+			logger.Error("failed to ping postgres", zap.Error(err))
+			return err
+		}
 
 		err = initSuperAdmin(db, cfg, logger)
 		if err != nil {

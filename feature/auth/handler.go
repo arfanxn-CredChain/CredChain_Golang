@@ -27,8 +27,8 @@ type AuthHandlerParams struct {
 	Config   *config.Config
 }
 
-// NewHandler creates a new AuthHandler
-func NewHandler(p AuthHandlerParams) *Handler {
+// NewAuthHandler creates a new AuthHandler
+func NewAuthHandler(p AuthHandlerParams) *Handler {
 	return &Handler{userRepo: p.UserRepo, jwtSecret: p.Config.JWTSecret}
 }
 
@@ -81,7 +81,7 @@ func (h *Handler) HandleGoogleLogin(c *gin.Context) {
 	}
 
 	// 2. Lookup user via UserRepository
-	user, err := h.userRepo.GetUserByEmail(ctx, email)
+	user, err := h.userRepo.FindByEmail(ctx, email)
 	if err != nil {
 		c.Error(fmt.Errorf("HandleGoogleLogin: not found: %w", err)) //nolint:errcheck
 		responder.SendError(c, domain.CodeAuthLoginForbidden)
@@ -95,7 +95,7 @@ func (h *Handler) HandleGoogleLogin(c *gin.Context) {
 		return
 	}
 
-	token, err := security.GenerateJWT([]byte(h.jwtSecret), user.ID, user.Email, user.WalletAddress, string(user.Role))
+	token, err := security.GenerateJWT([]byte(h.jwtSecret), user.Id, user.Email, user.WalletAddress, string(user.Role))
 	if err != nil {
 		c.Error(fmt.Errorf("HandleGoogleLogin: JWT gen failed: %w", err)) //nolint:errcheck
 		responder.SendError(c, domain.CodeAuthLoginJWTFailed)
