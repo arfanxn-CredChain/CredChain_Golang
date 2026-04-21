@@ -6,21 +6,14 @@ import (
 	"CredChain_Golang/domain"
 	domainQuery "CredChain_Golang/domain/query"
 	"CredChain_Golang/infrastructure/gorm"
-
-	"go.uber.org/fx"
 )
 
 type GormCredRepository struct {
 	db *gorm.GormDB
 }
 
-type GormCredRepoParams struct {
-	fx.In
-	DB *gorm.GormDB
-}
-
-func NewGormCredentialRepository(p GormCredRepoParams) domain.CredentialRepository {
-	return &GormCredRepository{db: p.DB}
+func NewGormCredentialRepository(db *gorm.GormDB) domain.CredentialRepository {
+	return &GormCredRepository{db: db}
 }
 
 func (r *GormCredRepository) Get(ctx context.Context, query *domainQuery.Query) ([]domain.Credential, int, error) {

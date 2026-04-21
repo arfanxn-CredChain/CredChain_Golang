@@ -73,5 +73,5 @@ type UserRepository interface {
 	Destroy(ctx context.Context, ids ...string) error
 
 	// Specialized operations
-	UpdateRole(ctx context.Context, updates []UserRoleUpdate) error
+	UpdateRole(ctx context.Context, users ...User) error
 }

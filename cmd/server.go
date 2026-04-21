@@ -10,7 +10,7 @@ import (
 	"CredChain_Golang/feature/user"
 	"CredChain_Golang/infrastructure/ai"
 	"CredChain_Golang/infrastructure/chain"
-	"CredChain_Golang/infrastructure/gorm"
+	gormInfra "CredChain_Golang/infrastructure/gorm"
 	apphttp "CredChain_Golang/infrastructure/http"
 	"CredChain_Golang/infrastructure/i18n"
 	applogger "CredChain_Golang/infrastructure/logger"
@@ -19,13 +19,14 @@ import (
 	"github.com/spf13/cobra"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 )
 
 func init() {
 	rootCmd.AddCommand(serverCmd)
 }
 
-func checkSystemInitialized(db *gorm.GormDB, cfg *config.Config, logger *zap.Logger) error {
+func checkSystemInitialized(db *gormInfra.GormDB, cfg *config.Config, logger *zap.Logger) error {
 	var count int64
 	err := db.Table("users").Where("role = ?", domain.RoleSuperAdmin).Count(&count).Error
 	if err != nil {
@@ -56,13 +57,25 @@ var serverCmd = &cobra.Command{
 					return cfg
 				},
 				i18n.NewBundle,
-				gorm.NewGorm,
+				gormInfra.NewGorm,
 				storage.NewStorage,
 				storage.NewIPFSClient,
 				ai.NewClient,
 				chain.NewClient,
 				user.NewGormUserRepository,
 				credential.NewGormCredentialRepository,
+				// UoW with repository factories
+				func(db *gormInfra.GormDB) domain.UnitOfWork {
+					return gormInfra.NewGormUnitOfWork(
+						db,
+						func(tx *gorm.DB) domain.UserRepository {
+							return user.NewGormUserRepository(&gormInfra.GormDB{DB: tx})
+						},
+						func(tx *gorm.DB) domain.CredentialRepository {
+							return credential.NewGormCredentialRepository(&gormInfra.GormDB{DB: tx})
+						},
+					)
+				},
 				auth.NewAuthHandler,
 				user.NewUserService,
 				user.NewUserHandler,

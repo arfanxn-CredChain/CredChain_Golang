@@ -44,6 +44,8 @@ const (
 	CodeUserRoleFailed                       = 300540
 	CodeUserRoleAdminUpdatePeerForbidden     = 300541
 	CodeUserRoleSignerAdminRequiredForbidden = 300542
+	CodeUserRoleSameRoleUpdateForbidden      = 300543
+	CodeUserRoleSuperAdminBatchForbidden     = 300544
 	CodeUserCredsFetchSuccess                = 300600
 	CodeUserCredsFetchFailed                 = 300640
 	CodeUserBatchDeleteSuccess               = 300700
@@ -84,6 +86,8 @@ var MessageKeys = map[int]string{
 	CodeUserRoleFailed:                       "error_update_role_failed",
 	CodeUserRoleAdminUpdatePeerForbidden:     "error_admin_update_peer_role_forbidden",
 	CodeUserRoleSignerAdminRequiredForbidden: "error_signer_admin_required_forbidden",
+	CodeUserRoleSameRoleUpdateForbidden:      "error_same_role_update_forbidden",
+	CodeUserRoleSuperAdminBatchForbidden:     "error_super_admin_batch_forbidden",
 	CodeUserCredsFetchSuccess:                "success_creds_fetched",
 	CodeUserCredsFetchFailed:                 "error_fetch_creds_failed",
 	CodeUserBatchDeleteSuccess:               "success_users_batch_deleted",

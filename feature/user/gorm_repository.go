@@ -8,22 +8,14 @@ import (
 	domainQuery "CredChain_Golang/domain/query"
 	gormInfra "CredChain_Golang/infrastructure/gorm"
 	"CredChain_Golang/infrastructure/gorm/model"
-
-	"go.uber.org/fx"
-	"gorm.io/gorm"
 )
 
 type GormUserRepository struct {
 	db *gormInfra.GormDB
 }
 
-type GormUserRepositoryParams struct {
-	fx.In
-	DB *gormInfra.GormDB
-}
-
-func NewGormUserRepository(p GormUserRepositoryParams) domain.UserRepository {
-	return &GormUserRepository{db: p.DB}
+func NewGormUserRepository(db *gormInfra.GormDB) domain.UserRepository {
+	return &GormUserRepository{db: db}
 }
 
 // Get implements query-based retrieval (Search + optional sorts for now)
@@ -126,16 +118,33 @@ func (r *GormUserRepository) Update(ctx context.Context, user domain.User) (*dom
 	return r.Find(ctx, user.Id)
 }
 
-// UpdateRole updates roles for multiple users
-func (r *GormUserRepository) UpdateRole(ctx context.Context, updates []domain.UserRoleUpdate) error {
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		for _, update := range updates {
-			if err := tx.Model(&model.User{}).Where("id = ?", update.UserID).Update("role", update.Role).Error; err != nil {
-				return err
-			}
-		}
+// UpdateRole batch updates roles for multiple users using efficient CASE statement
+func (r *GormUserRepository) UpdateRole(ctx context.Context, users ...domain.User) error {
+	if len(users) == 0 {
 		return nil
-	})
+	}
+
+	db := r.db.WithContext(ctx)
+
+	// Efficient batch update using CASE statement
+	caseStmt := "CASE id "
+	args := make([]interface{}, 0, len(users)*2)
+
+	for _, user := range users {
+		caseStmt += "WHEN ? THEN ? "
+		args = append(args, user.Id, user.Role)
+	}
+	caseStmt += "END"
+
+	ids := make([]interface{}, len(users))
+	for i, user := range users {
+		ids[i] = user.Id
+	}
+
+	query := "UPDATE users SET role = " + caseStmt + " WHERE id IN (?)"
+	finalArgs := append(args, ids...)
+
+	return db.Exec(query, finalArgs...).Error
 }
 
 // Store stores multiple users
@@ -149,7 +158,5 @@ func (r *GormUserRepository) Destroy(ctx context.Context, ids ...string) error {
 		return nil
 	}
 
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		return tx.Delete(&model.User{}, "id IN ?", ids).Error
-	})
+	return r.db.WithContext(ctx).Delete(&model.User{}, "id IN ?", ids).Error
 }
