@@ -19,22 +19,21 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
 			c.Abort()
-			responder.SendError(c, domain.CodeAuthLoginUnauthorized)
+			responder.SendError(c, domain.NewError(domain.CodeAuthLoginUnauthorized))
 			return
 		}
 
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 		if tokenString == authHeader {
 			c.Abort()
-			responder.SendError(c, domain.CodeAuthLoginUnauthorized)
+			responder.SendError(c, domain.NewError(domain.CodeAuthLoginUnauthorized))
 			return
 		}
 
-		// Parse and extract JWT claims
 		claims, err := parseJWTClaims(tokenString, cfg.JWTSecret)
 		if err != nil {
 			c.Abort()
-			responder.SendError(c, domain.CodeAuthLoginInvalidToken)
+			responder.SendError(c, domain.NewError(domain.CodeAuthLoginInvalidToken))
 			return
 		}
 
@@ -70,13 +69,13 @@ func RequireMinRole(minRole domain.Role) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		claims, err := httpContext.GetUserClaims(c.Request.Context())
 		if err != nil {
-			responder.SendError(c, domain.CodeAuthLoginUnauthorized)
+			responder.SendError(c, domain.NewError(domain.CodeAuthLoginUnauthorized))
 			c.Abort()
 			return
 		}
 
 		if claims.Role.Rank() < minRole.Rank() {
-			responder.SendError(c, domain.CodeAuthLoginForbidden)
+			responder.SendError(c, domain.NewError(domain.CodeAuthLoginForbidden))
 			c.Abort()
 			return
 		}

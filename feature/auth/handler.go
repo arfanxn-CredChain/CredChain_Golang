@@ -2,7 +2,6 @@ package auth
 
 import (
 	"context"
-	"fmt"
 
 	"CredChain_Golang/config"
 	"CredChain_Golang/domain"
@@ -40,7 +39,7 @@ type AuthGoogleRequest struct {
 // Validate performs structural validation
 func (r AuthGoogleRequest) Validate() error {
 	return validationozzo.ValidateStruct(&r,
-		validationozzo.Field(&r.IDToken, validationozzo.Required.Error("validation_required")),
+		validationozzo.Field(&r.IDToken, validationozzo.Required),
 	)
 }
 
@@ -54,8 +53,8 @@ type AuthGoogleResponse struct {
 func (h *Handler) HandleGoogleLogin(c *gin.Context) {
 	var req AuthGoogleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.Error(fmt.Errorf("HandleGoogleLogin: bind failed: %w", err)) //nolint:errcheck
-		responder.SendError(c, domain.CodeSystemValidation)
+		c.Error(err)
+		responder.SendError(c, err)
 		return
 	}
 
@@ -64,41 +63,38 @@ func (h *Handler) HandleGoogleLogin(c *gin.Context) {
 		return
 	}
 
-	// 1. Verify Google token signature and extract email
 	ctx := context.Background()
 	payload, err := idtoken.Validate(ctx, req.IDToken, "")
 	if err != nil {
-		c.Error(fmt.Errorf("HandleGoogleLogin: validation failed: %w", err)) //nolint:errcheck
-		responder.SendError(c, domain.CodeAuthLoginInvalidToken)
+		c.Error(err)
+		responder.SendError(c, err)
 		return
 	}
 
 	email, ok := payload.Claims["email"].(string)
 	if !ok || email == "" {
-		c.Error(fmt.Errorf("HandleGoogleLogin: missing email")) //nolint:errcheck
-		responder.SendError(c, domain.CodeAuthLoginInvalidToken)
+		c.Error(domain.NewError(domain.CodeAuthLoginInvalidToken))
+		responder.SendError(c, domain.NewError(domain.CodeAuthLoginInvalidToken))
 		return
 	}
 
-	// 2. Lookup user via UserRepository
 	user, err := h.userRepo.FindByEmail(ctx, email)
 	if err != nil {
-		c.Error(fmt.Errorf("HandleGoogleLogin: not found: %w", err)) //nolint:errcheck
-		responder.SendError(c, domain.CodeAuthLoginForbidden)
+		c.Error(err)
+		responder.SendError(c, err)
 		return
 	}
 
-	// 3. Issue our backend JWT
 	if h.jwtSecret == "" {
-		c.Error(fmt.Errorf("HandleGoogleLogin: no secret")) //nolint:errcheck
-		responder.SendError(c, domain.CodeSystemInternal)
+		c.Error(domain.NewError(domain.CodeSystemInternal))
+		responder.SendError(c, domain.NewError(domain.CodeSystemInternal))
 		return
 	}
 
 	token, err := security.GenerateJWT([]byte(h.jwtSecret), user.Id, user.Email, user.WalletAddress, string(user.Role))
 	if err != nil {
-		c.Error(fmt.Errorf("HandleGoogleLogin: JWT gen failed: %w", err)) //nolint:errcheck
-		responder.SendError(c, domain.CodeAuthLoginJWTFailed)
+		c.Error(err)
+		responder.SendError(c, err)
 		return
 	}
 

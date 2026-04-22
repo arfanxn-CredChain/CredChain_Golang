@@ -30,7 +30,7 @@ func checkSystemInitialized(db *gormInfra.GormDB, cfg *config.Config, logger *za
 	var count int64
 	err := db.Table("users").Where("role = ?", domain.RoleSuperAdmin).Count(&count).Error
 	if err != nil {
-		return fmt.Errorf("failed to verify system initialization state: %v", err)
+		return fmt.Errorf("failed to verify system initialization: %w", err)
 	}
 
 	if count == 0 {

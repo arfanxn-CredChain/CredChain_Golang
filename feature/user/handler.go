@@ -1,8 +1,7 @@
 package user
 
 import (
-	"fmt"
-	"strings"
+	"errors"
 
 	"CredChain_Golang/domain"
 	httpContext "CredChain_Golang/infrastructure/http/context"
@@ -33,8 +32,8 @@ func NewUserHandler(p UserHandlerParams) *Handler {
 func (h *Handler) Paginate(c *gin.Context) {
 	var req queryRequest.QueryRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
-		c.Error(fmt.Errorf("Paginate: bind failed: %w", err))
-		responder.SendError(c, domain.CodeSystemValidation)
+		c.Error(err)
+		responder.SendError(c, err)
 		return
 	}
 
@@ -45,15 +44,15 @@ func (h *Handler) Paginate(c *gin.Context) {
 
 	query, err := req.ToDomain()
 	if err != nil {
-		c.Error(fmt.Errorf("Paginate: ToDomain failed: %w", err))
-		responder.SendError(c, domain.CodeSystemValidation)
+		c.Error(err)
+		responder.SendError(c, err)
 		return
 	}
 
 	users, total, err := h.userSvc.Paginate(c.Request.Context(), query)
 	if err != nil {
-		c.Error(fmt.Errorf("Paginate: %w", err))
-		responder.SendError(c, domain.CodeSystemInternal)
+		c.Error(err)
+		responder.SendError(c, err)
 		return
 	}
 
@@ -61,44 +60,36 @@ func (h *Handler) Paginate(c *gin.Context) {
 }
 
 func (h *Handler) Find(c *gin.Context) {
-	claims, err := httpContext.GetUserClaims(c.Request.Context())
-	if err != nil {
-		responder.SendError(c, domain.CodeAuthLoginUnauthorized)
-		return
-	}
+	claims := httpContext.MustGetUserClaims(c.Request.Context())
 	user, err := h.userSvc.Find(c.Request.Context(), claims.Id)
 	if err != nil {
-		c.Error(fmt.Errorf("Find: %w", err)) //nolint:errcheck
-		responder.SendError(c, domain.CodeUserFetchNotFound)
+		c.Error(err)
+		responder.SendError(c, err)
 		return
 	}
 	responder.Send(c, domain.CodeUserFetchSuccess, user)
 }
 
 func (h *Handler) GetSelfCredentials(c *gin.Context) {
-	claims, err := httpContext.GetUserClaims(c.Request.Context())
-	if err != nil {
-		responder.SendError(c, domain.CodeAuthLoginUnauthorized)
-		return
-	}
+	claims := httpContext.MustGetUserClaims(c.Request.Context())
 	creds, err := h.credRepo.FindByHolder(c.Request.Context(), claims.Id)
 	if err != nil {
-		c.Error(fmt.Errorf("GetSelfCredentials: %w", err)) //nolint:errcheck
-		responder.SendError(c, domain.CodeUserCredsFetchFailed)
+		c.Error(err)
+		responder.SendError(c, err)
 		return
 	}
 	if creds == nil {
 		creds = []domain.Credential{}
 	}
-	responder.Send(c, domain.CodeUserCredsFetchSuccess, creds)
+	responder.Send(c, domain.CodeUserCredentialsFetchSuccess, creds)
 }
 
 func (h *Handler) FindByAdmin(c *gin.Context) {
 	id := c.Param("id")
 	user, err := h.userSvc.Find(c.Request.Context(), id)
 	if err != nil {
-		c.Error(fmt.Errorf("FindByAdmin: %w", err)) //nolint:errcheck
-		responder.SendError(c, domain.CodeUserFetchNotFound)
+		c.Error(err)
+		responder.SendError(c, err)
 		return
 	}
 	responder.Send(c, domain.CodeUserFetchSuccess, user)
@@ -107,8 +98,8 @@ func (h *Handler) FindByAdmin(c *gin.Context) {
 func (h *Handler) BatchCreateUsers(c *gin.Context) {
 	var req BatchCreateUsersRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.Error(fmt.Errorf("BatchCreateUsers: bind failed: %w", err)) //nolint:errcheck
-		responder.SendError(c, domain.CodeSystemValidation)
+		c.Error(err)
+		responder.SendError(c, err)
 		return
 	}
 	if err := req.Validate(); err != nil {
@@ -125,23 +116,19 @@ func (h *Handler) BatchCreateUsers(c *gin.Context) {
 	}
 	created, err := h.userSvc.Store(c.Request.Context(), domainUsers...)
 	if err != nil {
-		c.Error(fmt.Errorf("BatchCreateUsers: %w", err)) //nolint:errcheck
-		responder.SendError(c, domain.CodeUserCreateFailed)
+		c.Error(err)
+		responder.SendError(c, err)
 		return
 	}
 	responder.Send(c, domain.CodeUserCreateSuccess, created)
 }
 
 func (h *Handler) UpdateSelfProfile(c *gin.Context) {
-	claims, err := httpContext.GetUserClaims(c.Request.Context())
-	if err != nil {
-		responder.SendError(c, domain.CodeAuthLoginUnauthorized)
-		return
-	}
+	claims := httpContext.MustGetUserClaims(c.Request.Context())
 	var req UpdateProfileRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.Error(fmt.Errorf("UpdateSelfProfile: bind failed: %w", err)) //nolint:errcheck
-		responder.SendError(c, domain.CodeSystemValidation)
+		c.Error(err)
+		responder.SendError(c, err)
 		return
 	}
 	if err := req.Validate(); err != nil {
@@ -150,23 +137,19 @@ func (h *Handler) UpdateSelfProfile(c *gin.Context) {
 	}
 	user, err := h.userSvc.UpdateProfile(c.Request.Context(), claims.Id, req.Name, req.Number, req.PhoneNumber, req.Meta)
 	if err != nil {
-		c.Error(fmt.Errorf("UpdateSelfProfile: %w", err)) //nolint:errcheck
-		responder.SendError(c, domain.CodeUserProfileFailed)
+		c.Error(err)
+		responder.SendError(c, err)
 		return
 	}
 	responder.Send(c, domain.CodeUserProfileSuccess, user)
 }
 
 func (h *Handler) UpdateSelfEmail(c *gin.Context) {
-	claims, err := httpContext.GetUserClaims(c.Request.Context())
-	if err != nil {
-		responder.SendError(c, domain.CodeAuthLoginUnauthorized)
-		return
-	}
+	claims := httpContext.MustGetUserClaims(c.Request.Context())
 	var req UpdateEmailRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.Error(fmt.Errorf("UpdateSelfEmail: bind failed: %w", err)) //nolint:errcheck
-		responder.SendError(c, domain.CodeSystemValidation)
+		c.Error(err)
+		responder.SendError(c, err)
 		return
 	}
 	if err := req.Validate(); err != nil {
@@ -175,24 +158,18 @@ func (h *Handler) UpdateSelfEmail(c *gin.Context) {
 	}
 	newEmail, err := h.userSvc.UpdateEmail(c.Request.Context(), claims.Id, req.Email)
 	if err != nil {
-		c.Error(fmt.Errorf("UpdateSelfEmail: %w", err)) //nolint:errcheck
-		responder.SendError(c, domain.CodeUserEmailConflict)
+		c.Error(err)
+		responder.SendError(c, err)
 		return
 	}
 	responder.Send(c, domain.CodeUserEmailSuccess, gin.H{"email": newEmail})
 }
 
 func (h *Handler) BatchUpdateRole(c *gin.Context) {
-	_, err := httpContext.GetUserClaims(c.Request.Context())
-	if err != nil {
-		responder.SendError(c, domain.CodeAuthLoginUnauthorized)
-		return
-	}
-
 	var req BatchUpdateRoleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.Error(fmt.Errorf("BatchUpdateRole: bind failed: %w", err)) //nolint:errcheck
-		responder.SendError(c, domain.CodeSystemValidation)
+		c.Error(err)
+		responder.SendError(c, err)
 		return
 	}
 	if err := req.Validate(); err != nil {
@@ -212,33 +189,28 @@ func (h *Handler) BatchUpdateRole(c *gin.Context) {
 		})
 	}
 
-	if err = h.userSvc.UpdateRole(c.Request.Context(), domainUpdates...); err != nil {
-		c.Error(fmt.Errorf("BatchUpdateRole: %w", err)) //nolint:errcheck
-		if strings.Contains(err.Error(), fmt.Sprintf("%d", domain.CodeUserRoleAdminUpdatePeerForbidden)) {
-			responder.SendError(c, domain.CodeUserRoleAdminUpdatePeerForbidden)
-			return
+	err := h.userSvc.UpdateRole(c.Request.Context(), domainUpdates...)
+	if err != nil {
+		c.Error(err)
+		var appErr *domain.Error
+		if errors.As(err, &appErr) {
+			switch appErr.Code {
+			case domain.CodeUserRoleAdminUpdatePeerForbidden, domain.CodeUserRoleSignerAdminRequiredForbidden:
+				responder.SendError(c, err)
+				return
+			}
 		}
-		if strings.Contains(err.Error(), fmt.Sprintf("%d", domain.CodeUserRoleSignerAdminRequiredForbidden)) {
-			responder.SendError(c, domain.CodeUserRoleSignerAdminRequiredForbidden)
-			return
-		}
-		responder.SendError(c, domain.CodeUserRoleFailed)
+		responder.SendError(c, err)
 		return
 	}
 	responder.Send[any](c, domain.CodeUserRoleSuccess, nil)
 }
 
 func (h *Handler) BatchDeleteUsers(c *gin.Context) {
-	_, err := httpContext.GetUserClaims(c.Request.Context())
-	if err != nil {
-		responder.SendError(c, domain.CodeAuthLoginUnauthorized)
-		return
-	}
-
 	var req BatchDeleteUsersRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.Error(fmt.Errorf("BatchDeleteUsers: bind failed: %w", err))
-		responder.SendError(c, domain.CodeSystemValidation)
+		c.Error(err)
+		responder.SendError(c, err)
 		return
 	}
 	if validationErr := req.Validate(); validationErr != nil {
@@ -246,9 +218,10 @@ func (h *Handler) BatchDeleteUsers(c *gin.Context) {
 		return
 	}
 
-	if err = h.userSvc.Destroy(c.Request.Context(), req.UserIDs...); err != nil {
-		c.Error(fmt.Errorf("BatchDeleteUsers: %w", err))
-		responder.SendError(c, domain.CodeUserBatchDeleteFailed)
+	err := h.userSvc.Destroy(c.Request.Context(), req.UserIDs...)
+	if err != nil {
+		c.Error(err)
+		responder.SendError(c, err)
 		return
 	}
 

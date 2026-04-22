@@ -1,7 +1,9 @@
 package responder
 
 import (
+	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"CredChain_Golang/domain"
@@ -26,13 +28,25 @@ func Send[T any](c *gin.Context, code int, data T) {
 }
 
 // SendError writes a unified error response and aborts the request.
-func SendError(c *gin.Context, code int) {
+func SendError(c *gin.Context, err error) {
 	localizer := appI18n.GetLocalizer(c)
-	msgKey := getMessageKey(c, code)
-	message := localize(c, localizer, msgKey, nil)
 
-	c.JSON(HttpCodeFromCode(code), domain.Response[any]{
-		Code:    code,
+	var appErr *domain.Error
+	if errors.As(err, &appErr) {
+		msgKey := getMessageKey(c, appErr.Code)
+		message := localize(c, localizer, msgKey, appErr.Metadata)
+		c.JSON(HttpCodeFromCode(appErr.Code), domain.Response[any]{
+			Code:    appErr.Code,
+			Message: message,
+		})
+		c.Abort()
+		return
+	}
+
+	msgKey := getMessageKey(c, domain.CodeSystemInternal)
+	message := localize(c, localizer, msgKey, nil)
+	c.JSON(http.StatusInternalServerError, domain.Response[any]{
+		Code:    domain.CodeSystemInternal,
 		Message: message,
 	})
 	c.Abort()
@@ -44,12 +58,12 @@ func SendValidationError(c *gin.Context, err error) {
 
 	vErrs, ok := err.(validation.Errors)
 	if !ok {
-		c.Error(fmt.Errorf("responder.SendValidationError: received non-validation error: %w", err)) //nolint:errcheck
-		SendError(c, domain.CodeSystemInternal)
+		c.Error(err)
+		SendError(c, domain.NewError(domain.CodeSystemInternal))
 		return
 	}
 
-	errors := make(map[string][]string)
+	fieldErrors := make(map[string][]string)
 	for path, fieldErr := range vErrs {
 		parts := strings.Split(path, ".")
 		leaf := parts[len(parts)-1]
@@ -59,14 +73,27 @@ func SendValidationError(c *gin.Context, err error) {
 			label = translated
 		}
 
-		msgID := fieldErr.Error()
-		msg := localize(c, localizer, msgID, map[string]any{"field": label})
-		if msg == "" {
-			msg = msgID
-		}
-		msg = strings.ReplaceAll(msg, "{field}", label)
+		// Extract ozzo validation error details
+		if vErr, ok := fieldErr.(validation.Error); ok {
+			code := vErr.Code()
+			params := vErr.Params()
 
-		errors[path] = append(errors[path], msg)
+			// Add field to params for i18n template
+			if params == nil {
+				params = make(map[string]interface{})
+			}
+			params["field"] = label
+
+			// Use ozzo code directly as i18n key
+			message := localize(c, localizer, code, params)
+			if message == "" {
+				message = vErr.Message()
+			}
+			fieldErrors[path] = append(fieldErrors[path], message)
+		} else {
+			// Fallback for non-ozzo errors
+			fieldErrors[path] = append(fieldErrors[path], fieldErr.Error())
+		}
 	}
 
 	msgKey := getMessageKey(c, domain.CodeSystemValidation)
@@ -75,7 +102,7 @@ func SendValidationError(c *gin.Context, err error) {
 	c.JSON(HttpCodeFromCode(domain.CodeSystemValidation), domain.Response[any]{
 		Code:    domain.CodeSystemValidation,
 		Message: message,
-		Errors:  errors,
+		Errors:  fieldErrors,
 	})
 	c.Abort()
 }

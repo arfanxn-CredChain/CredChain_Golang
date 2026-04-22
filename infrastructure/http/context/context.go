@@ -25,9 +25,19 @@ type UserClaims struct {
 func GetUserClaims(ctx context.Context) (*UserClaims, error) {
 	claims, ok := ctx.Value(UserClaimsKey).(*UserClaims)
 	if !ok || claims == nil {
-		return nil, fmt.Errorf("user claims not found in context")
+		return nil, fmt.Errorf("user claims not found")
 	}
 	return claims, nil
+}
+
+// MustGetUserClaims retrieves user claims from context or panics if not found.
+// This should only be used in handlers protected by AuthMiddleware.
+func MustGetUserClaims(ctx context.Context) *UserClaims {
+	claims, err := GetUserClaims(ctx)
+	if err != nil {
+		panic("user claims missing in authenticated context - AuthMiddleware not configured?")
+	}
+	return claims
 }
 
 // GetUserId retrieves user ID from context

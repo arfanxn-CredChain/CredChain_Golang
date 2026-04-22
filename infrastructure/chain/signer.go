@@ -29,7 +29,7 @@ func PackAndSign(privateKey *ecdsa.PrivateKey, args ...[]byte) ([]byte, error) {
 	// 3. Sign the prefixed hash
 	signature, err := crypto.Sign(prefixedHash, privateKey)
 	if err != nil {
-		return nil, fmt.Errorf("failed to sign payload: %v", err)
+		return nil, fmt.Errorf("failed to sign payload: %w", err)
 	}
 
 	// Adjust V value to Ethereum standard (27/28)
@@ -55,7 +55,7 @@ func EncodeString(str string) []byte {
 func EncodeUint256(val string) ([]byte, error) {
 	parsed, ok := math.ParseBig256(val)
 	if !ok || parsed == nil {
-		return nil, fmt.Errorf("invalid uint256 string: %s", val)
+		return nil, fmt.Errorf("invalid uint256 value: %s", val)
 	}
 	return common.LeftPadBytes(parsed.Bytes(), 32), nil
 }

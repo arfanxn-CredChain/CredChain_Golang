@@ -28,7 +28,7 @@ var migrateUpCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg, err := config.NewConfig(".env")
 		if err != nil {
-			return fmt.Errorf("failed to load config: %v", err)
+			return fmt.Errorf("failed to load config: %w", err)
 		}
 
 		logger, _ := zap.NewProduction()
@@ -36,7 +36,7 @@ var migrateUpCmd = &cobra.Command{
 
 		err = database.MigrateUp(cfg, logger)
 		if err != nil {
-			logger.Error("migration up failed", zap.Error(err))
+			logger.Error("migration failed", zap.Error(err))
 			return err
 		}
 
@@ -51,7 +51,7 @@ var migrateDownCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg, err := config.NewConfig(".env")
 		if err != nil {
-			return fmt.Errorf("failed to load config: %v", err)
+			return fmt.Errorf("failed to load config: %w", err)
 		}
 
 		logger, _ := zap.NewProduction()
@@ -59,7 +59,7 @@ var migrateDownCmd = &cobra.Command{
 
 		err = database.MigrateDown(cfg, logger)
 		if err != nil {
-			logger.Error("migration down failed", zap.Error(err))
+			logger.Error("rollback failed", zap.Error(err))
 			return err
 		}
 

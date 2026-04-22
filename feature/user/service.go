@@ -2,7 +2,6 @@ package user
 
 import (
 	"context"
-	"fmt"
 
 	"CredChain_Golang/config"
 	"CredChain_Golang/domain"
@@ -107,21 +106,18 @@ func (s *Service) UpdateEmail(ctx context.Context, id string, email string) (str
 }
 
 func (s *Service) UpdateRole(ctx context.Context, updates ...domain.UserRoleUpdate) error {
-	// Extract auth user ID from context
 	authUserID, err := httpContext.GetUserId(ctx)
 	if err != nil {
-		return fmt.Errorf("missing user context: %w", err)
+		return domain.NewError(domain.CodeAuthLoginUnauthorized, domain.WithError(err))
 	}
 
-	// Authorization check (OUTSIDE transaction - read-only)
 	authUser, err := s.userRepo.Find(ctx, authUserID)
 	if err != nil {
-		return fmt.Errorf("failed to fetch auth user: %w", err)
+		return domain.NewError(domain.CodeUserFetchNotFound, domain.WithError(err))
 	}
 
-	// Rule 1: Signer must be at least Admin (Solidity line 252)
 	if authUser.Role.Rank() < domain.RoleAdmin.Rank() {
-		return fmt.Errorf("%d", domain.CodeUserRoleSignerAdminRequiredForbidden)
+		return domain.NewError(domain.CodeUserRoleSignerAdminRequiredForbidden)
 	}
 
 	// Use UoW for transaction
@@ -143,34 +139,44 @@ func (s *Service) UpdateRole(ctx context.Context, updates ...domain.UserRoleUpda
 			targetUserMap[tu.Id] = tu
 		}
 
-		// Validate & prepare batch update
 		usersToUpdate := make([]domain.User, 0, len(updates))
 		for _, update := range updates {
 			targetUser, ok := targetUserMap[update.UserID]
 			if !ok {
-				return fmt.Errorf("target user not found")
+				return domain.NewError(domain.CodeUserFetchNotFound, domain.WithMetadata("user_id", update.UserID))
 			}
 
-			// Rule 5: Same role update forbidden (Solidity line 227)
 			if targetUser.Role == update.Role {
-				return fmt.Errorf("%d", domain.CodeUserRoleSameRoleUpdateForbidden)
+				return domain.NewError(
+					domain.CodeUserRoleSameRoleUpdateForbidden,
+					domain.WithMetadata("user_id", update.UserID),
+					domain.WithMetadata("current_role", targetUser.Role.String()),
+				)
 			}
 
-			// Rule 2 & 3: Admin-specific restrictions (Solidity lines 254-259)
 			if authUser.Role == domain.RoleAdmin {
-				// Rule 2: Admin can't update other Admins/SuperAdmins
 				if targetUser.Role.Rank() >= domain.RoleAdmin.Rank() {
-					return fmt.Errorf("%d", domain.CodeUserRoleAdminUpdatePeerForbidden)
+					return domain.NewError(
+						domain.CodeUserRoleAdminUpdatePeerForbidden,
+						domain.WithMetadata("auth_user_id", authUserID),
+						domain.WithMetadata("target_user_id", update.UserID),
+					)
 				}
-				// Rule 3: Admin can't promote to Admin/SuperAdmin
 				if update.Role.Rank() >= domain.RoleAdmin.Rank() {
-					return fmt.Errorf("%d", domain.CodeUserRoleSignerAdminRequiredForbidden)
+					return domain.NewError(
+						domain.CodeUserRoleSignerAdminRequiredForbidden,
+						domain.WithMetadata("auth_user_id", authUserID),
+						domain.WithMetadata("attempted_role", update.Role.String()),
+					)
 				}
 			}
 
-			// Rule 4: SuperAdmin role cannot be assigned via batch (Solidity line 143)
 			if update.Role == domain.RoleSuperAdmin {
-				return fmt.Errorf("%d", domain.CodeUserRoleSuperAdminBatchForbidden)
+				return domain.NewError(
+					domain.CodeUserRoleSuperAdminBatchForbidden,
+					domain.WithMetadata("user_id", update.UserID),
+					domain.WithMetadata("attempted_role", "super_admin"),
+				)
 			}
 
 			// Prepare updated user
@@ -183,32 +189,27 @@ func (s *Service) UpdateRole(ctx context.Context, updates ...domain.UserRoleUpda
 	})
 }
 func (s *Service) Destroy(ctx context.Context, ids ...string) error {
-	// Extract auth user ID from context
 	authUserID, err := httpContext.GetUserId(ctx)
 	if err != nil {
-		return fmt.Errorf("missing user context: %w", err)
+		return domain.NewError(domain.CodeAuthLoginUnauthorized, domain.WithError(err))
 	}
 
-	// Authorization check (OUTSIDE transaction - read-only)
 	authUser, err := s.userRepo.Find(ctx, authUserID)
 	if err != nil {
-		return fmt.Errorf("failed to fetch auth user: %w", err)
+		return domain.NewError(domain.CodeUserFetchNotFound, domain.WithError(err))
 	}
 
 	if authUser.Role.Rank() < domain.RoleAdmin.Rank() {
-		return fmt.Errorf("%d", domain.CodeUserRoleSignerAdminRequiredForbidden)
+		return domain.NewError(domain.CodeUserRoleSignerAdminRequiredForbidden)
 	}
 
-	// Users cannot delete themselves (any role)
 	for _, id := range ids {
 		if id == authUserID {
-			return fmt.Errorf("users cannot delete their own account")
+			return domain.NewError(domain.CodeAuthLoginForbidden, domain.WithMetadata("user_id", authUserID))
 		}
 	}
 
-	// Use UoW for transaction
 	return s.uow.Execute(ctx, func(uow domain.UnitOfWork) error {
-		// Fetch target users for validation (1 query)
 		targetUsers, err := uow.User().FindByIds(ctx, ids...)
 		if err != nil {
 			return err
@@ -218,11 +219,15 @@ func (s *Service) Destroy(ctx context.Context, ids ...string) error {
 			return nil
 		}
 
-		// Admins cannot delete other admins
 		if authUser.Role.Rank() == domain.RoleAdmin.Rank() {
 			for _, target := range targetUsers {
 				if target.Role.Rank() >= domain.RoleAdmin.Rank() {
-					return fmt.Errorf("admins cannot delete admin or super admin users")
+					return domain.NewError(
+						domain.CodeUserDeleteAdminForbidden,
+						domain.WithMetadata("auth_user_id", authUserID),
+						domain.WithMetadata("target_user_id", target.Id),
+						domain.WithMetadata("target_role", target.Role.String()),
+					)
 				}
 			}
 		}

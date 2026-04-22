@@ -33,6 +33,11 @@ func (r Role) Rank() int {
 	}
 }
 
+// String returns the string representation of the role
+func (r Role) String() string {
+	return string(r)
+}
+
 // UserRoleUpdate defines a single target role update for a user
 type UserRoleUpdate struct {
 	UserID string

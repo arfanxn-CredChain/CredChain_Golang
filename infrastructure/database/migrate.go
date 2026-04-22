@@ -18,30 +18,30 @@ func MigrateUp(cfg *config.Config, logger *zap.Logger) error {
 		cfg.PostgresDSN,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to create migrate instance: %w", err)
+		return fmt.Errorf("failed to initialize migrations: %w", err)
 	}
 	defer m.Close()
 
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		return fmt.Errorf("migration up failed: %w", err)
+		return fmt.Errorf("migration failed: %w", err)
 	}
 
 	return nil
 }
 
-// MigrateDown runs one downward migration step
+// MigrateDown rolls back one migration step
 func MigrateDown(cfg *config.Config, logger *zap.Logger) error {
 	m, err := migrate.New(
 		"file://infrastructure/database/migrations",
 		cfg.PostgresDSN,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to create migrate instance: %w", err)
+		return fmt.Errorf("failed to initialize migrations: %w", err)
 	}
 	defer m.Close()
 
 	if err := m.Steps(-1); err != nil && err != migrate.ErrNoChange {
-		return fmt.Errorf("migration down failed: %w", err)
+		return fmt.Errorf("rollback failed: %w", err)
 	}
 
 	return nil

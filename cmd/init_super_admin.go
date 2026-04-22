@@ -24,18 +24,18 @@ func init() {
 
 func initSuperAdmin(db *sql.DB, cfg *config.Config, logger *zap.Logger) error {
 	if cfg.InitialSuperAdminEmail == "" || cfg.InitialSuperAdminPrivKey == "" || cfg.WalletEncryptionKey == "" {
-		return fmt.Errorf("missing core environment variables for Super Admin initialization")
+		return fmt.Errorf("missing core environment variables for super admin initialization")
 	}
 
 	privKey, err := crypto.HexToECDSA(strings.TrimPrefix(cfg.InitialSuperAdminPrivKey, "0x"))
 	if err != nil {
-		return fmt.Errorf("invalid private key format: %v", err)
+		return fmt.Errorf("invalid private key format: %w", err)
 	}
 
 	publicKey := privKey.Public()
 	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
 	if !ok {
-		return fmt.Errorf("failed to cast public key to ECDSA")
+		return fmt.Errorf("failed to cast public key to ecdsa")
 	}
 
 	walletAddress := crypto.PubkeyToAddress(*publicKeyECDSA).Hex()
@@ -54,7 +54,7 @@ func initSuperAdmin(db *sql.DB, cfg *config.Config, logger *zap.Logger) error {
 
 	encryptedKey, err := cryptoInfra.Encrypt([]byte(cfg.InitialSuperAdminPrivKey), encryptionKey)
 	if err != nil {
-		return fmt.Errorf("failed to encrypt super admin private key: %v", err)
+		return fmt.Errorf("failed to encrypt super admin private key: %w", err)
 	}
 
 	id := ulid.Make().String()
@@ -66,7 +66,7 @@ func initSuperAdmin(db *sql.DB, cfg *config.Config, logger *zap.Logger) error {
 		id, "Super Admin", cfg.InitialSuperAdminEmail, domain.RoleSuperAdmin, walletAddress, encryptedKey,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to insert super admin user: %v", err)
+		return fmt.Errorf("failed to insert super admin user: %w", err)
 	}
 
 	logger.Info("super admin initialized securely")
@@ -80,7 +80,7 @@ var initSuperAdminCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg, err := config.NewConfig(".env")
 		if err != nil {
-			return fmt.Errorf("failed to load config: %v", err)
+			return fmt.Errorf("failed to load config: %w", err)
 		}
 
 		logger, _ := zap.NewProduction()
@@ -94,13 +94,13 @@ var initSuperAdminCmd = &cobra.Command{
 		defer db.Close()
 
 		if err := db.Ping(); err != nil {
-			logger.Error("failed to ping postgres", zap.Error(err))
+			logger.Error("postgres ping failed", zap.Error(err))
 			return err
 		}
 
 		err = initSuperAdmin(db, cfg, logger)
 		if err != nil {
-			logger.Error("failed to init super admin", zap.Error(err))
+			logger.Error("super admin initialization failed", zap.Error(err))
 			return err
 		}
 

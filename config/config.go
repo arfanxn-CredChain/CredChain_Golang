@@ -69,11 +69,11 @@ func NewConfig(envPath string) (*Config, error) {
 	}
 
 	if cfg.JWTSecret == "" {
-		return nil, fmt.Errorf("FATAL: JWT_SECRET is missing")
+		return nil, fmt.Errorf("jwt_secret is required")
 	}
 
 	if cfg.WalletEncryptionKey == "" {
-		return nil, fmt.Errorf("FATAL: WALLET_ENCRYPTION_KEY is missing")
+		return nil, fmt.Errorf("wallet_encryption_key is required")
 	}
 
 	return cfg, nil

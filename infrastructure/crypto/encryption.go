@@ -49,7 +49,7 @@ func Decrypt(cipherHex string, key []byte) ([]byte, error) {
 
 	nonceSize := gcm.NonceSize()
 	if len(cipherText) < nonceSize {
-		return nil, fmt.Errorf("ciphertext too short")
+		return nil, fmt.Errorf("ciphertext is too short")
 	}
 
 	nonce, cipherText := cipherText[:nonceSize], cipherText[nonceSize:]

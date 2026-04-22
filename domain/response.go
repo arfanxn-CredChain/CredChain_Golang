@@ -46,20 +46,21 @@ const (
 	CodeUserRoleSignerAdminRequiredForbidden = 300542
 	CodeUserRoleSameRoleUpdateForbidden      = 300543
 	CodeUserRoleSuperAdminBatchForbidden     = 300544
-	CodeUserCredsFetchSuccess                = 300600
-	CodeUserCredsFetchFailed                 = 300640
+	CodeUserCredentialsFetchSuccess          = 300600
+	CodeUserCredentialsFetchFailed           = 300640
 	CodeUserBatchDeleteSuccess               = 300700
 	CodeUserBatchDeleteFailed                = 300740
+	CodeUserDeleteAdminForbidden             = 300741
 
 	// ── Credential (40) ──────────────────────────────────────────────────────
-	CodeCredFetchSuccess  = 400100
-	CodeCredFetchNotFound = 400140
-	CodeCredIssueSuccess  = 400200
-	CodeCredIssueFailed   = 400240
-	CodeCredRevokeSuccess = 400300
-	CodeCredRevokeFailed  = 400340
-	CodeCredVerifySuccess = 400400
-	CodeCredVerifyFailed  = 400440
+	CodeCredentialFetchSuccess  = 400100
+	CodeCredentialFetchNotFound = 400140
+	CodeCredentialIssueSuccess  = 400200
+	CodeCredentialIssueFailed   = 400240
+	CodeCredentialRevokeSuccess = 400300
+	CodeCredentialRevokeFailed  = 400340
+	CodeCredentialVerifySuccess = 400400
+	CodeCredentialVerifyFailed  = 400440
 )
 
 // MessageKeys maps every status code to its i18n message key.
@@ -88,17 +89,18 @@ var MessageKeys = map[int]string{
 	CodeUserRoleSignerAdminRequiredForbidden: "error_signer_admin_required_forbidden",
 	CodeUserRoleSameRoleUpdateForbidden:      "error_same_role_update_forbidden",
 	CodeUserRoleSuperAdminBatchForbidden:     "error_super_admin_batch_forbidden",
-	CodeUserCredsFetchSuccess:                "success_creds_fetched",
-	CodeUserCredsFetchFailed:                 "error_fetch_creds_failed",
-	CodeUserBatchDeleteSuccess:               "success_users_batch_deleted",
-	CodeUserBatchDeleteFailed:                "error_batch_delete_users_failed",
+	CodeUserCredentialsFetchSuccess:          "success_credentials_fetched",
+	CodeUserCredentialsFetchFailed:           "error_fetch_credentials_failed",
+	CodeUserBatchDeleteSuccess:               "success_credentials_deleted",
+	CodeUserBatchDeleteFailed:                "error_credentials_delete_failed",
+	CodeUserDeleteAdminForbidden:             "error_user_delete_admin_forbidden",
 
-	CodeCredFetchSuccess:  "success_cred_fetched",
-	CodeCredFetchNotFound: "error_cred_not_found",
-	CodeCredIssueSuccess:  "success_cred_issued",
-	CodeCredIssueFailed:   "error_cred_issue_failed",
-	CodeCredRevokeSuccess: "success_cred_revoked",
-	CodeCredRevokeFailed:  "error_cred_revoke_failed",
-	CodeCredVerifySuccess: "success_cred_verified",
-	CodeCredVerifyFailed:  "error_cred_verify_failed",
+	CodeCredentialFetchSuccess:   "success_credential_fetched",
+	CodeCredentialFetchNotFound:  "error_credential_not_found",
+	CodeCredentialIssueSuccess:   "success_credential_issued",
+	CodeCredentialIssueFailed:    "error_credential_issue_failed",
+	CodeCredentialRevokeSuccess:  "success_credential_revoked",
+	CodeCredentialRevokeFailed:   "error_credential_revoke_failed",
+	CodeCredentialVerifySuccess:  "success_credential_verified",
+	CodeCredentialVerifyFailed:   "error_credential_verify_failed",
 }

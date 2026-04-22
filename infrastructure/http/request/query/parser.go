@@ -61,13 +61,13 @@ func buildOperatorRegex() *regexp.Regexp {
 
 func parseFilterString(filter string) (string, domainQuery.Operator, []string, error) {
 	if filter == "" {
-		return "", "", nil, fmt.Errorf("empty filter")
+		return "", "", nil, fmt.Errorf("filter is empty")
 	}
 
 	matches := operatorRegex.FindStringSubmatch(filter)
 
 	if len(matches) != 4 {
-		return "", "", nil, fmt.Errorf("invalid filter syntax")
+		return "", "", nil, fmt.Errorf("filter has invalid syntax")
 	}
 
 	column := matches[1]
@@ -97,7 +97,7 @@ func parseFilterString(filter string) (string, domainQuery.Operator, []string, e
 			values[i] = strings.TrimSpace(v)
 		}
 		if len(values) != 2 {
-			return "", "", nil, fmt.Errorf("BETWEEN requires exactly 2 values")
+			return "", "", nil, fmt.Errorf("BETWEEN operator requires exactly 2 values")
 		}
 		return column, operator, values, nil
 	}
@@ -121,7 +121,7 @@ func parseFilterString(filter string) (string, domainQuery.Operator, []string, e
 	}
 
 	if valuesStr == "" {
-		return "", "", nil, fmt.Errorf("operator %s requires a value", operator)
+		return "", "", nil, fmt.Errorf("operator %s requires a value", opStr)
 	}
 
 	return column, operator, []string{valuesStr}, nil
@@ -129,7 +129,7 @@ func parseFilterString(filter string) (string, domainQuery.Operator, []string, e
 
 func parseSortString(sort string) (string, domainQuery.SortOrder, error) {
 	if sort == "" {
-		return "", "", fmt.Errorf("empty sort")
+		return "", "", fmt.Errorf("sort is empty")
 	}
 
 	column := strings.TrimSpace(sort)
@@ -144,7 +144,7 @@ func parseSortString(sort string) (string, domainQuery.SortOrder, error) {
 	}
 
 	if column == "" {
-		return "", "", fmt.Errorf("empty column name")
+		return "", "", fmt.Errorf("column name is empty")
 	}
 
 	return column, order, nil

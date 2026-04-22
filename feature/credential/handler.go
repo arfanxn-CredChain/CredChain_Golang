@@ -22,21 +22,21 @@ func NewCredentialHandler(p CredHandlerParams) *Handler {
 }
 
 func (h *Handler) GetCredentials(c *gin.Context) {
-	responder.Send(c, domain.CodeCredFetchSuccess, gin.H{"status": "stub"})
+	responder.Send(c, domain.CodeCredentialFetchSuccess, gin.H{"status": "stub"})
 }
 
 func (h *Handler) GetCredentialByID(c *gin.Context) {
-	responder.Send(c, domain.CodeCredFetchSuccess, gin.H{"status": "stub"})
+	responder.Send(c, domain.CodeCredentialFetchSuccess, gin.H{"status": "stub"})
 }
 
 func (h *Handler) IssueCredential(c *gin.Context) {
-	responder.Send(c, domain.CodeCredIssueSuccess, gin.H{"status": "stub"})
+	responder.Send(c, domain.CodeCredentialIssueSuccess, gin.H{"status": "stub"})
 }
 
 func (h *Handler) RevokeCredential(c *gin.Context) {
-	responder.Send(c, domain.CodeCredRevokeSuccess, gin.H{"status": "stub"})
+	responder.Send(c, domain.CodeCredentialRevokeSuccess, gin.H{"status": "stub"})
 }
 
 func (h *Handler) VerifyHash(c *gin.Context) {
-	responder.Send(c, domain.CodeCredVerifySuccess, gin.H{"status": "stub"})
+	responder.Send(c, domain.CodeCredentialVerifySuccess, gin.H{"status": "stub"})
 }

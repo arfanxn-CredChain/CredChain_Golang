@@ -27,13 +27,13 @@ type Client struct {
 // NewClient initializes a Google GenAI client
 func NewClient(cfg *config.Config) (*Client, error) {
 	if cfg.GeminiAPIKey == "" {
-		return nil, fmt.Errorf("GEMINI_API_KEY is required")
+		return nil, fmt.Errorf("gemini api key is required")
 	}
 
 	ctx := context.Background()
 	client, err := genai.NewClient(ctx, option.WithAPIKey(cfg.GeminiAPIKey))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to initialize gemini client: %w", err)
 	}
 
 	return &Client{client: client}, nil
@@ -65,7 +65,7 @@ Return ONLY valid JSON without markdown wrapping.`
 
 	resp, err := model.GenerateContent(ctx, partData, genai.Text(prompt))
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to generate AI content: %v", err)
+		return nil, "", fmt.Errorf("failed to generate content: %w", err)
 	}
 
 	if len(resp.Candidates) == 0 || len(resp.Candidates[0].Content.Parts) == 0 {
@@ -75,14 +75,14 @@ Return ONLY valid JSON without markdown wrapping.`
 	part := resp.Candidates[0].Content.Parts[0]
 	text, ok := part.(genai.Text)
 	if !ok {
-		return nil, "", fmt.Errorf("gemini returned non-text format")
+		return nil, "", fmt.Errorf("gemini returned non-text response")
 	}
 
 	rawLog := string(text) // This will be sent to MongoDB
 
 	var result ExtractResult
 	if err := json.Unmarshal([]byte(rawLog), &result); err != nil {
-		return nil, rawLog, fmt.Errorf("gemini did not return valid JSON: %v", err)
+		return nil, rawLog, fmt.Errorf("failed to parse gemini response as JSON: %w", err)
 	}
 
 	return &result, rawLog, nil

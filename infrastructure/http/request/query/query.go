@@ -19,8 +19,8 @@ type QueryRequest struct {
 
 func (r *QueryRequest) Validate() error {
 	return validation.ValidateStruct(r,
-		validation.Field(&r.Page, validation.Min(1).Error("validation_query_page_min")),
-		validation.Field(&r.Limit, validation.Min(1).Error("validation_query_limit_min"), validation.Max(100).Error("validation_query_limit_max")),
+		validation.Field(&r.Page, validation.Min(1)),
+		validation.Field(&r.Limit, validation.Min(1), validation.Max(100)),
 		validation.Field(&r.Filters, validation.Each(validation.By(validateFilter))),
 		validation.Field(&r.Sorts, validation.Each(validation.By(validateSort))),
 	)
@@ -29,14 +29,14 @@ func (r *QueryRequest) Validate() error {
 func validateFilter(value interface{}) error {
 	filter, ok := value.(string)
 	if !ok {
-		return fmt.Errorf("validation_query_filter_must_be_string")
+		return validation.NewError("validation_string_required", "must be a string")
 	}
 	if filter == "" {
 		return nil
 	}
 	_, _, _, err := parseFilterString(filter)
 	if err != nil {
-		return fmt.Errorf("validation_query_filter_invalid_syntax")
+		return validation.NewError("validation_syntax_invalid", "has invalid syntax")
 	}
 	return nil
 }
@@ -44,14 +44,14 @@ func validateFilter(value interface{}) error {
 func validateSort(value interface{}) error {
 	sort, ok := value.(string)
 	if !ok {
-		return fmt.Errorf("validation_query_sort_must_be_string")
+		return validation.NewError("validation_string_required", "must be a string")
 	}
 	if sort == "" {
 		return nil
 	}
 	_, _, err := parseSortString(sort)
 	if err != nil {
-		return fmt.Errorf("validation_query_sort_invalid_syntax")
+		return validation.NewError("validation_syntax_invalid", "has invalid syntax")
 	}
 	return nil
 }

@@ -29,17 +29,17 @@ var HttpCodes = map[int]int{
 	domain.CodeUserRoleFailed:                       http.StatusInternalServerError,
 	domain.CodeUserRoleAdminUpdatePeerForbidden:     http.StatusForbidden,
 	domain.CodeUserRoleSignerAdminRequiredForbidden: http.StatusForbidden,
-	domain.CodeUserCredsFetchSuccess: http.StatusOK,
-	domain.CodeUserCredsFetchFailed:  http.StatusInternalServerError,
+	domain.CodeUserCredentialsFetchSuccess: http.StatusOK,
+	domain.CodeUserCredentialsFetchFailed:  http.StatusInternalServerError,
 
-	domain.CodeCredFetchSuccess:  http.StatusOK,
-	domain.CodeCredFetchNotFound: http.StatusNotFound,
-	domain.CodeCredIssueSuccess:  http.StatusCreated,
-	domain.CodeCredIssueFailed:   http.StatusInternalServerError,
-	domain.CodeCredRevokeSuccess: http.StatusOK,
-	domain.CodeCredRevokeFailed:  http.StatusInternalServerError,
-	domain.CodeCredVerifySuccess: http.StatusOK,
-	domain.CodeCredVerifyFailed:  http.StatusUnprocessableEntity,
+	domain.CodeCredentialFetchSuccess:  http.StatusOK,
+	domain.CodeCredentialFetchNotFound: http.StatusNotFound,
+	domain.CodeCredentialIssueSuccess:  http.StatusCreated,
+	domain.CodeCredentialIssueFailed:   http.StatusInternalServerError,
+	domain.CodeCredentialRevokeSuccess: http.StatusOK,
+	domain.CodeCredentialRevokeFailed:  http.StatusInternalServerError,
+	domain.CodeCredentialVerifySuccess: http.StatusOK,
+	domain.CodeCredentialVerifyFailed:  http.StatusUnprocessableEntity,
 }
 
 // HttpCodeFromCode looks up the HTTP status for a given domain status code.

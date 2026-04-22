@@ -14,9 +14,9 @@ type CreateUserRequest struct {
 
 func (n CreateUserRequest) Validate() error {
 	return validation.ValidateStruct(&n,
-		validation.Field(&n.Name, validation.Required.Error("validation_required")),
-		validation.Field(&n.Email, validation.Required.Error("validation_required"), is.Email.Error("validation_is_email")),
-		validation.Field(&n.Role, validation.Required.Error("validation_required"), validation.In(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RoleIssuer, domain.RoleHolder).Error("validation_invalid_role")),
+		validation.Field(&n.Name, validation.Required),
+		validation.Field(&n.Email, validation.Required, is.Email),
+		validation.Field(&n.Role, validation.Required, validation.In(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RoleIssuer, domain.RoleHolder)),
 	)
 }
 
@@ -26,7 +26,7 @@ type BatchCreateUsersRequest struct {
 
 func (r BatchCreateUsersRequest) Validate() error {
 	return validation.ValidateStruct(&r,
-		validation.Field(&r.Users, validation.Required.Error("validation_required"), validation.Each(validation.By(func(value any) error {
+		validation.Field(&r.Users, validation.Required, validation.Each(validation.By(func(value any) error {
 			u := value.(CreateUserRequest)
 			return u.Validate()
 		}))),
@@ -50,7 +50,7 @@ type UpdateEmailRequest struct {
 
 func (r UpdateEmailRequest) Validate() error {
 	return validation.ValidateStruct(&r,
-		validation.Field(&r.Email, validation.Required.Error("validation_required"), is.Email.Error("validation_is_email")),
+		validation.Field(&r.Email, validation.Required, is.Email),
 	)
 }
 
@@ -61,8 +61,8 @@ type UserRoleUpdateRequest struct {
 
 func (r UserRoleUpdateRequest) Validate() error {
 	return validation.ValidateStruct(&r,
-		validation.Field(&r.UserID, validation.Required.Error("validation_required")),
-		validation.Field(&r.Role, validation.Required.Error("validation_required"), validation.In(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RoleIssuer, domain.RoleHolder).Error("validation_invalid_role")),
+		validation.Field(&r.UserID, validation.Required),
+		validation.Field(&r.Role, validation.Required, validation.In(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RoleIssuer, domain.RoleHolder)),
 	)
 }
 
@@ -72,7 +72,7 @@ type BatchUpdateRoleRequest struct {
 
 func (r BatchUpdateRoleRequest) Validate() error {
 	return validation.ValidateStruct(&r,
-		validation.Field(&r.UserRoles, validation.Required.Error("validation_required")),
+		validation.Field(&r.UserRoles, validation.Required),
 	)
 }
 
@@ -82,6 +82,6 @@ type BatchDeleteUsersRequest struct {
 
 func (r BatchDeleteUsersRequest) Validate() error {
 	return validation.ValidateStruct(&r,
-		validation.Field(&r.UserIDs, validation.Required.Error("validation_required")),
+		validation.Field(&r.UserIDs, validation.Required),
 	)
 }
