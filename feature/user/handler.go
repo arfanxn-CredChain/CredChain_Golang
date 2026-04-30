@@ -6,6 +6,7 @@ import (
 	"CredChain_Golang/domain"
 	httpContext "CredChain_Golang/infrastructure/http/context"
 	queryRequest "CredChain_Golang/infrastructure/http/request/query"
+	"CredChain_Golang/infrastructure/http/response"
 	"CredChain_Golang/infrastructure/http/responder"
 
 	"github.com/gin-gonic/gin"
@@ -56,12 +57,12 @@ func (h *Handler) Paginate(c *gin.Context) {
 		return
 	}
 
-	responder.SendPaginated(c, domain.CodeUserFetchSuccess, users, total)
+	responder.SendPagination(c, domain.CodeUserFetchSuccess, users, total)
 }
 
 func (h *Handler) Find(c *gin.Context) {
-	claims := httpContext.MustGetUserClaims(c.Request.Context())
-	user, err := h.userSvc.Find(c.Request.Context(), claims.Id)
+	authUser := httpContext.MustGetUser(c.Request.Context())
+	user, err := h.userSvc.Find(c.Request.Context(), authUser.Id)
 	if err != nil {
 		c.Error(err)
 		responder.SendError(c, err)
@@ -71,8 +72,8 @@ func (h *Handler) Find(c *gin.Context) {
 }
 
 func (h *Handler) GetSelfCredentials(c *gin.Context) {
-	claims := httpContext.MustGetUserClaims(c.Request.Context())
-	creds, err := h.credRepo.FindByHolder(c.Request.Context(), claims.Id)
+	authUser := httpContext.MustGetUser(c.Request.Context())
+	creds, err := h.credRepo.FindByHolder(c.Request.Context(), authUser.Id)
 	if err != nil {
 		c.Error(err)
 		responder.SendError(c, err)
@@ -95,8 +96,8 @@ func (h *Handler) FindByAdmin(c *gin.Context) {
 	responder.Send(c, domain.CodeUserFetchSuccess, user)
 }
 
-func (h *Handler) BatchCreateUsers(c *gin.Context) {
-	var req BatchCreateUsersRequest
+func (h *Handler) Store(c *gin.Context) {
+	var req StoreRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.Error(err)
 		responder.SendError(c, err)
@@ -106,25 +107,22 @@ func (h *Handler) BatchCreateUsers(c *gin.Context) {
 		responder.SendValidationError(c, err)
 		return
 	}
-	domainUsers := make([]domain.User, len(req.Users))
-	for i, u := range req.Users {
-		domainUsers[i] = domain.User{
-			Name:  &u.Name,
-			Email: u.Email,
-			Role:  u.Role,
-		}
-	}
+	domainUsers := req.ToDomain()
 	created, err := h.userSvc.Store(c.Request.Context(), domainUsers...)
 	if err != nil {
 		c.Error(err)
 		responder.SendError(c, err)
 		return
 	}
-	responder.Send(c, domain.CodeUserCreateSuccess, created)
+	users := make([]response.User, len(created))
+	for i, u := range created {
+		users[i] = response.FromDomainUser(u)
+	}
+	responder.Send(c, domain.CodeUserStoreSuccess, users)
 }
 
 func (h *Handler) UpdateSelfProfile(c *gin.Context) {
-	claims := httpContext.MustGetUserClaims(c.Request.Context())
+	authUser := httpContext.MustGetUser(c.Request.Context())
 	var req UpdateProfileRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.Error(err)
@@ -135,7 +133,7 @@ func (h *Handler) UpdateSelfProfile(c *gin.Context) {
 		responder.SendValidationError(c, err)
 		return
 	}
-	user, err := h.userSvc.UpdateProfile(c.Request.Context(), claims.Id, req.Name, req.Number, req.PhoneNumber, req.Meta)
+	user, err := h.userSvc.UpdateProfile(c.Request.Context(), authUser.Id, req.Name, req.Number, req.PhoneNumber, req.Meta)
 	if err != nil {
 		c.Error(err)
 		responder.SendError(c, err)
@@ -145,7 +143,7 @@ func (h *Handler) UpdateSelfProfile(c *gin.Context) {
 }
 
 func (h *Handler) UpdateSelfEmail(c *gin.Context) {
-	claims := httpContext.MustGetUserClaims(c.Request.Context())
+	authUser := httpContext.MustGetUser(c.Request.Context())
 	var req UpdateEmailRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.Error(err)
@@ -156,7 +154,7 @@ func (h *Handler) UpdateSelfEmail(c *gin.Context) {
 		responder.SendValidationError(c, err)
 		return
 	}
-	newEmail, err := h.userSvc.UpdateEmail(c.Request.Context(), claims.Id, req.Email)
+	newEmail, err := h.userSvc.UpdateEmail(c.Request.Context(), authUser.Id, req.Email)
 	if err != nil {
 		c.Error(err)
 		responder.SendError(c, err)
@@ -189,7 +187,7 @@ func (h *Handler) BatchUpdateRole(c *gin.Context) {
 		})
 	}
 
-	err := h.userSvc.UpdateRole(c.Request.Context(), domainUpdates...)
+	updatedUsers, _, err := h.userSvc.UpdateRole(c.Request.Context(), domainUpdates...)
 	if err != nil {
 		c.Error(err)
 		var appErr *domain.Error
@@ -203,7 +201,7 @@ func (h *Handler) BatchUpdateRole(c *gin.Context) {
 		responder.SendError(c, err)
 		return
 	}
-	responder.Send[any](c, domain.CodeUserRoleSuccess, nil)
+	responder.Send(c, domain.CodeUserRoleSuccess, updatedUsers)
 }
 
 func (h *Handler) BatchDeleteUsers(c *gin.Context) {
@@ -218,12 +216,12 @@ func (h *Handler) BatchDeleteUsers(c *gin.Context) {
 		return
 	}
 
-	err := h.userSvc.Destroy(c.Request.Context(), req.UserIDs...)
+	deletedCount, err := h.userSvc.Destroy(c.Request.Context(), req.UserIDs...)
 	if err != nil {
 		c.Error(err)
 		responder.SendError(c, err)
 		return
 	}
 
-	responder.Send[any](c, domain.CodeUserBatchDeleteSuccess, nil)
+	responder.Send(c, domain.CodeUserBatchDeleteSuccess, gin.H{"deleted_count": deletedCount})
 }

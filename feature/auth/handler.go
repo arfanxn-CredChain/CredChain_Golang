@@ -78,12 +78,13 @@ func (h *Handler) HandleGoogleLogin(c *gin.Context) {
 		return
 	}
 
-	user, err := h.userRepo.FindByEmail(ctx, email)
-	if err != nil {
-		c.Error(err)
-		responder.SendError(c, err)
+	users, err := h.userRepo.FindByEmails(ctx, email)
+	if err != nil || len(users) == 0 {
+		c.Error(domain.NewError(domain.CodeUserFetchNotFound))
+		responder.SendError(c, domain.NewError(domain.CodeUserFetchNotFound))
 		return
 	}
+	user := users[0]
 
 	if h.jwtSecret == "" {
 		c.Error(domain.NewError(domain.CodeSystemInternal))
@@ -91,7 +92,7 @@ func (h *Handler) HandleGoogleLogin(c *gin.Context) {
 		return
 	}
 
-	token, err := security.GenerateJWT([]byte(h.jwtSecret), user.Id, user.Email, user.WalletAddress, string(user.Role))
+	token, err := security.GenerateJWT([]byte(h.jwtSecret), user.Id)
 	if err != nil {
 		c.Error(err)
 		responder.SendError(c, err)

@@ -6,31 +6,52 @@ import (
 	"github.com/go-ozzo/ozzo-validation/v4/is"
 )
 
-type CreateUserRequest struct {
+type StoreUserInput struct {
 	Name  string      `json:"name"`
 	Email string      `json:"email"`
 	Role  domain.Role `json:"role"`
 }
 
-func (n CreateUserRequest) Validate() error {
+func (n StoreUserInput) Validate() error {
 	return validation.ValidateStruct(&n,
 		validation.Field(&n.Name, validation.Required),
 		validation.Field(&n.Email, validation.Required, is.Email),
-		validation.Field(&n.Role, validation.Required, validation.In(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RoleIssuer, domain.RoleHolder)),
+		validation.Field(&n.Role, validation.Required, validation.In(domain.RoleAdmin, domain.RoleIssuer, domain.RoleHolder)),
 	)
 }
 
-type BatchCreateUsersRequest struct {
-	Users []CreateUserRequest `json:"users"`
+// ToDomain converts a StoreUserInput to a domain User entity.
+func (n StoreUserInput) ToDomain() domain.User {
+	return domain.User{
+		Name:  &n.Name,
+		Email: n.Email,
+		Role:  n.Role,
+	}
 }
 
-func (r BatchCreateUsersRequest) Validate() error {
+type StoreRequest struct {
+	Users []StoreUserInput `json:"users"`
+}
+
+func (r StoreRequest) Validate() error {
 	return validation.ValidateStruct(&r,
 		validation.Field(&r.Users, validation.Required, validation.Each(validation.By(func(value any) error {
-			u := value.(CreateUserRequest)
+			u := value.(StoreUserInput)
 			return u.Validate()
 		}))),
 	)
+}
+
+// ToDomain converts a StoreRequest to a slice of domain User entities.
+func (r StoreRequest) ToDomain() []domain.User {
+	if r.Users == nil {
+		return []domain.User{}
+	}
+	users := make([]domain.User, len(r.Users))
+	for i, u := range r.Users {
+		users[i] = u.ToDomain()
+	}
+	return users
 }
 
 type UpdateProfileRequest struct {

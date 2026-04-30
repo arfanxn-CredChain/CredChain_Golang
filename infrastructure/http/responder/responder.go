@@ -4,10 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"CredChain_Golang/domain"
 	appI18n "CredChain_Golang/infrastructure/i18n"
+	"CredChain_Golang/infrastructure/http/response"
 
 	"github.com/gin-gonic/gin"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
@@ -17,14 +19,20 @@ import (
 // Send writes a unified success or informational response.
 func Send[T any](c *gin.Context, code int, data T) {
 	localizer := appI18n.GetLocalizer(c)
-	msgKey := getMessageKey(c, code)
+	msgKey := getMessageKey(code)
 	message := localize(c, localizer, msgKey, nil)
 
-	c.JSON(HttpCodeFromCode(code), domain.Response[T]{
+	c.JSON(HttpCodeFromCode(code), response.Response[T]{
 		Code:    code,
 		Message: message,
 		Data:    data,
 	})
+}
+
+// SendPagination writes a unified paginated response.
+func SendPagination[T any](c *gin.Context, code int, items []T, total int) {
+	data := response.NewPaginationFromContext(c, items, total)
+	Send(c, code, data)
 }
 
 // SendError writes a unified error response and aborts the request.
@@ -33,9 +41,9 @@ func SendError(c *gin.Context, err error) {
 
 	var appErr *domain.Error
 	if errors.As(err, &appErr) {
-		msgKey := getMessageKey(c, appErr.Code)
-		message := localize(c, localizer, msgKey, appErr.Metadata)
-		c.JSON(HttpCodeFromCode(appErr.Code), domain.Response[any]{
+		msgKey := getMessageKey(appErr.Code)
+		message := localize(c, localizer, msgKey, buildTemplateData(appErr.Metadata))
+		c.JSON(HttpCodeFromCode(appErr.Code), response.Response[any]{
 			Code:    appErr.Code,
 			Message: message,
 		})
@@ -43,9 +51,9 @@ func SendError(c *gin.Context, err error) {
 		return
 	}
 
-	msgKey := getMessageKey(c, domain.CodeSystemInternal)
+	msgKey := getMessageKey(domain.CodeSystemInternal)
 	message := localize(c, localizer, msgKey, nil)
-	c.JSON(http.StatusInternalServerError, domain.Response[any]{
+	c.JSON(http.StatusInternalServerError, response.Response[any]{
 		Code:    domain.CodeSystemInternal,
 		Message: message,
 	})
@@ -96,10 +104,10 @@ func SendValidationError(c *gin.Context, err error) {
 		}
 	}
 
-	msgKey := getMessageKey(c, domain.CodeSystemValidation)
+	msgKey := getMessageKey(domain.CodeSystemValidation)
 	message := localize(c, localizer, msgKey, nil)
 
-	c.JSON(HttpCodeFromCode(domain.CodeSystemValidation), domain.Response[any]{
+	c.JSON(HttpCodeFromCode(domain.CodeSystemValidation), response.Response[any]{
 		Code:    domain.CodeSystemValidation,
 		Message: message,
 		Errors:  fieldErrors,
@@ -107,13 +115,72 @@ func SendValidationError(c *gin.Context, err error) {
 	c.Abort()
 }
 
-func getMessageKey(c *gin.Context, code int) string {
-	msgKey, keyOk := domain.MessageKeys[code]
+func getMessageKey(code int) string {
+	msgKey, keyOk := CodeToMessageKey[code]
 	if !keyOk {
-		c.Error(fmt.Errorf("responder: unregistered code %d", code)) //nolint:errcheck
 		return fmt.Sprintf("unregistered_code_%d", code)
 	}
 	return msgKey
+}
+
+func buildTemplateData(metadata map[string]any) map[string]any {
+	if metadata == nil {
+		return nil
+	}
+	data := make(map[string]any)
+	for k, v := range metadata {
+		switch val := v.(type) {
+		case []string:
+			if len(val) == 0 {
+				data[k] = "(none)"
+			} else {
+				data[k] = strings.Join(val, ", ")
+			}
+		case []int:
+			if len(val) == 0 {
+				data[k] = "(none)"
+			} else {
+				strs := make([]string, len(val))
+				for i, v := range val {
+					strs[i] = strconv.Itoa(v)
+				}
+				data[k] = strings.Join(strs, ", ")
+			}
+		case []int64:
+			if len(val) == 0 {
+				data[k] = "(none)"
+			} else {
+				strs := make([]string, len(val))
+				for i, v := range val {
+					strs[i] = strconv.FormatInt(v, 10)
+				}
+				data[k] = strings.Join(strs, ", ")
+			}
+		case []uint8:
+			if len(val) == 0 {
+				data[k] = "(none)"
+			} else {
+				strs := make([]string, len(val))
+				for i, v := range val {
+					strs[i] = strconv.FormatUint(uint64(v), 10)
+				}
+				data[k] = strings.Join(strs, ", ")
+			}
+		case []bool:
+			if len(val) == 0 {
+				data[k] = "(none)"
+			} else {
+				strs := make([]string, len(val))
+				for i, v := range val {
+					strs[i] = strconv.FormatBool(v)
+				}
+				data[k] = strings.Join(strs, ", ")
+			}
+		default:
+			data[k] = v
+		}
+	}
+	return data
 }
 
 func localize(c *gin.Context, localizer *i18n.Localizer, msgID string, data map[string]any) string {

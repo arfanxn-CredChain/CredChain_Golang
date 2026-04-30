@@ -1,4 +1,4 @@
-package responder
+package response
 
 import (
 	"fmt"
@@ -8,8 +8,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// PaginatedData structures the paginated response identically to the alphabetical JS format requirement
-type PaginatedData[T any] struct {
+// Pagination structures the paginated response identically to the alphabetical JS format requirement.
+type Pagination[T any] struct {
 	FirstPageURL *string `json:"first_page_url"`
 	From         int     `json:"from"`
 	Items        []T     `json:"items"`
@@ -23,8 +23,8 @@ type PaginatedData[T any] struct {
 	Total        int     `json:"total"`
 }
 
-// BuildPaginated constructs a PaginatedData struct based on items, total, and gin context.
-func BuildPaginated[T any](c *gin.Context, items []T, total int) PaginatedData[T] {
+// NewPaginationFromContext constructs a Pagination based on items, total, and gin context.
+func NewPaginationFromContext[T any](c *gin.Context, items []T, total int) Pagination[T] {
 	if items == nil {
 		items = make([]T, 0)
 	}
@@ -76,7 +76,7 @@ func BuildPaginated[T any](c *gin.Context, items []T, total int) PaginatedData[T
 		nextPageUrl = buildURL(page + 1)
 	}
 
-	return PaginatedData[T]{
+	return Pagination[T]{
 		FirstPageURL: firstPageUrl,
 		From:         from,
 		Items:        items,
@@ -89,10 +89,4 @@ func BuildPaginated[T any](c *gin.Context, items []T, total int) PaginatedData[T
 		To:           to,
 		Total:        total,
 	}
-}
-
-// SendPaginated wraps PaginatedData in standard Response
-func SendPaginated[T any](c *gin.Context, code int, items []T, total int) {
-	data := BuildPaginated(c, items, total)
-	Send(c, code, data)
 }

@@ -9,22 +9,16 @@ import (
 
 // JWTClaims represents the custom claims tightly coupling Postgres state into the token
 type JWTClaims struct {
-	UserID        string `json:"user_id"`
-	Email         string `json:"email"`
-	WalletAddress string `json:"wallet_address"`
-	Role          string `json:"role"` // Maps to domain.Role string value
+	UserId string `json:"user_id"`
 	jwt.RegisteredClaims
 }
 
 // GenerateJWT creates a new signed token
-func GenerateJWT(secretKey []byte, userID, email, walletAddress, role string) (string, error) {
+func GenerateJWT(secretKey []byte, userId string) (string, error) {
 	expirationTime := time.Now().Add(24 * time.Hour) // 1 day validity
 
 	claims := &JWTClaims{
-		UserID:        userID,
-		Email:         email,
-		WalletAddress: walletAddress,
-		Role:          role,
+		UserId: userId,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),

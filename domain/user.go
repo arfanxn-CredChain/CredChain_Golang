@@ -38,6 +38,38 @@ func (r Role) String() string {
 	return string(r)
 }
 
+// ToUint8 converts domain.Role to Solidity Role enum value
+func (r Role) ToUint8() uint8 {
+	switch r {
+	case RoleHolder:
+		return 1
+	case RoleIssuer:
+		return 2
+	case RoleAdmin:
+		return 3
+	case RoleSuperAdmin:
+		return 4
+	default:
+		return 0
+	}
+}
+
+// RoleFromUint8 converts Solidity Role enum value to domain.Role
+func RoleFromUint8(v uint8) Role {
+	switch v {
+	case 1:
+		return RoleHolder
+	case 2:
+		return RoleIssuer
+	case 3:
+		return RoleAdmin
+	case 4:
+		return RoleSuperAdmin
+	default:
+		return Role("")
+	}
+}
+
 // UserRoleUpdate defines a single target role update for a user
 type UserRoleUpdate struct {
 	UserID string
@@ -67,7 +99,7 @@ type UserRepository interface {
 
 	// Single item lookups
 	Find(ctx context.Context, id string) (*User, error)
-	FindByEmail(ctx context.Context, email string) (*User, error)
+	FindByEmails(ctx context.Context, emails ...string) ([]User, error)
 
 	// Multiple item lookups
 	FindByIds(ctx context.Context, ids ...string) ([]User, error)
@@ -75,8 +107,8 @@ type UserRepository interface {
 	// CRUD operations
 	Update(ctx context.Context, user User) (*User, error)
 	Store(ctx context.Context, users ...User) ([]User, error)
-	Destroy(ctx context.Context, ids ...string) error
+	Destroy(ctx context.Context, ids ...string) (int64, error)
 
 	// Specialized operations
-	UpdateRole(ctx context.Context, users ...User) error
+	UpdateRole(ctx context.Context, users ...User) ([]User, int64, error)
 }

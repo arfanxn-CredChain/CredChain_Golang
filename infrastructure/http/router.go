@@ -27,14 +27,18 @@ func NewGinRouter() *gin.Engine {
 type RouteParams struct {
 	fx.In
 
-	Lifecycle   fx.Lifecycle
-	Router      *gin.Engine
-	Config      *config.Config
-	Bundle      *i18n.Bundle
-	AuthHandler *auth.Handler
-	UserHandler *user.Handler
-	CredHandler *credential.Handler
-	Logger      *zap.Logger
+	Lifecycle              fx.Lifecycle
+	Router                 *gin.Engine
+	Config                 *config.Config
+	Bundle                 *i18n.Bundle
+	AuthHandler            *auth.Handler
+	UserHandler            *user.Handler
+	CredHandler            *credential.Handler
+	Logger                 *zap.Logger
+	AuthMiddleware         gin.HandlerFunc
+	AdminRoleMiddleware    middleware.AdminRoleMiddleware
+	IssuerRoleMiddleware   middleware.IssuerRoleMiddleware
+	SuperAdminRoleMiddleware middleware.SuperAdminRoleMiddleware
 }
 
 // RegisterRoutes binds controllers and hooks the Gin start/stop lifecycle
@@ -56,32 +60,29 @@ func RegisterRoutes(p RouteParams) {
 
 		// Secure routes
 		secure := api.Group("/")
-		secure.Use(middleware.AuthMiddleware(p.Config))
+		secure.Use(p.AuthMiddleware)
 		{
-			requireAdminOrHigher := middleware.RequireMinRole(domain.RoleAdmin)
-			requireIssuerOrHigher := middleware.RequireMinRole(domain.RoleIssuer)
-
 			// Users API
 			users := secure.Group("/users")
 			{
-				users.GET("", requireAdminOrHigher, p.UserHandler.Paginate)
+				users.GET("", gin.HandlerFunc(p.AdminRoleMiddleware), p.UserHandler.Paginate)
 				users.GET("/self", p.UserHandler.Find)
 				users.GET("/self/credentials", p.UserHandler.GetSelfCredentials)
 				users.PUT("/self/profile", p.UserHandler.UpdateSelfProfile)
 				users.PUT("/self/email", p.UserHandler.UpdateSelfEmail)
-				users.GET("/:id", requireAdminOrHigher, p.UserHandler.FindByAdmin)
-				users.POST("/batch", requireAdminOrHigher, p.UserHandler.BatchCreateUsers)
-				users.PUT("/batch/role", requireAdminOrHigher, p.UserHandler.BatchUpdateRole)
+				users.GET("/:id", gin.HandlerFunc(p.AdminRoleMiddleware), p.UserHandler.FindByAdmin)
+				users.POST("/batch", gin.HandlerFunc(p.AdminRoleMiddleware), p.UserHandler.Store)
+				users.PUT("/batch/role", gin.HandlerFunc(p.AdminRoleMiddleware), p.UserHandler.BatchUpdateRole)
 			}
 
 			// Credentials API
 			creds := secure.Group("/credentials")
 			{
-				creds.GET("", requireAdminOrHigher, p.CredHandler.GetCredentials)
-				creds.GET("/:id", requireAdminOrHigher, p.CredHandler.GetCredentialByID)
-				creds.POST("/batch/issue", requireIssuerOrHigher, p.CredHandler.IssueCredential)
-				creds.POST("/batch/revoke", requireIssuerOrHigher, p.CredHandler.RevokeCredential)
-				creds.POST("/verify", requireIssuerOrHigher, p.CredHandler.VerifyHash)
+				creds.GET("", gin.HandlerFunc(p.AdminRoleMiddleware), p.CredHandler.GetCredentials)
+				creds.GET("/:id", gin.HandlerFunc(p.AdminRoleMiddleware), p.CredHandler.GetCredentialByID)
+				creds.POST("/batch/issue", gin.HandlerFunc(p.IssuerRoleMiddleware), p.CredHandler.IssueCredential)
+				creds.POST("/batch/revoke", gin.HandlerFunc(p.IssuerRoleMiddleware), p.CredHandler.RevokeCredential)
+				creds.POST("/verify", gin.HandlerFunc(p.IssuerRoleMiddleware), p.CredHandler.VerifyHash)
 			}
 		}
 	}

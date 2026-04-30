@@ -8,15 +8,15 @@ import (
 )
 
 
-func TestCreateUserRequest_Validate(t *testing.T) {
+func TestStoreUserInput_Validate(t *testing.T) {
 	tests := []struct {
 		name    string
-		req     CreateUserRequest
+		req     StoreUserInput
 		shouldErr bool
 	}{
 		{
 			name: "Valid Request",
-			req: CreateUserRequest{
+			req: StoreUserInput{
 				Name:  "John Doe",
 				Email: "john@example.com",
 				Role:  domain.RoleHolder,
@@ -25,7 +25,7 @@ func TestCreateUserRequest_Validate(t *testing.T) {
 		},
 		{
 			name: "Missing Name",
-			req: CreateUserRequest{
+			req: StoreUserInput{
 				Email: "john@example.com",
 				Role:  domain.RoleHolder,
 			},
@@ -33,7 +33,7 @@ func TestCreateUserRequest_Validate(t *testing.T) {
 		},
 		{
 			name: "Invalid Email",
-			req: CreateUserRequest{
+			req: StoreUserInput{
 				Name:  "John Doe",
 				Email: "john-example.com",
 				Role:  domain.RoleHolder,
@@ -42,7 +42,7 @@ func TestCreateUserRequest_Validate(t *testing.T) {
 		},
 		{
 			name: "Invalid Role",
-			req: CreateUserRequest{
+			req: StoreUserInput{
 				Name:  "John Doe",
 				Email: "john@example.com",
 				Role:  domain.Role("invalid_role"),
