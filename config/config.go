@@ -12,6 +12,8 @@ type Config struct {
 	PostgresDSN              string
 	MongoURI                 string
 	JWTSecret                string
+	JWTAccessExpiryMinutes   int
+	JWTRefreshExpiryHours    int
 	WalletEncryptionKey      string
 	GeminiAPIKey             string
 	RPCURL                   string
@@ -52,6 +54,8 @@ func NewConfig(envPath string) (*Config, error) {
 		PostgresDSN:              getEnv("POSTGRES_DSN", "postgres://root:rootpassword@localhost:5432/credchain?sslmode=disable"),
 		MongoURI:                 getEnv("MONGO_URI", "mongodb://root:rootpassword@localhost:27017"),
 		JWTSecret:                getEnv("JWT_SECRET", ""),
+		JWTAccessExpiryMinutes:   getIntEnv("JWT_ACCESS_EXPIRY_MINUTES", 15),
+		JWTRefreshExpiryHours:    getIntEnv("JWT_REFRESH_EXPIRY_HOURS", 168),
 		WalletEncryptionKey:      getEnv("WALLET_ENCRYPTION_KEY", ""),
 		GeminiAPIKey:             getEnv("GEMINI_API_KEY", ""),
 		RPCURL:                   getEnv("RPC_URL", ""),

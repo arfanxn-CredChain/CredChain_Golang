@@ -12,6 +12,7 @@ type UnitOfWork interface {
 	// Repository accessors (explicit)
 	User() UserRepository
 	Credential() CredentialRepository
+	UserToken() UserTokenRepository
 }
 
 // TransactionType defines types of multi-repository transactions

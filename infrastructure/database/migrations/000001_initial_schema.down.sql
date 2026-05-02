@@ -6,3 +6,9 @@ DROP TABLE IF EXISTS credentials;
 DROP TABLE IF EXISTS users;
 
 DROP TYPE IF EXISTS role;
+
+-- Drop user_tokens table and indexes
+DROP INDEX IF EXISTS idx_user_tokens_token;
+DROP INDEX IF EXISTS idx_user_tokens_user_id;
+DROP TABLE IF EXISTS user_tokens;
+DROP TYPE IF EXISTS user_token_type;

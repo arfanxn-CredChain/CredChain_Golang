@@ -13,11 +13,25 @@ var CodeToMessageKey = map[int]string{
 	domain.CodeSystemInternal:   "error_internal",
 
 	// Auth codes
-	domain.CodeAuthLoginSuccess:      "success_login",
-	domain.CodeAuthLoginUnauthorized: "error_unauthorized",
-	domain.CodeAuthLoginInvalidToken: "error_invalid_token",
-	domain.CodeAuthLoginForbidden:    "error_unauthorized_email",
-	domain.CodeAuthLoginJWTFailed:    "error_token_issue_failed",
+	domain.CodeAuthSuccess:                    "success_login",
+	domain.CodeAuthUnauthorized:               "error_unauthorized",
+	domain.CodeAuthInvalidToken:               "error_invalid_token",
+	domain.CodeAuthForbidden:                  "error_unauthorized_email",
+	domain.CodeAuthJWTFailed:                  "error_token_issue_failed",
+
+	// Auth Google Login codes
+	domain.CodeAuthGoogleLoginSuccess:         "success_login",
+	domain.CodeAuthGoogleLoginInvalidToken:    "error_google_token_invalid",
+	domain.CodeAuthGoogleLoginUserNotFound:    "error_unauthorized_email",
+	domain.CodeAuthGoogleLoginJWTFailed:       "error_token_issue_failed",
+
+	// Auth Google Refresh codes
+	domain.CodeAuthGoogleRefreshSuccess:       "success_login",
+	domain.CodeAuthGoogleRefreshInvalidToken:  "error_invalid_token",
+	domain.CodeAuthGoogleRefreshTokenExpired:  "error_refresh_token_expired",
+	domain.CodeAuthGoogleRefreshTokenRevoked:  "error_refresh_token_revoked",
+	domain.CodeAuthGoogleRefreshUserNotFound:  "error_user_not_found",
+	domain.CodeAuthGoogleRefreshJWTFailed:     "error_token_issue_failed",
 
 	// User codes
 	domain.CodeUserFetchSuccess:                    "success_user_fetched",
@@ -62,11 +76,23 @@ var HttpCodes = map[int]int{
 	domain.CodeSystemValidation: http.StatusBadRequest,
 	domain.CodeSystemInternal:   http.StatusInternalServerError,
 
-	domain.CodeAuthLoginSuccess:      http.StatusOK,
-	domain.CodeAuthLoginUnauthorized: http.StatusUnauthorized,
-	domain.CodeAuthLoginInvalidToken: http.StatusUnauthorized,
-	domain.CodeAuthLoginForbidden:    http.StatusForbidden,
-	domain.CodeAuthLoginJWTFailed:    http.StatusInternalServerError,
+	domain.CodeAuthSuccess:                    http.StatusOK,
+	domain.CodeAuthUnauthorized:               http.StatusUnauthorized,
+	domain.CodeAuthInvalidToken:               http.StatusUnauthorized,
+	domain.CodeAuthForbidden:                  http.StatusForbidden,
+	domain.CodeAuthJWTFailed:                  http.StatusInternalServerError,
+
+	domain.CodeAuthGoogleLoginSuccess:         http.StatusOK,
+	domain.CodeAuthGoogleLoginInvalidToken:    http.StatusUnauthorized,
+	domain.CodeAuthGoogleLoginUserNotFound:    http.StatusForbidden,
+	domain.CodeAuthGoogleLoginJWTFailed:       http.StatusInternalServerError,
+
+	domain.CodeAuthGoogleRefreshSuccess:       http.StatusOK,
+	domain.CodeAuthGoogleRefreshInvalidToken:  http.StatusUnauthorized,
+	domain.CodeAuthGoogleRefreshTokenExpired:  http.StatusUnauthorized,
+	domain.CodeAuthGoogleRefreshTokenRevoked:  http.StatusUnauthorized,
+	domain.CodeAuthGoogleRefreshUserNotFound:  http.StatusNotFound,
+	domain.CodeAuthGoogleRefreshJWTFailed:     http.StatusInternalServerError,
 
 	domain.CodeUserFetchSuccess:      http.StatusOK,
 	domain.CodeUserFetchNotFound:     http.StatusNotFound,

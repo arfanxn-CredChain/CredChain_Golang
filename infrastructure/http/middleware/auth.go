@@ -36,21 +36,21 @@ func NewAuthMiddleware(p AuthMiddlewareParams) gin.HandlerFunc {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
 			c.Abort()
-			responder.SendError(c, domain.NewError(domain.CodeAuthLoginUnauthorized))
+			responder.SendError(c, domain.NewError(domain.CodeAuthUnauthorized))
 			return
 		}
 
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 		if tokenString == authHeader {
 			c.Abort()
-			responder.SendError(c, domain.NewError(domain.CodeAuthLoginUnauthorized))
+			responder.SendError(c, domain.NewError(domain.CodeAuthUnauthorized))
 			return
 		}
 
-		claims, err := parseJWTClaims(tokenString, p.Config.JWTSecret)
+		claims, err := security.ValiparseJWT(tokenString, []byte(p.Config.JWTSecret))
 		if err != nil {
 			c.Abort()
-			responder.SendError(c, domain.NewError(domain.CodeAuthLoginInvalidToken))
+			responder.SendError(c, domain.NewError(domain.CodeAuthInvalidToken))
 			return
 		}
 
@@ -91,13 +91,13 @@ func requireMinRoleMiddleware(minRole domain.Role) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user, err := httpContext.GetUser(c.Request.Context())
 		if err != nil {
-			responder.SendError(c, domain.NewError(domain.CodeAuthLoginUnauthorized))
+			responder.SendError(c, domain.NewError(domain.CodeAuthUnauthorized))
 			c.Abort()
 			return
 		}
 
 		if user.Role.Rank() < minRole.Rank() {
-			responder.SendError(c, domain.NewError(domain.CodeAuthLoginForbidden))
+			responder.SendError(c, domain.NewError(domain.CodeAuthForbidden))
 			c.Abort()
 			return
 		}
@@ -106,11 +106,3 @@ func requireMinRoleMiddleware(minRole domain.Role) gin.HandlerFunc {
 	}
 }
 
-// parseJWTClaims parses and validates the JWT token, extracting claims
-func parseJWTClaims(tokenString string, secret string) (*security.JWTClaims, error) {
-	claims, err := security.ValidateJWT(tokenString, []byte(secret))
-	if err != nil {
-		return nil, err
-	}
-	return claims, nil
-}

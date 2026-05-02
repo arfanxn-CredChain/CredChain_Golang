@@ -112,3 +112,41 @@ type UserRepository interface {
 	// Specialized operations
 	UpdateRole(ctx context.Context, users ...User) ([]User, int64, error)
 }
+
+// UserTokenType defines the type of user token
+type UserTokenType string
+
+const (
+	UserTokenTypeRefresh UserTokenType = "refresh"
+)
+
+// UserToken represents a row in the user_tokens table
+type UserToken struct {
+	Id         string
+	UserId     string
+	Type       UserTokenType
+	Token      string
+	LastUsedAt *time.Time
+	ExpiresAt  *time.Time
+	RevokedAt  *time.Time
+	CreatedAt  time.Time
+	UpdatedAt  *time.Time
+}
+
+// UserTokenRepository defines the database contract for user tokens
+type UserTokenRepository interface {
+	// Store creates new user tokens
+	Store(ctx context.Context, tokens ...UserToken) ([]UserToken, error)
+
+	// FindByToken retrieves a token by its token string
+	FindByToken(ctx context.Context, token string) (*UserToken, error)
+
+	// FindByUserId retrieves all tokens for a user
+	FindByUserId(ctx context.Context, userId string) ([]UserToken, error)
+
+	// Revoke marks tokens as revoked, returns number of revoked tokens
+	Revoke(ctx context.Context, tokenIDs ...string) (int64, error)
+
+	// RevokeByUserId revokes all tokens for a user, returns number of revoked tokens
+	RevokeByUserId(ctx context.Context, userId string) (int64, error)
+}

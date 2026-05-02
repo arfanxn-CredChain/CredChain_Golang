@@ -35,3 +35,26 @@ CREATE TABLE credentials (
     CONSTRAINT fk_issuer_user_id FOREIGN KEY (issuer_user_id) REFERENCES users(id),
     CONSTRAINT fk_revoker_user_id FOREIGN KEY (revoker_user_id) REFERENCES users(id)
 );
+
+-- Token types for user refresh tokens
+CREATE TYPE user_token_type AS ENUM ('refresh');
+
+-- User tokens table for managing refresh tokens
+CREATE TABLE user_tokens (
+    id CHAR(26) PRIMARY KEY,
+    user_id CHAR(26) NOT NULL,
+    type user_token_type NOT NULL,
+    token VARCHAR(512) NOT NULL UNIQUE,
+    last_used_at TIMESTAMP WITH TIME ZONE,
+    expires_at TIMESTAMP WITH TIME ZONE,
+    revoked_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_user_tokens_user_id FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- Index for fast user-based lookups
+CREATE INDEX idx_user_tokens_user_id ON user_tokens(user_id);
+
+-- Index for token lookups (refresh token validation)
+CREATE INDEX idx_user_tokens_token ON user_tokens(token);

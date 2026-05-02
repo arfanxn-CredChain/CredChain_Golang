@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 
 	"CredChain_Golang/config"
@@ -15,6 +16,7 @@ import (
 	"CredChain_Golang/infrastructure/http/middleware"
 	"CredChain_Golang/infrastructure/i18n"
 	applogger "CredChain_Golang/infrastructure/logger"
+	"CredChain_Golang/infrastructure/oauth"
 	"CredChain_Golang/infrastructure/storage"
 
 	"github.com/spf13/cobra"
@@ -57,13 +59,25 @@ var serverCmd = &cobra.Command{
 				}
 				return cfg
 			},
+			func(lc fx.Lifecycle) context.Context {
+				ctx, cancel := context.WithCancel(context.Background())
+				lc.Append(fx.Hook{
+					OnStop: func(ctx context.Context) error {
+						cancel()
+						return nil
+					},
+				})
+				return ctx
+			},
 			i18n.NewBundle,
 			gormInfra.NewGorm,
 			storage.NewStorage,
 			storage.NewIPFSClient,
 			ai.NewClient,
 			chain.NewClient,
+			oauth.NewGoogleOAuthClient,
 			user.NewGormUserRepository,
+			user.NewGormUserTokenRepository,
 			credential.NewGormCredentialRepository,
 			// UoW with repository factories
 			func(db *gormInfra.GormDB) domain.UnitOfWork {
@@ -75,6 +89,9 @@ var serverCmd = &cobra.Command{
 					func(tx *gorm.DB) domain.CredentialRepository {
 						return credential.NewGormCredentialRepository(&gormInfra.GormDB{DB: tx})
 					},
+					func(tx *gorm.DB) domain.UserTokenRepository {
+						return user.NewGormUserTokenRepository(user.UserTokenRepoParams{DB: tx})
+					},
 				)
 			},
 			user.NewUserPolicy,
@@ -82,6 +99,7 @@ var serverCmd = &cobra.Command{
 			middleware.NewAdminRoleMiddleware,
 			middleware.NewIssuerRoleMiddleware,
 			middleware.NewSuperAdminRoleMiddleware,
+			auth.NewAuthService,
 			auth.NewAuthHandler,
 			user.NewUserService,
 			user.NewUserHandler,

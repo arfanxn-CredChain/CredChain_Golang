@@ -57,6 +57,8 @@
   "error_google_email_missing": "Email not found in Google id_token.",
   "error_unauthorized_email": "Unauthorized email. Please contact an Administrator to create your account first.",
   "error_token_issue_failed": "Failed to issue access token.",
+  "error_refresh_token_expired": "Session expired. Please login again.",
+  "error_refresh_token_revoked": "Session expired. Please login again.",
   "error_user_not_found": "User not found.",
   "error_create_users_failed": "Failed to create users.",
   "error_fetch_users_failed": "Failed to fetch users.",

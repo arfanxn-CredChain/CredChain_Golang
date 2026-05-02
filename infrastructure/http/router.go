@@ -27,17 +27,17 @@ func NewGinRouter() *gin.Engine {
 type RouteParams struct {
 	fx.In
 
-	Lifecycle              fx.Lifecycle
-	Router                 *gin.Engine
-	Config                 *config.Config
-	Bundle                 *i18n.Bundle
-	AuthHandler            *auth.Handler
-	UserHandler            *user.Handler
-	CredHandler            *credential.Handler
-	Logger                 *zap.Logger
-	AuthMiddleware         gin.HandlerFunc
-	AdminRoleMiddleware    middleware.AdminRoleMiddleware
-	IssuerRoleMiddleware   middleware.IssuerRoleMiddleware
+	Lifecycle                fx.Lifecycle
+	Router                   *gin.Engine
+	Config                   *config.Config
+	Bundle                   *i18n.Bundle
+	AuthHandler              *auth.Handler
+	UserHandler              *user.Handler
+	CredHandler              *credential.Handler
+	Logger                   *zap.Logger
+	AuthMiddleware           gin.HandlerFunc
+	AdminRoleMiddleware      middleware.AdminRoleMiddleware
+	IssuerRoleMiddleware     middleware.IssuerRoleMiddleware
 	SuperAdminRoleMiddleware middleware.SuperAdminRoleMiddleware
 }
 
@@ -56,7 +56,8 @@ func RegisterRoutes(p RouteParams) {
 		api.GET("/health", func(c *gin.Context) {
 			responder.Send(c, domain.CodeSystemSuccess, gin.H{"status": "ok"})
 		})
-		api.POST("/auth/google", p.AuthHandler.HandleGoogleLogin)
+		api.POST("/auth/google", p.AuthHandler.GoogleLogin)
+		api.POST("/auth/google/refresh", p.AuthHandler.GoogleRefresh)
 
 		// Secure routes
 		secure := api.Group("/")

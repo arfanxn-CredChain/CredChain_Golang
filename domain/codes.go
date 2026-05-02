@@ -13,11 +13,25 @@ const (
 	CodeSystemInternal   = 100050
 
 	// ── Auth (20) ────────────────────────────────────────────────────────────
-	CodeAuthLoginSuccess      = 200100
-	CodeAuthLoginUnauthorized = 200140
-	CodeAuthLoginInvalidToken = 200141
-	CodeAuthLoginForbidden    = 200142
-	CodeAuthLoginJWTFailed    = 200150
+	CodeAuthSuccess           = 200000
+	CodeAuthUnauthorized      = 200140
+	CodeAuthInvalidToken      = 200141
+	CodeAuthForbidden         = 200142
+	CodeAuthJWTFailed         = 200150
+
+	// ── Auth Google Login (20) ───────────────────────────────────────────────
+	CodeAuthGoogleLoginSuccess      = 200200
+	CodeAuthGoogleLoginInvalidToken = 200241
+	CodeAuthGoogleLoginUserNotFound = 200242
+	CodeAuthGoogleLoginJWTFailed    = 200250
+
+	// ── Auth Google Refresh (20) ─────────────────────────────────────────────
+	CodeAuthGoogleRefreshSuccess        = 200300
+	CodeAuthGoogleRefreshInvalidToken   = 200340
+	CodeAuthGoogleRefreshTokenExpired   = 200341
+	CodeAuthGoogleRefreshTokenRevoked   = 200342
+	CodeAuthGoogleRefreshUserNotFound   = 200343
+	CodeAuthGoogleRefreshJWTFailed      = 200350
 
 	// ── User (30) ────────────────────────────────────────────────────────────
 	CodeUserFetchSuccess                     = 300100

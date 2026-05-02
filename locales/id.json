@@ -57,6 +57,8 @@
   "error_google_email_missing": "Email tidak ditemukan di id_token Google.",
   "error_unauthorized_email": "Email belum diizinkan. Silakan hubungi Administrator untuk membuat akun Anda terlebih dahulu.",
   "error_token_issue_failed": "Gagal menerbitkan token akses.",
+  "error_refresh_token_expired": "Sesi berakhir. Silakan login kembali.",
+  "error_refresh_token_revoked": "Sesi berakhir. Silakan login kembali.",
   "error_user_not_found": "Pengguna tidak ditemukan.",
   "error_create_users_failed": "Gagal membuat pengguna.",
   "error_fetch_users_failed": "Gagal mengambil pengguna.",

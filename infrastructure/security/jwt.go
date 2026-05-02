@@ -14,8 +14,8 @@ type JWTClaims struct {
 }
 
 // GenerateJWT creates a new signed token
-func GenerateJWT(secretKey []byte, userId string) (string, error) {
-	expirationTime := time.Now().Add(24 * time.Hour) // 1 day validity
+func GenerateJWT(userId string, secretKey []byte, expiry time.Duration) (string, error) {
+	expirationTime := time.Now().Add(expiry)
 
 	claims := &JWTClaims{
 		UserId: userId,
@@ -30,8 +30,8 @@ func GenerateJWT(secretKey []byte, userId string) (string, error) {
 	return token.SignedString(secretKey)
 }
 
-// ValidateJWT parses and validates the token, returning the claims
-func ValidateJWT(tokenString string, secretKey []byte) (*JWTClaims, error) {
+// ValiparseJWT validates the token signature and expiry, then parses and returns the claims
+func ValiparseJWT(tokenString string, secretKey []byte) (*JWTClaims, error) {
 	claims := &JWTClaims{}
 
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (any, error) {
