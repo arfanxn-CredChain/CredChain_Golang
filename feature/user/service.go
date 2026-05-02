@@ -3,6 +3,7 @@ package user
 import (
 	"context"
 	"encoding/hex"
+	"slices"
 	"strings"
 
 	"CredChain_Golang/config"
@@ -455,10 +456,8 @@ func (s *Service) Destroy(ctx context.Context, ids ...string) (int64, error) {
 		return 0, domain.NewError(domain.CodeUserRoleSignerAdminRequiredForbidden)
 	}
 
-	for _, id := range ids {
-		if id == authUser.Id {
-			return 0, domain.NewError(domain.CodeAuthLoginForbidden, domain.WithMetadata("user_id", authUser.Id))
-		}
+	if slices.Contains(ids, authUser.Id) {
+		return 0, domain.NewError(domain.CodeAuthForbidden, domain.WithMetadata("user_id", authUser.Id))
 	}
 
 	var rowsAffected int64
