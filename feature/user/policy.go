@@ -57,7 +57,7 @@ func (p *UserPolicy) Delete(ctx context.Context, ids ...string) error {
 	// Check if trying to delete self
 	for _, id := range ids {
 		if id == authUser.Id {
-			return domain.NewError(domain.CodeAuthLoginForbidden)
+			return domain.NewError(domain.CodeAuthForbidden)
 		}
 	}
 
