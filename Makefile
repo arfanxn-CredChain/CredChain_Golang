@@ -8,7 +8,8 @@ endif
 
 .PHONY: help check-env check-env-docker clean build serve migrate-up migrate-down init-super-admin \
 	docker-migrate-up docker-migrate-down docker-up-build docker-up \
-	docker-down docker-restart docker-logs docker-ps docker-fresh
+	docker-down docker-restart docker-logs docker-ps docker-fresh \
+	docker-clean-data docker-check-backend-healthy
 
 help:
 	@echo "CredChain - Available Commands:"
@@ -79,10 +80,10 @@ docker-down:
 
 docker-restart: docker-down docker-up-build
 
-docker-migrate-up:
+docker-migrate-up: docker-check-backend-healthy
 	docker compose exec backend ./server migrate up
 
-docker-migrate-down:
+docker-migrate-down: docker-check-backend-healthy
 	docker compose exec backend ./server migrate down
 
 docker-logs:
@@ -90,6 +91,22 @@ docker-logs:
 
 docker-ps:
 	docker compose ps
+
+docker-clean-data:
+	rm -rf docker/postgres/data/* docker/mongo/data/*
+
+docker-check-backend-healthy:
+	@echo "waiting for backend to be healthy..."
+	@for i in 1 2 3 4 5 6 7 8 9 10; do \
+		if docker compose ps backend | grep -q "(healthy)"; then \
+			echo "backend is healthy"; \
+			exit 0; \
+		fi; \
+		echo "waiting... ($$i/10)"; \
+		sleep 3; \
+	done; \
+	echo "error: backend did not become healthy in time"; \
+	exit 1
 
 docker-fresh:
 	@make docker-down
