@@ -9,25 +9,28 @@ import (
 )
 
 type Config struct {
-	PostgresDSN              string
-	MongoURI                 string
+	AppPort                  string
+	InitialSuperAdminEmail   string
+	InitialSuperAdminPrivKey string
+	WalletEncryptionKey      string
+	RPCURL                   string
+	RelayerPrivateKey        string
+	AuthorityContract        string
+	RegistryContract         string
 	JWTSecret                string
 	JWTAccessExpiryMinutes   int
 	JWTRefreshExpiryHours    int
-	WalletEncryptionKey      string
+	PostgresUser             string
+	PostgresPassword         string
+	PostgresDB               string
+	PostgresDSN              string
+	DBMaxOpenConns           int
+	DBMaxIdleConns           int
+	DBConnMaxLifetime        int
+	MongoInitDBUsername      string
+	MongoInitPassword        string
+	MongoURI                 string
 	GeminiAPIKey             string
-	RPCURL                   string
-	RegistryContract         string
-	AuthorityContract        string
-	RelayerPrivateKey        string
-	InitialSuperAdminEmail   string
-	InitialSuperAdminPrivKey string
-	AppPort                  string
-
-	// Database connection pool settings
-	DBMaxOpenConns    int
-	DBMaxIdleConns    int
-	DBConnMaxLifetime int // in minutes
 }
 
 func getIntEnv(key string, defaultVal int) int {
@@ -42,34 +45,35 @@ func getIntEnv(key string, defaultVal int) int {
 	return intVal
 }
 
-// NewConfig loads configuration from .env file
 func NewConfig(envPath string) (*Config, error) {
-	// Load .env file from specified path
 	err := godotenv.Load(envPath)
 	if err != nil {
-		// Continue anyway - env vars might be set directly
+
 	}
 
 	cfg := &Config{
-		PostgresDSN:              getEnv("POSTGRES_DSN", "postgres://root:rootpassword@localhost:5432/credchain?sslmode=disable"),
-		MongoURI:                 getEnv("MONGO_URI", "mongodb://root:rootpassword@localhost:27017"),
+		AppPort:                  getEnv("APP_PORT", "8080"),
+		InitialSuperAdminEmail:   getEnv("INIT_SUPER_ADMIN_EMAIL", ""),
+		InitialSuperAdminPrivKey: getEnv("INIT_SUPER_ADMIN_PRIVATE_KEY", ""),
+		WalletEncryptionKey:      getEnv("WALLET_ENCRYPTION_KEY", ""),
+		RPCURL:                   getEnv("RPC_URL", ""),
+		RelayerPrivateKey:        getEnv("RELAYER_PRIVATE_KEY", ""),
+		AuthorityContract:        getEnv("AUTHORITY_CONTRACT", ""),
+		RegistryContract:         getEnv("REGISTRY_CONTRACT", ""),
 		JWTSecret:                getEnv("JWT_SECRET", ""),
 		JWTAccessExpiryMinutes:   getIntEnv("JWT_ACCESS_EXPIRY_MINUTES", 15),
 		JWTRefreshExpiryHours:    getIntEnv("JWT_REFRESH_EXPIRY_HOURS", 168),
-		WalletEncryptionKey:      getEnv("WALLET_ENCRYPTION_KEY", ""),
+		PostgresUser:             getEnv("POSTGRES_USER", ""),
+		PostgresPassword:         getEnv("POSTGRES_PASSWORD", ""),
+		PostgresDB:               getEnv("POSTGRES_DB", ""),
+		PostgresDSN:              getEnv("POSTGRES_DSN", ""),
+		DBMaxOpenConns:           getIntEnv("DB_MAX_OPEN_CONNS", 25),
+		DBMaxIdleConns:           getIntEnv("DB_MAX_IDLE_CONNS", 25),
+		DBConnMaxLifetime:        getIntEnv("DB_CONN_MAX_LIFETIME", 5),
+		MongoInitDBUsername:      getEnv("MONGO_INIT_DB_USERNAME", ""),
+		MongoInitPassword:        getEnv("MONGO_INITDB_ROOT_PASSWORD", ""),
+		MongoURI:                 getEnv("MONGO_URI", ""),
 		GeminiAPIKey:             getEnv("GEMINI_API_KEY", ""),
-		RPCURL:                   getEnv("RPC_URL", ""),
-		RegistryContract:         getEnv("REGISTRY_CONTRACT", ""),
-		AuthorityContract:        getEnv("AUTHORITY_CONTRACT", ""),
-		RelayerPrivateKey:        getEnv("RELAYER_PRIVATE_KEY", ""),
-		InitialSuperAdminEmail:   getEnv("INITIAL_SUPER_ADMIN_EMAIL", ""),
-		InitialSuperAdminPrivKey: getEnv("INITIAL_SUPER_ADMIN_PRIVATE_KEY", ""),
-		AppPort:                  getEnv("PORT", "8080"),
-
-		// Database connection pool
-		DBMaxOpenConns:    getIntEnv("DB_MAX_OPEN_CONNS", 25),
-		DBMaxIdleConns:    getIntEnv("DB_MAX_IDLE_CONNS", 25),
-		DBConnMaxLifetime: getIntEnv("DB_CONN_MAX_LIFETIME", 5),
 	}
 
 	if cfg.JWTSecret == "" {

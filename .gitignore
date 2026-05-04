@@ -2,6 +2,7 @@
 .env
 .env.local
 .env.*.local
+.env.docker
 
 # Go build artifacts
 bin/
@@ -20,6 +21,9 @@ main
 
 # Dependency directories
 vendor/
+
+# Ignore docker data/volume
+docker/**/data/ 
 
 # IDE
 .idea/

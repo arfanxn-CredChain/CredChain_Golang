@@ -1,16 +1,31 @@
-FROM golang:1.24-alpine AS builder
+# ---- build stage ----
+FROM golang:1.25-alpine AS builder
 
-WORKDIR /app
-COPY go.mod go.sum* ./
-RUN go mod download || true
+RUN apk add --no-cache git build-base
+WORKDIR /src
+
+COPY go.mod go.sum ./
+RUN go mod download
 
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -o main ./cmd/server/main.go
+ENV CGO_ENABLED=0 GOOS=linux GOARCH=amd64
+RUN go build -ldflags="-s -w" -o /server ./main.go
 
-FROM alpine:latest
-RUN apk --no-cache add ca-certificates
-WORKDIR /root/
-COPY --from=builder /app/main .
+# ---- final stage ----
+FROM alpine:3.19
+
+RUN apk add --no-cache ca-certificates tzdata && \
+    adduser -D -h /app app
+
+WORKDIR /app
+COPY --from=builder /server .
+COPY --from=builder /src/infrastructure/database/migrations ./infrastructure/database/migrations
+
+RUN mkdir -p /app/logs && \
+    chown -R app:app /app
+
+USER app
 
 EXPOSE 8080
-CMD ["./main"]
+
+CMD ["./server", "serve"]

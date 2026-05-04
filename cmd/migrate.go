@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"CredChain_Golang/config"
 	"CredChain_Golang/infrastructure/database"
 
@@ -26,15 +24,12 @@ var migrateUpCmd = &cobra.Command{
 	Use:   "up",
 	Short: "Executes the upward migrations",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cfg, err := config.NewConfig(".env")
-		if err != nil {
-			return fmt.Errorf("failed to load config: %w", err)
-		}
+		cfg := cmd.Context().Value(ConfigContextKey).(*config.Config)
 
 		logger, _ := zap.NewProduction()
 		defer logger.Sync()
 
-		err = database.MigrateUp(cfg, logger)
+		err := database.MigrateUp(cfg, logger)
 		if err != nil {
 			logger.Error("migration failed", zap.Error(err))
 			return err
@@ -49,15 +44,12 @@ var migrateDownCmd = &cobra.Command{
 	Use:   "down",
 	Short: "Reverts the schema downwards",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cfg, err := config.NewConfig(".env")
-		if err != nil {
-			return fmt.Errorf("failed to load config: %w", err)
-		}
+		cfg := cmd.Context().Value(ConfigContextKey).(*config.Config)
 
 		logger, _ := zap.NewProduction()
 		defer logger.Sync()
 
-		err = database.MigrateDown(cfg, logger)
+		err := database.MigrateDown(cfg, logger)
 		if err != nil {
 			logger.Error("rollback failed", zap.Error(err))
 			return err

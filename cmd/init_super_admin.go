@@ -78,10 +78,7 @@ var initSuperAdminCmd = &cobra.Command{
 	Short: "Initializes the Super Admin based on .env config",
 	Long:  "Creates the inaugural Super Admin securely in Postgres parsing the Ethereum Wallet automatically from the given initial Private Key.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cfg, err := config.NewConfig(".env")
-		if err != nil {
-			return fmt.Errorf("failed to load config: %w", err)
-		}
+		cfg := cmd.Context().Value(ConfigContextKey).(*config.Config)
 
 		logger, _ := zap.NewProduction()
 		defer logger.Sync()
