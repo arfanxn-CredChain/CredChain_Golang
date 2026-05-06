@@ -6,16 +6,16 @@ import (
 
 	"CredChain_Golang/domain"
 	domainQuery "CredChain_Golang/domain/query"
-	gormInfra "CredChain_Golang/infrastructure/gorm"
 	"CredChain_Golang/infrastructure/gorm/model"
 	"github.com/oklog/ulid/v2"
+	"gorm.io/gorm"
 )
 
 type GormUserRepository struct {
-	db *gormInfra.GormDB
+	db *gorm.DB
 }
 
-func NewGormUserRepository(db *gormInfra.GormDB) domain.UserRepository {
+func NewGormUserRepository(db *gorm.DB) domain.UserRepository {
 	return &GormUserRepository{db: db}
 }
 

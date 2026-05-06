@@ -26,7 +26,6 @@ type UserService interface {
 
 	// Single item lookups
 	Find(ctx context.Context, id string) (*domain.User, error)
-	FindByEmail(ctx context.Context, email string) (*domain.User, error)
 
 	// Multiple item lookups
 	FindByIds(ctx context.Context, ids ...string) ([]domain.User, error)
@@ -61,7 +60,7 @@ type UserServiceParams struct {
 	Policy      *UserPolicy
 }
 
-func NewUserService(p UserServiceParams) *Service {
+func NewUserService(p UserServiceParams) UserService {
 	return &Service{
 		userRepo:            p.UserRepo,
 		uow:                 p.UoW,
@@ -181,7 +180,7 @@ func (s *Service) storeGenerateWallets(users []domain.User) error {
 		}
 
 		users[i].WalletAddress = address
-		users[i].WalletPrivateKey = encrypted
+		users[i].EncryptedWalletPrivateKey = encrypted
 	}
 	return nil
 }
@@ -211,7 +210,7 @@ func (s *Service) storeUsersAndSyncBlockchainRoles(ctx context.Context, users []
 	}
 
 	// 3. Decrypt auth user's private key for signing
-	decryptedKey, err := cryptoInfra.Decrypt(authUser.WalletPrivateKey, []byte(s.walletEncryptionKey))
+	decryptedKey, err := cryptoInfra.Decrypt(authUser.EncryptedWalletPrivateKey, []byte(s.walletEncryptionKey))
 	if err != nil {
 		return nil, domain.NewError(
 			domain.CodeUserStoreBlockchainSyncFailed,

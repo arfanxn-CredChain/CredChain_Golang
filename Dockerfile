@@ -20,6 +20,7 @@ RUN apk add --no-cache ca-certificates tzdata && \
 WORKDIR /app
 COPY --from=builder /server .
 COPY --from=builder /src/infrastructure/database/migrations ./infrastructure/database/migrations
+COPY --from=builder /src/locales ./locales
 
 RUN mkdir -p /app/logs && \
     chown -R app:app /app

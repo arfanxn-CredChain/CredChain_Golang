@@ -5,14 +5,14 @@ import (
 
 	"CredChain_Golang/domain"
 	domainQuery "CredChain_Golang/domain/query"
-	"CredChain_Golang/infrastructure/gorm"
+	"gorm.io/gorm"
 )
 
 type GormCredRepository struct {
-	db *gorm.GormDB
+	db *gorm.DB
 }
 
-func NewGormCredentialRepository(db *gorm.GormDB) domain.CredentialRepository {
+func NewGormCredentialRepository(db *gorm.DB) domain.CredentialRepository {
 	return &GormCredRepository{db: db}
 }
 

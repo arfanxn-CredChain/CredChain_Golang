@@ -5,11 +5,7 @@ import (
 	"go.uber.org/zap"
 )
 
-type ZapLogger struct {
-	*zap.Logger
-}
-
-func NewZapLogger() (*ZapLogger, error) {
+func NewZapLogger() (*zap.Logger, error) {
 	config := zap.NewProductionConfig()
 
 	// AddCaller enabled globally to track exact file:line origins
@@ -21,7 +17,7 @@ func NewZapLogger() (*ZapLogger, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &ZapLogger{logger}, nil
+	return logger, nil
 }
 
 // Module provides the unified logger to the Fx dependency injection container

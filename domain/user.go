@@ -87,7 +87,7 @@ type User struct {
 	Meta             *JSONB     `json:"meta"`
 	Role             Role       `json:"role"`
 	WalletAddress    string     `json:"wallet_address"`
-	WalletPrivateKey string     `json:"-"`
+	EncryptedWalletPrivateKey string     `json:"-"`
 	CreatedAt        time.Time  `json:"created_at"`
 	UpdatedAt        *time.Time `json:"updated_at"`
 }

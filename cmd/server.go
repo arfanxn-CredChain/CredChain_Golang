@@ -58,15 +58,11 @@ var serverCmd = &cobra.Command{
 				user.NewGormUserTokenRepository,
 				credential.NewGormCredentialRepository,
 				// UoW with repository factories
-				func(db *gormInfra.GormDB) domain.UnitOfWork {
+				func(db *gorm.DB) domain.UnitOfWork {
 					return gormInfra.NewGormUnitOfWork(
 						db,
-						func(tx *gorm.DB) domain.UserRepository {
-							return user.NewGormUserRepository(&gormInfra.GormDB{DB: tx})
-						},
-						func(tx *gorm.DB) domain.CredentialRepository {
-							return credential.NewGormCredentialRepository(&gormInfra.GormDB{DB: tx})
-						},
+						user.NewGormUserRepository,
+						credential.NewGormCredentialRepository,
 						func(tx *gorm.DB) domain.UserTokenRepository {
 							return user.NewGormUserTokenRepository(user.UserTokenRepoParams{DB: tx})
 						},

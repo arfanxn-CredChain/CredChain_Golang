@@ -9,16 +9,12 @@ import (
 	"time"
 )
 
-type GormDB struct {
-	*gorm.DB
-}
-
 type GormParams struct {
 	fx.In
 	Config *config.Config
 }
 
-func NewGorm(p GormParams) (*GormDB, error) {
+func NewGorm(p GormParams) (*gorm.DB, error) {
 	db, err := gorm.Open(postgres.Open(p.Config.PostgresDSN), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Silent),
 	})
@@ -35,5 +31,5 @@ func NewGorm(p GormParams) (*GormDB, error) {
 	sqlDB.SetMaxIdleConns(p.Config.DBMaxIdleConns)
 	sqlDB.SetConnMaxLifetime(time.Duration(p.Config.DBConnMaxLifetime) * time.Minute)
 
-	return &GormDB{db}, nil
+	return db, nil
 }

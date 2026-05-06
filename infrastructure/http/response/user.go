@@ -6,7 +6,7 @@ import (
 )
 
 // User is the response DTO for user data.
-// Excludes sensitive fields like WalletPrivateKey.
+// Excludes sensitive fields like EncryptedWalletPrivateKey.
 type User struct {
 	ID            string     `json:"id"`
 	Name          string     `json:"name"`

@@ -3,18 +3,19 @@ package cmd
 import (
 	"context"
 	"crypto/ecdsa"
-	"database/sql"
 	"fmt"
 	"strings"
 
 	"CredChain_Golang/config"
 	"CredChain_Golang/domain"
 	cryptoInfra "CredChain_Golang/infrastructure/crypto"
+	gormInfra "CredChain_Golang/infrastructure/gorm"
+	"CredChain_Golang/feature/user"
+	applogger "CredChain_Golang/infrastructure/logger"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	_ "github.com/lib/pq"
-	"github.com/oklog/ulid/v2"
 	"github.com/spf13/cobra"
+	"go.uber.org/fx"
 	"go.uber.org/zap"
 )
 
@@ -22,86 +23,108 @@ func init() {
 	rootCmd.AddCommand(initSuperAdminCmd)
 }
 
-func initSuperAdmin(db *sql.DB, cfg *config.Config, logger *zap.Logger) error {
+// initSuperAdminValidateConfig checks required env vars for super admin initialization
+func initSuperAdminValidateConfig(cfg *config.Config) error {
 	if cfg.InitialSuperAdminEmail == "" || cfg.InitialSuperAdminPrivKey == "" || cfg.WalletEncryptionKey == "" {
 		return fmt.Errorf("missing core environment variables for super admin initialization")
 	}
+	return nil
+}
 
-	privKey, err := crypto.HexToECDSA(strings.TrimPrefix(cfg.InitialSuperAdminPrivKey, "0x"))
+// initSuperAdminParseWallet derives wallet address from hex private key
+func initSuperAdminParseWallet(privKeyHex string) (string, error) {
+	privKey, err := crypto.HexToECDSA(strings.TrimPrefix(privKeyHex, "0x"))
 	if err != nil {
-		return fmt.Errorf("invalid private key format: %w", err)
+		return "", fmt.Errorf("invalid private key format: %w", err)
 	}
 
 	publicKey := privKey.Public()
 	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
 	if !ok {
-		return fmt.Errorf("failed to cast public key to ecdsa")
+		return "", fmt.Errorf("failed to cast public key to ecdsa")
 	}
 
-	walletAddress := crypto.PubkeyToAddress(*publicKeyECDSA).Hex()
+	return crypto.PubkeyToAddress(*publicKeyECDSA).Hex(), nil
+}
 
-	encryptionKey := make([]byte, 32)
-	copy(encryptionKey, []byte(cfg.WalletEncryptionKey))
+// initSuperAdminEncryptKey encrypts private key for storage
+func initSuperAdminEncryptKey(privKey, encryptionKey string) (string, error) {
+	encryptionKeyBytes := make([]byte, 32)
+	copy(encryptionKeyBytes, []byte(encryptionKey))
 
-	var existingID string
-	err = db.QueryRow("SELECT id FROM users WHERE email = $1", cfg.InitialSuperAdminEmail).Scan(&existingID)
-	if err == nil {
-		logger.Info("super admin already exists, skipping initialization")
-		return nil
-	}
-
-	logger.Info("super admin not found, initializing")
-
-	encryptedKey, err := cryptoInfra.Encrypt([]byte(cfg.InitialSuperAdminPrivKey), encryptionKey)
+	encrypted, err := cryptoInfra.Encrypt([]byte(privKey), encryptionKeyBytes)
 	if err != nil {
-		return fmt.Errorf("failed to encrypt super admin private key: %w", err)
+		return "", fmt.Errorf("failed to encrypt private key: %w", err)
 	}
 
-	id := ulid.Make().String()
-	insertQuery := `
-		INSERT INTO users (id, name, email, role, wallet_address, wallet_private_key)
-		VALUES ($1, $2, $3, $4, $5, $6)
-	`
-	_, err = db.ExecContext(context.Background(), insertQuery,
-		id, "Super Admin", cfg.InitialSuperAdminEmail, domain.RoleSuperAdmin, walletAddress, encryptedKey,
-	)
+	return encrypted, nil
+}
+
+// initSuperAdminBuildUser constructs domain.User with super admin fields
+func initSuperAdminBuildUser(email, walletAddress, encryptedKey string) domain.User {
+	name := "Super Admin"
+	return domain.User{
+		Name:                      &name,
+		Email:                     email,
+		Role:                      domain.RoleSuperAdmin,
+		WalletAddress:             walletAddress,
+		EncryptedWalletPrivateKey: encryptedKey,
+	}
+}
+
+// initSuperAdmin is the main FX-invoked function
+func initSuperAdmin(cfg *config.Config, userRepo domain.UserRepository, logger *zap.Logger) error {
+	if err := initSuperAdminValidateConfig(cfg); err != nil {
+		return err
+	}
+
+	walletAddress, err := initSuperAdminParseWallet(cfg.InitialSuperAdminPrivKey)
 	if err != nil {
-		return fmt.Errorf("failed to insert super admin user: %w", err)
+		return err
 	}
 
-	logger.Info("super admin initialized securely")
+	encryptedKey, err := initSuperAdminEncryptKey(cfg.InitialSuperAdminPrivKey, cfg.WalletEncryptionKey)
+	if err != nil {
+		return err
+	}
+
+	existing, err := userRepo.FindByEmails(context.Background(), cfg.InitialSuperAdminEmail)
+	if err != nil {
+		return err
+	}
+
+	if len(existing) > 0 {
+		msg := "super admin already exists"
+		logger.Error(msg)
+		return fmt.Errorf("%s", msg)
+	}
+
+	adminUser := initSuperAdminBuildUser(cfg.InitialSuperAdminEmail, walletAddress, encryptedKey)
+
+	_, err = userRepo.Store(context.Background(), adminUser)
+	if err != nil {
+		return err
+	}
+
+	logger.Info("super admin initialized")
 	return nil
 }
 
 var initSuperAdminCmd = &cobra.Command{
 	Use:   "init-super-admin",
 	Short: "Initializes the Super Admin based on .env config",
-	Long:  "Creates the inaugural Super Admin securely in Postgres parsing the Ethereum Wallet automatically from the given initial Private Key.",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		cfg := cmd.Context().Value(ConfigContextKey).(*config.Config)
-
-		logger, _ := zap.NewProduction()
-		defer logger.Sync()
-
-		db, err := sql.Open("postgres", cfg.PostgresDSN)
-		if err != nil {
-			logger.Error("failed to connect to postgres", zap.Error(err))
-			return err
-		}
-		defer db.Close()
-
-		if err := db.Ping(); err != nil {
-			logger.Error("postgres ping failed", zap.Error(err))
-			return err
-		}
-
-		err = initSuperAdmin(db, cfg, logger)
-		if err != nil {
-			logger.Error("super admin initialization failed", zap.Error(err))
-			return err
-		}
-
-		logger.Info("successfully ran init-super-admin")
-		return nil
+	Long:  "Creates the inaugural Super Admin securely in Postgres, parsing the Ethereum Wallet automatically from the given initial Private Key.",
+	Run: func(cmd *cobra.Command, args []string) {
+		fx.New(
+			applogger.Module,
+			fx.Provide(
+				func() *config.Config {
+					return cmd.Context().Value(ConfigContextKey).(*config.Config)
+				},
+				gormInfra.NewGorm,
+				user.NewGormUserRepository,
+			),
+			fx.Invoke(initSuperAdmin),
+		).Run()
 	},
 }

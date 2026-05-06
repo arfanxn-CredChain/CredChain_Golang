@@ -17,7 +17,7 @@ type User struct {
 	Meta             datatypes.JSON `gorm:"type:jsonb;column:meta" json:"meta"`
 	Role             string         `gorm:"type:varchar(50);column:role" json:"role"`
 	WalletAddress    string         `gorm:"type:varchar(255);column:wallet_address" json:"wallet_address"`
-	WalletPrivateKey string         `gorm:"-" json:"-"`
+	EncryptedWalletPrivateKey string         `gorm:"type:varchar(255);column:encrypted_wallet_private_key" json:"-"`
 	CreatedAt        time.Time      `gorm:"autoCreateTime;column:created_at" json:"created_at"`
 	UpdatedAt        *time.Time     `gorm:"autoUpdateTime;column:updated_at" json:"updated_at"`
 }
@@ -40,7 +40,7 @@ func (m *User) ToDomain() domain.User {
 		Meta:             meta,
 		Role:             domain.Role(m.Role),
 		WalletAddress:    m.WalletAddress,
-		WalletPrivateKey: m.WalletPrivateKey,
+		EncryptedWalletPrivateKey: m.EncryptedWalletPrivateKey,
 		CreatedAt:        m.CreatedAt,
 		UpdatedAt:        m.UpdatedAt,
 	}
@@ -62,7 +62,7 @@ func FromDomainUser(u domain.User) User {
 		Meta:             meta,
 		Role:             string(u.Role),
 		WalletAddress:    u.WalletAddress,
-		WalletPrivateKey: u.WalletPrivateKey,
+		EncryptedWalletPrivateKey: u.EncryptedWalletPrivateKey,
 		CreatedAt:        u.CreatedAt,
 		UpdatedAt:        u.UpdatedAt,
 	}

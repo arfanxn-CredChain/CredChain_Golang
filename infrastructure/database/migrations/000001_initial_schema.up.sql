@@ -15,7 +15,7 @@ CREATE TABLE users (
     meta JSONB,
     role role NOT NULL,
     wallet_address CHAR(42) UNIQUE NOT NULL,
-    wallet_private_key VARCHAR(256) NOT NULL,
+    encrypted_wallet_private_key VARCHAR(256) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE
 );

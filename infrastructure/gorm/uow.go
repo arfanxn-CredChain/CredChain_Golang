@@ -31,13 +31,13 @@ type GormUnitOfWork struct {
 
 // NewGormUnitOfWork creates a new UnitOfWork instance with repository factories
 func NewGormUnitOfWork(
-	db *GormDB,
+	db *gorm.DB,
 	newUserRepository UserRepositoryFactory,
 	newCredentialRepository CredentialRepositoryFactory,
 	newUserTokenRepository UserTokenRepositoryFactory,
 ) domain.UnitOfWork {
 	return &GormUnitOfWork{
-		db:                      db.DB,
+		db:                      db,
 		newUserRepository:       newUserRepository,
 		newCredentialRepository: newCredentialRepository,
 		newUserTokenRepository:  newUserTokenRepository,
