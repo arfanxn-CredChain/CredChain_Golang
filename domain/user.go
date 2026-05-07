@@ -149,4 +149,7 @@ type UserTokenRepository interface {
 
 	// RevokeByUserIdAndType revokes all tokens of a specific type for a user, returns rows affected
 	RevokeByUserIdAndType(ctx context.Context, userId string, tokenType UserTokenType) (int64, error)
+
+	// MarkUsed sets the last_used_at timestamp for a token, returns rows affected
+	MarkUsed(ctx context.Context, id string) (int64, error)
 }

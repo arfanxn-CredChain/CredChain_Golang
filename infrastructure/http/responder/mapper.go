@@ -26,13 +26,13 @@ var CodeToMessageKey = map[int]string{
 	domain.CodeAuthGoogleLoginUserNotFound:    "error_unauthorized_email",
 	domain.CodeAuthGoogleLoginJWTFailed:       "error_token_issue_failed",
 
-	// Auth Google Refresh codes
-	domain.CodeAuthGoogleRefreshSuccess:       "success_login",
-	domain.CodeAuthGoogleRefreshInvalidToken:  "error_invalid_token",
-	domain.CodeAuthGoogleRefreshTokenExpired:  "error_refresh_token_expired",
-	domain.CodeAuthGoogleRefreshTokenRevoked:  "error_refresh_token_revoked",
-	domain.CodeAuthGoogleRefreshUserNotFound:  "error_user_not_found",
-	domain.CodeAuthGoogleRefreshJWTFailed:     "error_token_issue_failed",
+	// Auth Refresh codes
+	domain.CodeAuthRefreshSuccess:       "success_login",
+	domain.CodeAuthRefreshInvalidToken:  "error_invalid_token",
+	domain.CodeAuthRefreshTokenExpired:  "error_refresh_token_expired",
+	domain.CodeAuthRefreshTokenRevoked:  "error_refresh_token_revoked",
+	domain.CodeAuthRefreshUserNotFound:  "error_user_not_found",
+	domain.CodeAuthRefreshJWTFailed:     "error_token_issue_failed",
 
 	// Auth Logout codes
 	domain.CodeAuthLogoutSuccess:              "success_logout",
@@ -92,12 +92,12 @@ var HttpCodes = map[int]int{
 	domain.CodeAuthGoogleLoginUserNotFound:    http.StatusForbidden,
 	domain.CodeAuthGoogleLoginJWTFailed:       http.StatusInternalServerError,
 
-	domain.CodeAuthGoogleRefreshSuccess:       http.StatusOK,
-	domain.CodeAuthGoogleRefreshInvalidToken:  http.StatusUnauthorized,
-	domain.CodeAuthGoogleRefreshTokenExpired:  http.StatusUnauthorized,
-	domain.CodeAuthGoogleRefreshTokenRevoked:  http.StatusUnauthorized,
-	domain.CodeAuthGoogleRefreshUserNotFound:  http.StatusNotFound,
-	domain.CodeAuthGoogleRefreshJWTFailed:     http.StatusInternalServerError,
+	domain.CodeAuthRefreshSuccess:       http.StatusOK,
+	domain.CodeAuthRefreshInvalidToken:  http.StatusUnauthorized,
+	domain.CodeAuthRefreshTokenExpired:  http.StatusUnauthorized,
+	domain.CodeAuthRefreshTokenRevoked:  http.StatusUnauthorized,
+	domain.CodeAuthRefreshUserNotFound:  http.StatusNotFound,
+	domain.CodeAuthRefreshJWTFailed:     http.StatusInternalServerError,
 
 	domain.CodeAuthLogoutSuccess:              http.StatusOK,
 

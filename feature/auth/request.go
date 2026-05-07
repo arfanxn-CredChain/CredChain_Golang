@@ -14,13 +14,13 @@ func (r GoogleLoginRequest) Validate() error {
 	)
 }
 
-// GoogleRefreshRequest represents the refresh token payload
-type GoogleRefreshRequest struct {
+// RefreshRequest represents the refresh token payload
+type RefreshRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
 // Validate performs structural validation
-func (r GoogleRefreshRequest) Validate() error {
+func (r RefreshRequest) Validate() error {
 	return validation.ValidateStruct(&r,
 		validation.Field(&r.RefreshToken, validation.Required),
 	)

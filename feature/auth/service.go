@@ -99,30 +99,30 @@ func (s *Service) GoogleLogin(ctx context.Context, idToken string) (domain.User,
 	return user, storedTokens[0], accessToken, nil
 }
 
-// GoogleRefresh validates an existing refresh token and rotates it with a new token pair.
+// Refresh validates an existing refresh token and rotates it with a new token pair.
 // The old refresh token is revoked and a new one is issued atomically within a transaction.
 // Returns the authenticated user, the new stored refresh token entity, the new JWT access token string, and any error.
-func (s *Service) GoogleRefresh(ctx context.Context, refreshToken string) (domain.User, domain.UserToken, string, error) {
+func (s *Service) Refresh(ctx context.Context, refreshToken string) (domain.User, domain.UserToken, string, error) {
 	// 1. Find refresh token in DB
 	token, err := s.userTokenRepo.FindByToken(ctx, refreshToken)
 	if err != nil {
-		return domain.User{}, domain.UserToken{}, "", domain.NewError(domain.CodeAuthGoogleRefreshInvalidToken)
+		return domain.User{}, domain.UserToken{}, "", domain.NewError(domain.CodeAuthRefreshInvalidToken)
 	}
 
 	// 2. Check if revoked
 	if token.RevokedAt != nil {
-		return domain.User{}, domain.UserToken{}, "", domain.NewError(domain.CodeAuthGoogleRefreshTokenRevoked)
+		return domain.User{}, domain.UserToken{}, "", domain.NewError(domain.CodeAuthRefreshTokenRevoked)
 	}
 
 	// 3. Check if expired
 	if token.ExpiresAt != nil && time.Now().After(*token.ExpiresAt) {
-		return domain.User{}, domain.UserToken{}, "", domain.NewError(domain.CodeAuthGoogleRefreshTokenExpired)
+		return domain.User{}, domain.UserToken{}, "", domain.NewError(domain.CodeAuthRefreshTokenExpired)
 	}
 
 	// 4. Find user
 	user, err := s.userRepo.Find(ctx, token.UserId)
 	if err != nil {
-		return domain.User{}, domain.UserToken{}, "", domain.NewError(domain.CodeAuthGoogleRefreshUserNotFound)
+		return domain.User{}, domain.UserToken{}, "", domain.NewError(domain.CodeAuthRefreshUserNotFound)
 	}
 
 	// 5. Execute atomic token rotation (revoke old + store new)
@@ -130,23 +130,29 @@ func (s *Service) GoogleRefresh(ctx context.Context, refreshToken string) (domai
 	var newAccessToken string
 
 	err = s.uow.Execute(ctx, func(uow domain.UnitOfWork) error {
-		// 5a. Revoke old refresh token (prevents replay attacks)
+		// 5a. Mark the refresh token as used
+		_, err = uow.UserToken().MarkUsed(ctx, token.Id)
+		if err != nil {
+			return domain.NewError(domain.CodeSystemInternal, domain.WithError(err))
+		}
+
+		// 5b. Revoke old refresh token (prevents replay attacks)
 		_, err = uow.UserToken().Revoke(ctx, token.Id)
 		if err != nil {
 			return domain.NewError(domain.CodeSystemInternal, domain.WithError(err))
 		}
 
-		// 5b. Generate new access token
+		// 5c. Generate new access token
 		newAccessToken, err = security.GenerateJWT(user.Id, []byte(s.config.JWTSecret), time.Duration(s.config.JWTAccessExpiryMinutes)*time.Minute)
 		if err != nil {
-			return domain.NewError(domain.CodeAuthGoogleRefreshJWTFailed, domain.WithError(err))
+			return domain.NewError(domain.CodeAuthRefreshJWTFailed, domain.WithError(err))
 		}
 
-		// 5c. Generate new refresh token
+		// 5d. Generate new refresh token
 		newRefreshTokenStr := crypto.MustGenerateRandomToken()
 		expiresAt := time.Now().Add(time.Duration(s.config.JWTRefreshExpiryHours) * time.Hour)
 
-		// 5d. Store new refresh token
+		// 5e. Store new refresh token
 		newRefreshToken = domain.UserToken{
 			Id:        ulid.MustNew(ulid.Now(), nil).String(),
 			UserId:    user.Id,

@@ -79,3 +79,12 @@ func (r *GormUserTokenRepository) RevokeByUserIdAndType(ctx context.Context, use
 		Update("revoked_at", now)
 	return result.RowsAffected, result.Error
 }
+
+// MarkUsed sets the last_used_at timestamp for a token
+func (r *GormUserTokenRepository) MarkUsed(ctx context.Context, id string) (int64, error) {
+	now := time.Now()
+	result := r.db.WithContext(ctx).Model(&model.UserToken{}).
+		Where("id = ?", id).
+		Update("last_used_at", now)
+	return result.RowsAffected, result.Error
+}

@@ -74,7 +74,7 @@ func RegisterRoutes(p RouteParams) {
 			responder.Send(c, domain.CodeSystemSuccess, gin.H{"status": "ok"})
 		})
 		api.POST("/auth/google", gin.HandlerFunc(p.LoginRateLimitMiddleware), p.AuthHandler.GoogleLogin)
-		api.POST("/auth/refresh", gin.HandlerFunc(p.RefreshRateLimitMiddleware), p.AuthHandler.GoogleRefresh)
+		api.POST("/auth/refresh", gin.HandlerFunc(p.RefreshRateLimitMiddleware), p.AuthHandler.Refresh)
 
 		// Secure routes
 		secure := api.Group("/")

@@ -67,9 +67,9 @@ func (h *Handler) GoogleLogin(c *gin.Context) {
 	h.sendAuthResponse(c, domain.CodeAuthGoogleLoginSuccess, user, refreshToken, accessToken)
 }
 
-// GoogleRefresh validates refresh token and issues new token pair
-func (h *Handler) GoogleRefresh(c *gin.Context) {
-	var req GoogleRefreshRequest
+// Refresh validates refresh token and issues new token pair
+func (h *Handler) Refresh(c *gin.Context) {
+	var req RefreshRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.Error(err)
 		responder.SendError(c, err)
@@ -81,14 +81,14 @@ func (h *Handler) GoogleRefresh(c *gin.Context) {
 		return
 	}
 
-	user, refreshToken, accessToken, err := h.service.GoogleRefresh(c.Request.Context(), req.RefreshToken)
+	user, refreshToken, accessToken, err := h.service.Refresh(c.Request.Context(), req.RefreshToken)
 	if err != nil {
 		c.Error(err)
 		responder.SendError(c, err)
 		return
 	}
 
-	h.sendAuthResponse(c, domain.CodeAuthGoogleRefreshSuccess, user, refreshToken, accessToken)
+	h.sendAuthResponse(c, domain.CodeAuthRefreshSuccess, user, refreshToken, accessToken)
 }
 
 // Logout revokes all refresh tokens for the authenticated user

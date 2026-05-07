@@ -26,13 +26,13 @@ const (
 	CodeAuthGoogleLoginUserNotFound = 200242
 	CodeAuthGoogleLoginJWTFailed    = 200250
 
-	// ── Auth Google Refresh (20) ─────────────────────────────────────────────
-	CodeAuthGoogleRefreshSuccess        = 200300
-	CodeAuthGoogleRefreshInvalidToken   = 200340
-	CodeAuthGoogleRefreshTokenExpired   = 200341
-	CodeAuthGoogleRefreshTokenRevoked   = 200342
-	CodeAuthGoogleRefreshUserNotFound   = 200343
-	CodeAuthGoogleRefreshJWTFailed      = 200350
+	// ── Auth Refresh (20) ──────────────────────────────────────────────
+	CodeAuthRefreshSuccess        = 200300
+	CodeAuthRefreshInvalidToken   = 200340
+	CodeAuthRefreshTokenExpired   = 200341
+	CodeAuthRefreshTokenRevoked   = 200342
+	CodeAuthRefreshUserNotFound   = 200343
+	CodeAuthRefreshJWTFailed      = 200350
 
 	// ── Auth Logout (20) ───────────────────────────────────────────────
 	CodeAuthLogoutSuccess = 200400
