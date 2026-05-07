@@ -18,9 +18,21 @@ import (
 	"go.uber.org/zap"
 )
 
-func NewGinRouter() *gin.Engine {
+type RouterParams struct {
+	fx.In
+	Config *config.Config
+}
+
+func NewGinRouter(p RouterParams) *gin.Engine {
 	r := gin.Default()
-	r.Use(cors.Default())
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     p.Config.GinCorsAllowOrigins,
+		AllowMethods:     p.Config.GinCorsAllowMethods,
+		AllowHeaders:     p.Config.GinCorsAllowHeaders,
+		ExposeHeaders:    p.Config.GinCorsExposeHeaders,
+		AllowCredentials: p.Config.GinCorsAllowCredentials,
+		MaxAge:           p.Config.GinCorsMaxAge,
+	}))
 	return r
 }
 
@@ -57,7 +69,7 @@ func RegisterRoutes(p RouteParams) {
 			responder.Send(c, domain.CodeSystemSuccess, gin.H{"status": "ok"})
 		})
 		api.POST("/auth/google", p.AuthHandler.GoogleLogin)
-		api.POST("/auth/google/refresh", p.AuthHandler.GoogleRefresh)
+		api.POST("/auth/refresh", p.AuthHandler.GoogleRefresh)
 
 		// Secure routes
 		secure := api.Group("/")
@@ -91,8 +103,8 @@ func RegisterRoutes(p RouteParams) {
 	p.Lifecycle.Append(fx.Hook{
 		OnStart: func(context.Context) error {
 			go func() {
-				p.Logger.Info("credchain golang backend starting", zap.String("port", p.Config.AppPort))
-				if err := p.Router.Run(":" + p.Config.AppPort); err != nil {
+				p.Logger.Info("credchain golang backend starting", zap.String("port", p.Config.GinPort))
+				if err := p.Router.Run(":" + p.Config.GinPort); err != nil {
 					p.Logger.Error("server failed to start", zap.Error(err))
 				}
 			}()

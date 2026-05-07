@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/joho/godotenv"
 )
 
 type Config struct {
-	AppPort                  string
+	GinPort                  string
 	InitialSuperAdminEmail   string
 	InitialSuperAdminPrivKey string
 	WalletEncryptionKey      string
@@ -31,6 +33,12 @@ type Config struct {
 	MongoInitPassword        string
 	MongoURI                 string
 	GeminiAPIKey             string
+	GinCorsAllowOrigins      []string
+	GinCorsAllowMethods      []string
+	GinCorsAllowHeaders      []string
+	GinCorsExposeHeaders     []string
+	GinCorsAllowCredentials  bool
+	GinCorsMaxAge            time.Duration
 }
 
 func getIntEnv(key string, defaultVal int) int {
@@ -45,6 +53,22 @@ func getIntEnv(key string, defaultVal int) int {
 	return intVal
 }
 
+func getStringSliceEnv(key string, defaultVal string) []string {
+	val := getEnv(key, defaultVal)
+	if val == "" {
+		return []string{}
+	}
+	return strings.Split(val, ",")
+}
+
+func getBoolEnv(key string, defaultVal bool) bool {
+	val := os.Getenv(key)
+	if val == "" {
+		return defaultVal
+	}
+	return val == "true"
+}
+
 func NewConfig(envPath string) (*Config, error) {
 	err := godotenv.Load(envPath)
 	if err != nil {
@@ -52,7 +76,7 @@ func NewConfig(envPath string) (*Config, error) {
 	}
 
 	cfg := &Config{
-		AppPort:                  getEnv("APP_PORT", "8080"),
+		GinPort:                  getEnv("GIN_PORT", "8080"),
 		InitialSuperAdminEmail:   getEnv("INIT_SUPER_ADMIN_EMAIL", ""),
 		InitialSuperAdminPrivKey: getEnv("INIT_SUPER_ADMIN_PRIVATE_KEY", ""),
 		WalletEncryptionKey:      getEnv("WALLET_ENCRYPTION_KEY", ""),
@@ -74,6 +98,12 @@ func NewConfig(envPath string) (*Config, error) {
 		MongoInitPassword:        getEnv("MONGO_INITDB_ROOT_PASSWORD", ""),
 		MongoURI:                 getEnv("MONGO_URI", ""),
 		GeminiAPIKey:             getEnv("GEMINI_API_KEY", ""),
+		GinCorsAllowOrigins:      getStringSliceEnv("GIN_CORS_ALLOW_ORIGINS", "*"),
+		GinCorsAllowMethods:      getStringSliceEnv("GIN_CORS_ALLOW_METHODS", "GET,POST,PUT,PATCH,DELETE,HEAD,OPTIONS"),
+		GinCorsAllowHeaders:      getStringSliceEnv("GIN_CORS_ALLOW_HEADERS", "Origin,Content-Type,Accept,Authorization,X-Requested-With"),
+		GinCorsExposeHeaders:     getStringSliceEnv("GIN_CORS_EXPOSE_HEADERS", "Content-Length"),
+		GinCorsAllowCredentials:  getBoolEnv("GIN_CORS_ALLOW_CREDENTIALS", true),
+		GinCorsMaxAge:            time.Duration(getIntEnv("GIN_CORS_MAX_AGE", 43200)) * time.Second,
 	}
 
 	if cfg.JWTSecret == "" {

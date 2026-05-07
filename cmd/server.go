@@ -63,9 +63,7 @@ var serverCmd = &cobra.Command{
 						db,
 						user.NewGormUserRepository,
 						credential.NewGormCredentialRepository,
-						func(tx *gorm.DB) domain.UserTokenRepository {
-							return user.NewGormUserTokenRepository(user.UserTokenRepoParams{DB: tx})
-						},
+						user.NewGormUserTokenRepository,
 					)
 				},
 				user.NewUserPolicy,
