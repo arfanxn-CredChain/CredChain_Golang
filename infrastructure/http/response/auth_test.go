@@ -26,10 +26,12 @@ func TestNewAuth(t *testing.T) {
 		UpdatedAt:     nil,
 	}
 
-	got := NewAuth(user, "access_tok_123", "refresh_tok_456", 900)
+	got := NewAuth(user, "access_tok_123", "refresh_tok_456", 900, 86400)
 
 	assert.Equal(t, "access_tok_123", got.AccessToken)
 	assert.Equal(t, "refresh_tok_456", got.RefreshToken)
 	assert.Equal(t, 900, got.AccessTokenExpiresIn)
+	assert.Equal(t, 86400, got.RefreshTokenExpiresIn)
+	assert.Equal(t, "Bearer", got.TokenType)
 	assert.Equal(t, user, got.User)
 }
