@@ -1,0 +1,14 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  cmd = "go run main.go serve --env .env"
+  bin = "tmp/main"
+  full_bin = ""
+  include_ext = ["go"]
+  exclude_dir = ["vendor", "docker", "tmp", "bin"]
+  exclude_regex = ["_test\\.go"]
+  delay = 1000
+
+[log]
+  time = true

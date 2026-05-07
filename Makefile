@@ -6,7 +6,7 @@ ifneq (,$(wildcard $(ENV_FILE)))
     export
 endif
 
-.PHONY: help check-env check-env-docker clean build serve migrate-up migrate-down init-super-admin \
+.PHONY: help check-env check-env-docker clean build serve dev migrate-up migrate-down init-super-admin \
 	docker-migrate-up docker-migrate-down docker-up-build docker-up \
 	docker-down docker-restart docker-logs docker-ps docker-fresh \
 	docker-clean-data docker-check-backend-healthy
@@ -20,6 +20,7 @@ help:
 	@echo "Local Development:"
 	@echo "  make build              - Build the application"
 	@echo "  make serve             - Start the application server"
+	@echo "  make dev               - Start the application server with hot reload (requires air)"
 	@echo "  make migrate-up        - Run database migrations up (local)"
 	@echo "  make migrate-down      - Rollback database migrations (local)"
 	@echo "  make init-super-admin  - Create super admin user (local)"
@@ -59,6 +60,13 @@ build:
 
 serve:
 	go run main.go serve --env $(ENV_FILE)
+
+dev: check-env
+	@if ! command -v air &> /dev/null; then \
+		echo "error: air is not installed. Run: go install github.com/cosmtrek/air@latest"; \
+		exit 1; \
+	fi
+	air -c .air.toml
 
 migrate-up:
 	go run main.go migrate up --env $(ENV_FILE)
