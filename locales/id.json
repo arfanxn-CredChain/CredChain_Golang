@@ -47,6 +47,7 @@
   "success_credential_issued": "Kredensial berhasil diterbitkan.",
   "success_credential_revoked": "Kredensial berhasil dicabut.",
   "success_credential_verified": "Kredensial berhasil diverifikasi.",
+  "success_logout": "Berhasil keluar.",
 
   "error_internal": "Terjadi kesalahan server.",
   "error_invalid_payload": "Data yang diberikan tidak valid.",

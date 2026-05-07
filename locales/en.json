@@ -47,6 +47,7 @@
   "success_credential_issued": "Credential issued successfully.",
   "success_credential_revoked": "Credential revoked successfully.",
   "success_credential_verified": "Credential verified successfully.",
+  "success_logout": "Logged out successfully.",
 
   "error_internal": "An internal server error occurred.",
   "error_invalid_payload": "The given data was invalid.",

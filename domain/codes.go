@@ -34,6 +34,9 @@ const (
 	CodeAuthGoogleRefreshUserNotFound   = 200343
 	CodeAuthGoogleRefreshJWTFailed      = 200350
 
+	// ── Auth Logout (20) ───────────────────────────────────────────────
+	CodeAuthLogoutSuccess = 200400
+
 	// ── User (30) ────────────────────────────────────────────────────────────
 	CodeUserFetchSuccess                     = 300100
 	CodeUserFetchNotFound                    = 300140

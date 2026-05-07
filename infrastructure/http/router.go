@@ -39,18 +39,22 @@ func NewGinRouter(p RouterParams) *gin.Engine {
 type RouteParams struct {
 	fx.In
 
-	Lifecycle                fx.Lifecycle
-	Router                   *gin.Engine
-	Config                   *config.Config
-	Bundle                   *i18n.Bundle
-	AuthHandler              *auth.Handler
-	UserHandler              *user.Handler
-	CredHandler              *credential.Handler
-	Logger                   *zap.Logger
-	AuthMiddleware           gin.HandlerFunc
-	AdminRoleMiddleware      middleware.AdminRoleMiddleware
-	IssuerRoleMiddleware     middleware.IssuerRoleMiddleware
-	SuperAdminRoleMiddleware middleware.SuperAdminRoleMiddleware
+	Lifecycle                   fx.Lifecycle
+	Router                      *gin.Engine
+	Config                      *config.Config
+	Bundle                      *i18n.Bundle
+	AuthHandler                 *auth.Handler
+	UserHandler                 *user.Handler
+	CredHandler                 *credential.Handler
+	Logger                      *zap.Logger
+	AuthMiddleware              gin.HandlerFunc
+	AdminRoleMiddleware         middleware.AdminRoleMiddleware
+	IssuerRoleMiddleware        middleware.IssuerRoleMiddleware
+	SuperAdminRoleMiddleware    middleware.SuperAdminRoleMiddleware
+	LoginRateLimitMiddleware    middleware.LoginRateLimitMiddleware
+	RefreshRateLimitMiddleware  middleware.RefreshRateLimitMiddleware
+	LogoutRateLimitMiddleware   middleware.LogoutRateLimitMiddleware
+	ApiRateLimitMiddleware      middleware.ApiRateLimitMiddleware
 }
 
 // RegisterRoutes binds controllers and hooks the Gin start/stop lifecycle
@@ -63,18 +67,20 @@ func RegisterRoutes(p RouteParams) {
 
 	// All API routes namespaced under /api
 	api := p.Router.Group("/api")
+	api.Use(gin.HandlerFunc(p.ApiRateLimitMiddleware))
 	{
 		// Open routes
 		api.GET("/health", func(c *gin.Context) {
 			responder.Send(c, domain.CodeSystemSuccess, gin.H{"status": "ok"})
 		})
-		api.POST("/auth/google", p.AuthHandler.GoogleLogin)
-		api.POST("/auth/refresh", p.AuthHandler.GoogleRefresh)
+		api.POST("/auth/google", gin.HandlerFunc(p.LoginRateLimitMiddleware), p.AuthHandler.GoogleLogin)
+		api.POST("/auth/refresh", gin.HandlerFunc(p.RefreshRateLimitMiddleware), p.AuthHandler.GoogleRefresh)
 
 		// Secure routes
 		secure := api.Group("/")
 		secure.Use(p.AuthMiddleware)
 		{
+			secure.POST("/auth/logout", gin.HandlerFunc(p.LogoutRateLimitMiddleware), p.AuthHandler.Logout)
 			// Users API
 			users := secure.Group("/users")
 			{

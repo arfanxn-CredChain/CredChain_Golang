@@ -169,3 +169,9 @@ func (s *Service) GoogleRefresh(ctx context.Context, refreshToken string) (domai
 
 	return *user, newRefreshToken, newAccessToken, nil
 }
+
+// Logout revokes all refresh tokens for the given user.
+func (s *Service) Logout(ctx context.Context, userId string) error {
+	_, err := s.userTokenRepo.RevokeByUserIdAndType(ctx, userId, domain.UserTokenTypeRefresh)
+	return err
+}

@@ -34,6 +34,9 @@ var CodeToMessageKey = map[int]string{
 	domain.CodeAuthGoogleRefreshUserNotFound:  "error_user_not_found",
 	domain.CodeAuthGoogleRefreshJWTFailed:     "error_token_issue_failed",
 
+	// Auth Logout codes
+	domain.CodeAuthLogoutSuccess:              "success_logout",
+
 	// User codes
 	domain.CodeUserFetchSuccess:                    "success_user_fetched",
 	domain.CodeUserFetchNotFound:                   "error_user_not_found",
@@ -95,6 +98,8 @@ var HttpCodes = map[int]int{
 	domain.CodeAuthGoogleRefreshTokenRevoked:  http.StatusUnauthorized,
 	domain.CodeAuthGoogleRefreshUserNotFound:  http.StatusNotFound,
 	domain.CodeAuthGoogleRefreshJWTFailed:     http.StatusInternalServerError,
+
+	domain.CodeAuthLogoutSuccess:              http.StatusOK,
 
 	domain.CodeUserFetchSuccess:      http.StatusOK,
 	domain.CodeUserFetchNotFound:     http.StatusNotFound,
