@@ -57,7 +57,11 @@ func (h *Handler) Paginate(c *gin.Context) {
 		return
 	}
 
-	responder.SendPagination(c, domain.CodeUserFetchSuccess, users, total)
+	responseUsers := make([]response.User, len(users))
+	for i, u := range users {
+		responseUsers[i] = response.FromDomainUser(u)
+	}
+	responder.SendPagination(c, domain.CodeUserFetchSuccess, responseUsers, total)
 }
 
 func (h *Handler) Find(c *gin.Context) {
@@ -68,7 +72,7 @@ func (h *Handler) Find(c *gin.Context) {
 		responder.SendError(c, err)
 		return
 	}
-	responder.Send(c, domain.CodeUserFetchSuccess, user)
+	responder.Send(c, domain.CodeUserFetchSuccess, response.FromDomainUser(*user))
 }
 
 func (h *Handler) GetSelfCredentials(c *gin.Context) {
@@ -93,7 +97,7 @@ func (h *Handler) FindByAdmin(c *gin.Context) {
 		responder.SendError(c, err)
 		return
 	}
-	responder.Send(c, domain.CodeUserFetchSuccess, user)
+	responder.Send(c, domain.CodeUserFetchSuccess, response.FromDomainUser(*user))
 }
 
 func (h *Handler) Store(c *gin.Context) {
@@ -139,7 +143,7 @@ func (h *Handler) UpdateSelfProfile(c *gin.Context) {
 		responder.SendError(c, err)
 		return
 	}
-	responder.Send(c, domain.CodeUserProfileSuccess, user)
+	responder.Send(c, domain.CodeUserProfileSuccess, response.FromDomainUser(*user))
 }
 
 func (h *Handler) UpdateSelfEmail(c *gin.Context) {
@@ -201,7 +205,11 @@ func (h *Handler) BatchUpdateRole(c *gin.Context) {
 		responder.SendError(c, err)
 		return
 	}
-	responder.Send(c, domain.CodeUserRoleSuccess, updatedUsers)
+	responseUsers := make([]response.User, len(updatedUsers))
+	for i, u := range updatedUsers {
+		responseUsers[i] = response.FromDomainUser(u)
+	}
+	responder.Send(c, domain.CodeUserRoleSuccess, responseUsers)
 }
 
 func (h *Handler) BatchDeleteUsers(c *gin.Context) {
