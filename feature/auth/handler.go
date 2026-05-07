@@ -48,12 +48,7 @@ func (h *Handler) GoogleLogin(c *gin.Context) {
 		return
 	}
 
-	responder.Send(c, domain.CodeAuthGoogleLoginSuccess, response.GoogleLogin{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken.Token,
-		ExpiresIn:    h.config.JWTAccessExpiryMinutes * 60,
-		Role:         string(user.Role),
-	})
+	responder.Send(c, domain.CodeAuthGoogleLoginSuccess, response.NewAuth(response.FromDomainUser(user), accessToken, refreshToken.Token, h.config.JWTAccessExpiryMinutes*60))
 }
 
 // GoogleRefresh validates refresh token and issues new token pair
@@ -70,16 +65,12 @@ func (h *Handler) GoogleRefresh(c *gin.Context) {
 		return
 	}
 
-	_, refreshToken, accessToken, err := h.service.GoogleRefresh(c.Request.Context(), req.RefreshToken)
+	user, refreshToken, accessToken, err := h.service.GoogleRefresh(c.Request.Context(), req.RefreshToken)
 	if err != nil {
 		c.Error(err)
 		responder.SendError(c, err)
 		return
 	}
 
-	responder.Send(c, domain.CodeAuthGoogleRefreshSuccess, response.GoogleRefresh{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken.Token,
-		ExpiresIn:    h.config.JWTAccessExpiryMinutes * 60,
-	})
+	responder.Send(c, domain.CodeAuthGoogleRefreshSuccess, response.NewAuth(response.FromDomainUser(user), accessToken, refreshToken.Token, h.config.JWTAccessExpiryMinutes*60))
 }
