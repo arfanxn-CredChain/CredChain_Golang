@@ -7,7 +7,6 @@ import (
 	"CredChain_Golang/domain"
 	"CredChain_Golang/infrastructure/gorm/model"
 
-	"go.uber.org/fx"
 	"gorm.io/gorm"
 )
 
@@ -16,14 +15,9 @@ type GormUserTokenRepository struct {
 	db *gorm.DB
 }
 
-type UserTokenRepoParams struct {
-	fx.In
-	DB *gorm.DB
-}
-
 // NewGormUserTokenRepository creates a new GORM-based user token repository
-func NewGormUserTokenRepository(p UserTokenRepoParams) *GormUserTokenRepository {
-	return &GormUserTokenRepository{db: p.DB}
+func NewGormUserTokenRepository(db *gorm.DB) domain.UserTokenRepository {
+	return &GormUserTokenRepository{db: db}
 }
 
 // Store creates new user tokens
@@ -77,11 +71,11 @@ func (r *GormUserTokenRepository) Revoke(ctx context.Context, tokenIDs ...string
 	return result.RowsAffected, result.Error
 }
 
-// RevokeByUserId revokes all tokens for a user, returns number of revoked tokens
-func (r *GormUserTokenRepository) RevokeByUserId(ctx context.Context, userId string) (int64, error) {
+// RevokeByUserIdAndType revokes all tokens of a specific type for a user
+func (r *GormUserTokenRepository) RevokeByUserIdAndType(ctx context.Context, userId string, tokenType domain.UserTokenType) (int64, error) {
 	now := time.Now()
 	result := r.db.WithContext(ctx).Model(&model.UserToken{}).
-		Where("user_id = ?", userId).
+		Where("user_id = ? AND type = ?", userId, tokenType).
 		Update("revoked_at", now)
 	return result.RowsAffected, result.Error
 }

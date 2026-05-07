@@ -147,6 +147,6 @@ type UserTokenRepository interface {
 	// Revoke marks tokens as revoked, returns number of revoked tokens
 	Revoke(ctx context.Context, tokenIDs ...string) (int64, error)
 
-	// RevokeByUserId revokes all tokens for a user, returns number of revoked tokens
-	RevokeByUserId(ctx context.Context, userId string) (int64, error)
+	// RevokeByUserIdAndType revokes all tokens of a specific type for a user, returns rows affected
+	RevokeByUserIdAndType(ctx context.Context, userId string, tokenType UserTokenType) (int64, error)
 }

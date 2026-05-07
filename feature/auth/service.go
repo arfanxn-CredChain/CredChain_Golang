@@ -16,32 +16,40 @@ import (
 
 // Service handles authentication business logic
 type Service struct {
-	uow         domain.UnitOfWork
-	oauthClient *oauth.GoogleOAuthClient
-	config      *config.Config
+	userRepo      domain.UserRepository
+	userTokenRepo domain.UserTokenRepository
+	uow           domain.UnitOfWork
+	oauthClient   *oauth.GoogleOAuthClient
+	config        *config.Config
 }
 
 type AuthServiceParams struct {
 	fx.In
-	UoW         domain.UnitOfWork
-	OAuthClient *oauth.GoogleOAuthClient
-	Config      *config.Config
+	UserRepo      domain.UserRepository
+	UserTokenRepo domain.UserTokenRepository
+	UoW           domain.UnitOfWork
+	OAuthClient   *oauth.GoogleOAuthClient
+	Config        *config.Config
 }
 
 // NewAuthService creates a new auth service
 func NewAuthService(p AuthServiceParams) *Service {
 	return &Service{
-		uow:         p.UoW,
-		oauthClient: p.OAuthClient,
-		config:      p.Config,
+		userRepo:      p.UserRepo,
+		userTokenRepo: p.UserTokenRepo,
+		uow:           p.UoW,
+		oauthClient:   p.OAuthClient,
+		config:        p.Config,
 	}
 }
 
 // GoogleLogin validates a Google ID token and issues a new access/refresh token pair.
 // Returns the authenticated user, the stored refresh token entity, the JWT access token string, and any error.
 func (s *Service) GoogleLogin(ctx context.Context, idToken string) (domain.User, domain.UserToken, string, error) {
-	// 1. Validate Google ID token
-	payload, err := s.oauthClient.Validate(ctx, idToken, "")
+	// 1. Validate Google ID token (with timeout to prevent hanging)
+	validateCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	payload, err := s.oauthClient.Validate(validateCtx, idToken, "")
 	if err != nil {
 		return domain.User{}, domain.UserToken{}, "", domain.NewError(domain.CodeAuthGoogleLoginInvalidToken, domain.WithError(err))
 	}
@@ -53,11 +61,17 @@ func (s *Service) GoogleLogin(ctx context.Context, idToken string) (domain.User,
 	}
 
 	// 3. Find user by email (invite-only system)
-	users, err := s.uow.User().FindByEmails(ctx, email)
+	users, err := s.userRepo.FindByEmails(ctx, email)
 	if err != nil || len(users) == 0 {
 		return domain.User{}, domain.UserToken{}, "", domain.NewError(domain.CodeAuthGoogleLoginUserNotFound)
 	}
 	user := users[0]
+
+	// 3b. Revoke all existing refresh tokens (prevents token accumulation)
+	_, err = s.userTokenRepo.RevokeByUserIdAndType(ctx, user.Id, domain.UserTokenTypeRefresh)
+	if err != nil {
+		return domain.User{}, domain.UserToken{}, "", domain.NewError(domain.CodeSystemInternal, domain.WithError(err))
+	}
 
 	// 4. Generate access token
 	accessToken, err := security.GenerateJWT(user.Id, []byte(s.config.JWTSecret), time.Duration(s.config.JWTAccessExpiryMinutes)*time.Minute)
@@ -77,7 +91,7 @@ func (s *Service) GoogleLogin(ctx context.Context, idToken string) (domain.User,
 		Token:     refreshTokenStr,
 		ExpiresAt: &expiresAt,
 	}
-	storedTokens, err := s.uow.UserToken().Store(ctx, refreshToken)
+	storedTokens, err := s.userTokenRepo.Store(ctx, refreshToken)
 	if err != nil {
 		return domain.User{}, domain.UserToken{}, "", domain.NewError(domain.CodeSystemInternal, domain.WithError(err))
 	}
@@ -90,7 +104,7 @@ func (s *Service) GoogleLogin(ctx context.Context, idToken string) (domain.User,
 // Returns the authenticated user, the new stored refresh token entity, the new JWT access token string, and any error.
 func (s *Service) GoogleRefresh(ctx context.Context, refreshToken string) (domain.User, domain.UserToken, string, error) {
 	// 1. Find refresh token in DB
-	token, err := s.uow.UserToken().FindByToken(ctx, refreshToken)
+	token, err := s.userTokenRepo.FindByToken(ctx, refreshToken)
 	if err != nil {
 		return domain.User{}, domain.UserToken{}, "", domain.NewError(domain.CodeAuthGoogleRefreshInvalidToken)
 	}
@@ -106,7 +120,7 @@ func (s *Service) GoogleRefresh(ctx context.Context, refreshToken string) (domai
 	}
 
 	// 4. Find user
-	user, err := s.uow.User().Find(ctx, token.UserId)
+	user, err := s.userRepo.Find(ctx, token.UserId)
 	if err != nil {
 		return domain.User{}, domain.UserToken{}, "", domain.NewError(domain.CodeAuthGoogleRefreshUserNotFound)
 	}
