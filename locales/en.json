@@ -75,5 +75,6 @@
   "error_credential_not_found": "Credential not found.",
   "error_credential_issue_failed": "Failed to issue credential.",
   "error_credential_revoke_failed": "Failed to revoke credential.",
-  "error_credential_verify_failed": "Failed to verify credential."
+  "error_credential_verify_failed": "Failed to verify credential.",
+  "error_rate_limit_exceeded": "Too many requests. Please try again later."
 }

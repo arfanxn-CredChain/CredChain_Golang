@@ -75,5 +75,6 @@
   "error_credential_not_found": "Kredensial tidak ditemukan.",
   "error_credential_issue_failed": "Gagal menerbitkan kredensial.",
   "error_credential_revoke_failed": "Gagal mencabut kredensial.",
-  "error_credential_verify_failed": "Gagal memverifikasi kredensial."
+  "error_credential_verify_failed": "Gagal memverifikasi kredensial.",
+  "error_rate_limit_exceeded": "Terlalu banyak permintaan. Silakan coba lagi nanti."
 }

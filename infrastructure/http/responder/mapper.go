@@ -18,6 +18,7 @@ var CodeToMessageKey = map[int]string{
 	domain.CodeAuthInvalidToken:               "error_invalid_token",
 	domain.CodeAuthForbidden:                  "error_unauthorized_email",
 	domain.CodeAuthJWTFailed:                  "error_token_issue_failed",
+	domain.CodeAuthRateLimitExceeded:          "error_rate_limit_exceeded",
 
 	// Auth Google Login codes
 	domain.CodeAuthGoogleLoginSuccess:         "success_login",
@@ -81,6 +82,7 @@ var HttpCodes = map[int]int{
 	domain.CodeAuthInvalidToken:               http.StatusUnauthorized,
 	domain.CodeAuthForbidden:                  http.StatusForbidden,
 	domain.CodeAuthJWTFailed:                  http.StatusInternalServerError,
+	domain.CodeAuthRateLimitExceeded:          http.StatusTooManyRequests,
 
 	domain.CodeAuthGoogleLoginSuccess:         http.StatusOK,
 	domain.CodeAuthGoogleLoginInvalidToken:    http.StatusUnauthorized,

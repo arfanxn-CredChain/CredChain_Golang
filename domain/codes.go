@@ -17,7 +17,8 @@ const (
 	CodeAuthUnauthorized      = 200140
 	CodeAuthInvalidToken      = 200141
 	CodeAuthForbidden         = 200142
-	CodeAuthJWTFailed         = 200150
+	CodeAuthRateLimitExceeded = 200143
+	CodeAuthJWTFailed              = 200150
 
 	// ── Auth Google Login (20) ───────────────────────────────────────────────
 	CodeAuthGoogleLoginSuccess      = 200200
