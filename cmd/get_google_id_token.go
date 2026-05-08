@@ -293,10 +293,7 @@ func getGoogleIdToken(cfg *config.Config, logger *zap.Logger) error {
 			return fmt.Errorf("token exchange failed: %w", err)
 		}
 
-		// Print ID token to stdout (this is what the user needs)
-		fmt.Println("\n=== Google ID Token ===")
-		fmt.Println(tokenResp.IDToken)
-		fmt.Println("======================")
+		logger.Info("Google ID token obtained", zap.String("token", tokenResp.IDToken))
 
 		logger.Info("ID token obtained successfully")
 
