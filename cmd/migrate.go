@@ -1,8 +1,11 @@
 package cmd
 
 import (
+	"fmt"
+
 	"CredChain_Golang/config"
 	"CredChain_Golang/infrastructure/database"
+	applogger "CredChain_Golang/infrastructure/logger"
 
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -26,10 +29,13 @@ var migrateUpCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg := cmd.Context().Value(ConfigContextKey).(*config.Config)
 
-		logger, _ := zap.NewProduction()
+		logger, err := applogger.NewZapLogger()
+		if err != nil {
+			return fmt.Errorf("failed to create logger: %w", err)
+		}
 		defer logger.Sync()
 
-		err := database.MigrateUp(cfg, logger)
+		err = database.MigrateUp(cfg, logger)
 		if err != nil {
 			logger.Error("migration failed", zap.Error(err))
 			return err
@@ -46,10 +52,13 @@ var migrateDownCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg := cmd.Context().Value(ConfigContextKey).(*config.Config)
 
-		logger, _ := zap.NewProduction()
+		logger, err := applogger.NewZapLogger()
+		if err != nil {
+			return fmt.Errorf("failed to create logger: %w", err)
+		}
 		defer logger.Sync()
 
-		err := database.MigrateDown(cfg, logger)
+		err = database.MigrateDown(cfg, logger)
 		if err != nil {
 			logger.Error("rollback failed", zap.Error(err))
 			return err
