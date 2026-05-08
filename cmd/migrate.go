@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 
-	"CredChain_Golang/config"
 	"CredChain_Golang/infrastructure/database"
 	applogger "CredChain_Golang/infrastructure/logger"
 
@@ -27,7 +26,7 @@ var migrateUpCmd = &cobra.Command{
 	Use:   "up",
 	Short: "Executes the upward migrations",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cfg := cmd.Context().Value(ConfigContextKey).(*config.Config)
+		cfg := ConfigFromCmd(cmd)
 
 		logger, err := applogger.NewZapLogger()
 		if err != nil {
@@ -50,7 +49,7 @@ var migrateDownCmd = &cobra.Command{
 	Use:   "down",
 	Short: "Reverts the schema downwards",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cfg := cmd.Context().Value(ConfigContextKey).(*config.Config)
+		cfg := ConfigFromCmd(cmd)
 
 		logger, err := applogger.NewZapLogger()
 		if err != nil {

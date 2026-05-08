@@ -134,7 +134,7 @@ Workflow:
   5. Server receives the code and exchanges it for tokens
   6. ID token is printed to stdout`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cfg := cmd.Context().Value(ConfigContextKey).(*config.Config)
+		cfg := ConfigFromCmd(cmd)
 
 		// Validate required configuration
 		if cfg.GoogleClientID == "" || cfg.GoogleClientSecret == "" {

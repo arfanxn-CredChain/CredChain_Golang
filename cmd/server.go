@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 
-	"CredChain_Golang/config"
 	"CredChain_Golang/domain"
 	"CredChain_Golang/feature/auth"
 	"CredChain_Golang/feature/credential"
@@ -34,9 +33,7 @@ var serverCmd = &cobra.Command{
 		fx.New(
 			applogger.Module,
 			fx.Provide(
-				func() *config.Config {
-					return cmd.Context().Value(ConfigContextKey).(*config.Config)
-				},
+				ConfigProviderFromCmd(cmd),
 				func(lc fx.Lifecycle) context.Context {
 					ctx, cancel := context.WithCancel(context.Background())
 					lc.Append(fx.Hook{

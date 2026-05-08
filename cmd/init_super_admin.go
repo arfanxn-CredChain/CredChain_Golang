@@ -118,9 +118,7 @@ var initSuperAdminCmd = &cobra.Command{
 		fx.New(
 			applogger.Module,
 			fx.Provide(
-				func() *config.Config {
-					return cmd.Context().Value(ConfigContextKey).(*config.Config)
-				},
+				ConfigProviderFromCmd(cmd),
 				gormInfra.NewGorm,
 				user.NewGormUserRepository,
 			),
