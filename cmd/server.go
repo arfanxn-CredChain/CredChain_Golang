@@ -13,7 +13,7 @@ import (
 	apphttp "CredChain_Golang/infrastructure/http"
 	"CredChain_Golang/infrastructure/http/middleware"
 	"CredChain_Golang/infrastructure/i18n"
-	applogger "CredChain_Golang/infrastructure/logger"
+	infraLogger "CredChain_Golang/infrastructure/logger"
 	"CredChain_Golang/infrastructure/oauth"
 	"CredChain_Golang/infrastructure/storage"
 
@@ -31,7 +31,7 @@ var serverCmd = &cobra.Command{
 	Short: "Starts the CredChain Gin Web Server",
 	Run: func(cmd *cobra.Command, args []string) {
 		fx.New(
-			applogger.Module,
+			infraLogger.Module,
 			fx.Provide(
 				NewConfigFromCmd(cmd),
 				func(lc fx.Lifecycle) context.Context {

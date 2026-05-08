@@ -16,9 +16,10 @@ import (
 	"time"
 
 	"CredChain_Golang/config"
-	applogger "CredChain_Golang/infrastructure/logger"
+	infraLogger "CredChain_Golang/infrastructure/logger"
 
 	"github.com/spf13/cobra"
+	"go.uber.org/fx"
 	"go.uber.org/zap"
 )
 
@@ -133,22 +134,12 @@ Workflow:
   4. Google redirects to configured callback URL with authorization code
   5. Server receives the code and exchanges it for tokens
   6. ID token is printed to stdout`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		cfg := ConfigFromCmd(cmd)
-
-		// Validate required configuration
-		if cfg.GoogleClientID == "" || cfg.GoogleClientSecret == "" {
-			return fmt.Errorf("GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set in .env")
-		}
-
-		// Create logger with caller info and error stack traces
-		logger, err := applogger.NewZapLogger()
-		if err != nil {
-			return fmt.Errorf("failed to create logger: %w", err)
-		}
-		defer logger.Sync()
-
-		return getGoogleIdToken(cfg, logger)
+	Run: func(cmd *cobra.Command, args []string) {
+		fx.New(
+			infraLogger.Module,
+			fx.Provide(NewConfigFromCmd(cmd)),
+			fx.Invoke(getGoogleIdToken),
+		).Run()
 	},
 }
 

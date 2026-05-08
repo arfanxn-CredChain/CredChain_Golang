@@ -11,7 +11,7 @@ import (
 	cryptoInfra "CredChain_Golang/infrastructure/crypto"
 	gormInfra "CredChain_Golang/infrastructure/gorm"
 	"CredChain_Golang/feature/user"
-	applogger "CredChain_Golang/infrastructure/logger"
+	infraLogger "CredChain_Golang/infrastructure/logger"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/spf13/cobra"
@@ -116,7 +116,7 @@ var initSuperAdminCmd = &cobra.Command{
 	Long:  "Creates the inaugural Super Admin securely in Postgres, parsing the Ethereum Wallet automatically from the given initial Private Key.",
 	Run: func(cmd *cobra.Command, args []string) {
 		fx.New(
-			applogger.Module,
+			infraLogger.Module,
 			fx.Provide(
 				NewConfigFromCmd(cmd),
 				gormInfra.NewGorm,
