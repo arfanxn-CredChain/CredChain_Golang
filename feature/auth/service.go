@@ -80,7 +80,7 @@ func (s *Service) GoogleLogin(ctx context.Context, idToken string) (domain.User,
 	}
 
 	// 5. Generate refresh token
-	refreshTokenStr := crypto.MustGenerateRandomToken()
+	refreshTokenStr := crypto.MustGenerateRandomHex32()
 	expiresAt := time.Now().Add(time.Duration(s.config.JWTRefreshExpiryHours) * time.Hour)
 
 	// 6. Store refresh token in DB
@@ -146,7 +146,7 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (domain.User
 		}
 
 		// 5d. Generate new refresh token
-		newRefreshTokenStr := crypto.MustGenerateRandomToken()
+		newRefreshTokenStr := crypto.MustGenerateRandomHex32()
 		expiresAt := time.Now().Add(time.Duration(s.config.JWTRefreshExpiryHours) * time.Hour)
 
 		// 5e. Store new refresh token
