@@ -55,7 +55,7 @@ func NewUserService(p UserServiceParams) UserService {
 	return &userService{
 		userRepo:            p.UserRepo,
 		uow:                 p.UoW,
-		walletEncryptionKey: p.Config.WalletEncryptionKey,
+		walletEncryptionKey: *p.Config.WalletEncryptionKey,
 		chainClient:         p.ChainClient,
 		logger:              p.Logger,
 		policy:              p.Policy,

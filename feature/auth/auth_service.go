@@ -71,13 +71,13 @@ func (s *authService) GoogleLogin(ctx context.Context, idToken string) (domain.U
 		return domain.User{}, domain.UserToken{}, "", domain.NewError(domain.CodeSystemInternal, domain.WithError(err))
 	}
 
-	accessToken, err := security.GenerateJWT(user.Id, []byte(s.config.JWTSecret), time.Duration(s.config.JWTAccessExpiryMinutes)*time.Minute)
+	accessToken, err := security.GenerateJWT(user.Id, []byte(*s.config.JWTSecret), time.Duration(*s.config.JWTAccessExpiryMinutes)*time.Minute)
 	if err != nil {
 		return domain.User{}, domain.UserToken{}, "", domain.NewError(domain.CodeAuthGoogleLoginJWTFailed, domain.WithError(err))
 	}
 
 	refreshTokenStr := crypto.MustGenerateRandomHex32()
-	expiresAt := time.Now().Add(time.Duration(s.config.JWTRefreshExpiryHours) * time.Hour)
+	expiresAt := time.Now().Add(time.Duration(*s.config.JWTRefreshExpiryHours) * time.Hour)
 
 	refreshToken := domain.UserToken{
 		Id:        ulid.MustNew(ulid.Now(), nil).String(),
@@ -125,13 +125,13 @@ func (s *authService) Refresh(ctx context.Context, refreshToken string) (domain.
 			return domain.NewError(domain.CodeSystemInternal, domain.WithError(err))
 		}
 
-		newAccessToken, err = security.GenerateJWT(user.Id, []byte(s.config.JWTSecret), time.Duration(s.config.JWTAccessExpiryMinutes)*time.Minute)
+		newAccessToken, err = security.GenerateJWT(user.Id, []byte(*s.config.JWTSecret), time.Duration(*s.config.JWTAccessExpiryMinutes)*time.Minute)
 		if err != nil {
 			return domain.NewError(domain.CodeAuthRefreshJWTFailed, domain.WithError(err))
 		}
 
 		newRefreshTokenStr := crypto.MustGenerateRandomHex32()
-		expiresAt := time.Now().Add(time.Duration(s.config.JWTRefreshExpiryHours) * time.Hour)
+		expiresAt := time.Now().Add(time.Duration(*s.config.JWTRefreshExpiryHours) * time.Hour)
 
 		newRefreshToken = domain.UserToken{
 			Id:        ulid.MustNew(ulid.Now(), nil).String(),

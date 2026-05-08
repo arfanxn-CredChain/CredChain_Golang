@@ -40,7 +40,7 @@ var migrateUpCmd = &cobra.Command{
 func migrateUp(cfg *config.Config, logger *zap.Logger) error {
 	m, err := migrate.New(
 		"file://infrastructure/database/migrations",
-		cfg.PostgresDSN,
+		*cfg.PostgresDSN,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to initialize migrations: %w", err)
@@ -70,7 +70,7 @@ var migrateDownCmd = &cobra.Command{
 func migrateDown(cfg *config.Config, logger *zap.Logger) error {
 	m, err := migrate.New(
 		"file://infrastructure/database/migrations",
-		cfg.PostgresDSN,
+		*cfg.PostgresDSN,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to initialize migrations: %w", err)

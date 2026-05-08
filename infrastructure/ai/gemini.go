@@ -26,12 +26,12 @@ type Client struct {
 
 // NewClient initializes a Google GenAI client
 func NewClient(cfg *config.Config) (*Client, error) {
-	if cfg.GeminiAPIKey == "" {
+	if cfg.GeminiAPIKey == nil {
 		return nil, fmt.Errorf("gemini api key is required")
 	}
 
 	ctx := context.Background()
-	client, err := genai.NewClient(ctx, option.WithAPIKey(cfg.GeminiAPIKey))
+	client, err := genai.NewClient(ctx, option.WithAPIKey(*cfg.GeminiAPIKey))
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize gemini client: %w", err)
 	}

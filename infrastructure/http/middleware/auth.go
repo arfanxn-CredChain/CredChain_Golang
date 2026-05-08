@@ -47,7 +47,7 @@ func NewAuthMiddleware(p AuthMiddlewareParams) gin.HandlerFunc {
 			return
 		}
 
-		claims, err := security.ValiparseJWT(tokenString, []byte(p.Config.JWTSecret))
+		claims, err := security.ValiparseJWT(tokenString, []byte(*p.Config.JWTSecret))
 		if err != nil {
 			c.Abort()
 			responder.SendError(c, domain.NewError(domain.CodeAuthInvalidToken))

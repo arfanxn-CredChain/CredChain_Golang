@@ -25,7 +25,7 @@ func init() {
 
 // initSuperAdminValidateConfig checks required env vars for super admin initialization
 func initSuperAdminValidateConfig(cfg *config.Config) error {
-	if cfg.InitialSuperAdminEmail == "" || cfg.InitialSuperAdminPrivKey == "" || cfg.WalletEncryptionKey == "" {
+	if cfg.InitialSuperAdminEmail == nil || cfg.InitialSuperAdminPrivKey == nil || cfg.WalletEncryptionKey == nil {
 		return fmt.Errorf("missing core environment variables for super admin initialization")
 	}
 	return nil
@@ -78,17 +78,17 @@ func initSuperAdmin(cfg *config.Config, userRepo domain.UserRepository, logger *
 		return err
 	}
 
-	walletAddress, err := initSuperAdminParseWallet(cfg.InitialSuperAdminPrivKey)
+	walletAddress, err := initSuperAdminParseWallet(*cfg.InitialSuperAdminPrivKey)
 	if err != nil {
 		return err
 	}
 
-	encryptedKey, err := initSuperAdminEncryptKey(cfg.InitialSuperAdminPrivKey, cfg.WalletEncryptionKey)
+	encryptedKey, err := initSuperAdminEncryptKey(*cfg.InitialSuperAdminPrivKey, *cfg.WalletEncryptionKey)
 	if err != nil {
 		return err
 	}
 
-	existing, err := userRepo.FindByEmails(context.Background(), cfg.InitialSuperAdminEmail)
+	existing, err := userRepo.FindByEmails(context.Background(), *cfg.InitialSuperAdminEmail)
 	if err != nil {
 		return err
 	}
@@ -99,7 +99,7 @@ func initSuperAdmin(cfg *config.Config, userRepo domain.UserRepository, logger *
 		return fmt.Errorf("%s", msg)
 	}
 
-	adminUser := initSuperAdminBuildUser(cfg.InitialSuperAdminEmail, walletAddress, encryptedKey)
+	adminUser := initSuperAdminBuildUser(*cfg.InitialSuperAdminEmail, walletAddress, encryptedKey)
 
 	_, err = userRepo.Store(context.Background(), adminUser)
 	if err != nil {

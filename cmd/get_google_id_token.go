@@ -154,10 +154,7 @@ Workflow:
 //  6. Shutdown server and exit
 func getGoogleIdToken(cfg *config.Config, logger *zap.Logger) error {
 	// Determine redirect URI (use config or default)
-	redirectURI := cfg.GoogleRedirectURI
-	if redirectURI == "" {
-		redirectURI = "http://localhost:3000/google/callback"
-	}
+	redirectURI := *cfg.GoogleRedirectURI
 
 	// Channels for communication between HTTP handler and main goroutine
 	codeCh := make(chan string, 1)   // Receives authorization code from callback
@@ -255,7 +252,7 @@ func getGoogleIdToken(cfg *config.Config, logger *zap.Logger) error {
 			"access_type=offline&"+
 			"prompt=consent&"+
 			"state=%s",
-		cfg.GoogleClientID,
+		*cfg.GoogleClientID,
 		redirectURI,
 		state,
 	)
@@ -275,8 +272,8 @@ func getGoogleIdToken(cfg *config.Config, logger *zap.Logger) error {
 
 		// Exchange authorization code for tokens
 		tokenResp, err := getGoogleIdTokenExchangeCodeForTokens(
-			cfg.GoogleClientID,
-			cfg.GoogleClientSecret,
+			*cfg.GoogleClientID,
+			*cfg.GoogleClientSecret,
 			redirectURI,
 			code,
 		)

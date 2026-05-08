@@ -32,11 +32,11 @@ type ChainParams struct {
 
 // NewClient establishes the connection to the RPC and sets up the TransactOpts for the Relayer
 func NewClient(p ChainParams) (*Client, error) {
-	if p.Config.RPCURL == "" {
+	if p.Config.RPCURL == nil {
 		return nil, fmt.Errorf("RPC_URL not configured")
 	}
 
-	ethClient, err := ethclient.Dial(p.Config.RPCURL)
+	ethClient, err := ethclient.Dial(*p.Config.RPCURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to dial RPC: %w", err)
 	}
@@ -46,12 +46,12 @@ func NewClient(p ChainParams) (*Client, error) {
 		return nil, fmt.Errorf("failed to get chain ID: %w", err)
 	}
 
-	if p.Config.RegistryContract == "" || p.Config.AuthorityContract == "" || p.Config.RelayerPrivateKey == "" {
+	if p.Config.RegistryContract == nil || p.Config.AuthorityContract == nil || p.Config.RelayerPrivateKey == nil {
 		return nil, fmt.Errorf("missing blockchain contract or relayer config")
 	}
 
-	registryAddr := common.HexToAddress(p.Config.RegistryContract)
-	authorityAddr := common.HexToAddress(p.Config.AuthorityContract)
+	registryAddr := common.HexToAddress(*p.Config.RegistryContract)
+	authorityAddr := common.HexToAddress(*p.Config.AuthorityContract)
 
 	registry, err := NewRegistry(registryAddr, ethClient)
 	if err != nil {
@@ -64,7 +64,7 @@ func NewClient(p ChainParams) (*Client, error) {
 	}
 
 	// Setup Relayer Wallet
-	privateKey, err := crypto.HexToECDSA(strings.TrimPrefix(p.Config.RelayerPrivateKey, "0x"))
+	privateKey, err := crypto.HexToECDSA(strings.TrimPrefix(*p.Config.RelayerPrivateKey, "0x"))
 	if err != nil {
 		return nil, fmt.Errorf("invalid relayer private key: %w", err)
 	}

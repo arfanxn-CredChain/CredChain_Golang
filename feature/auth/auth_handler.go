@@ -35,8 +35,8 @@ func NewAuthHandler(p AuthHandlerParams) AuthHandler {
 }
 
 func (h *authHandler) sendAuthResponse(c *gin.Context, code int, user domain.User, refreshToken domain.UserToken, accessToken string) {
-	refreshExpirySec := h.config.JWTRefreshExpiryHours * int(time.Hour.Seconds())
-	accessExpirySec := h.config.JWTAccessExpiryMinutes * int(time.Minute.Seconds())
+	refreshExpirySec := *h.config.JWTRefreshExpiryHours * int(time.Hour.Seconds())
+	accessExpirySec := *h.config.JWTAccessExpiryMinutes * int(time.Minute.Seconds())
 	responder.Send(c, code, response.NewAuth(
 		response.FromDomainUser(user),
 		accessToken,

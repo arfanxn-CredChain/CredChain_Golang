@@ -15,7 +15,7 @@ type GormParams struct {
 }
 
 func NewGorm(p GormParams) (*gorm.DB, error) {
-	db, err := gorm.Open(postgres.Open(p.Config.PostgresDSN), &gorm.Config{
+	db, err := gorm.Open(postgres.Open(*p.Config.PostgresDSN), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Silent),
 	})
 	if err != nil {
@@ -27,9 +27,9 @@ func NewGorm(p GormParams) (*gorm.DB, error) {
 		return nil, err
 	}
 
-	sqlDB.SetMaxOpenConns(p.Config.DBMaxOpenConns)
-	sqlDB.SetMaxIdleConns(p.Config.DBMaxIdleConns)
-	sqlDB.SetConnMaxLifetime(time.Duration(p.Config.DBConnMaxLifetime) * time.Minute)
+	sqlDB.SetMaxOpenConns(*p.Config.DBMaxOpenConns)
+	sqlDB.SetMaxIdleConns(*p.Config.DBMaxIdleConns)
+	sqlDB.SetConnMaxLifetime(time.Duration(*p.Config.DBConnMaxLifetime) * time.Minute)
 
 	return db, nil
 }

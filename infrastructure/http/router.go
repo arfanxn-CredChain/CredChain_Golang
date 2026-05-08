@@ -26,11 +26,11 @@ type RouterParams struct {
 func NewGinRouter(p RouterParams) *gin.Engine {
 	r := gin.Default()
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     p.Config.GinCorsAllowOrigins,
-		AllowMethods:     p.Config.GinCorsAllowMethods,
-		AllowHeaders:     p.Config.GinCorsAllowHeaders,
-		ExposeHeaders:    p.Config.GinCorsExposeHeaders,
-		AllowCredentials: p.Config.GinCorsAllowCredentials,
+		AllowOrigins:     *p.Config.GinCorsAllowOrigins,
+		AllowMethods:     *p.Config.GinCorsAllowMethods,
+		AllowHeaders:     *p.Config.GinCorsAllowHeaders,
+		ExposeHeaders:    *p.Config.GinCorsExposeHeaders,
+		AllowCredentials: *p.Config.GinCorsAllowCredentials,
 		MaxAge:           p.Config.GinCorsMaxAge,
 	}))
 	return r
@@ -95,8 +95,8 @@ func RegisterRoutes(p RouteParams) {
 	p.Lifecycle.Append(fx.Hook{
 		OnStart: func(context.Context) error {
 			go func() {
-				p.Logger.Info("credchain golang backend starting", zap.String("port", p.Config.GinPort))
-				if err := p.Router.Run(":" + p.Config.GinPort); err != nil {
+				p.Logger.Info("credchain golang backend starting", zap.String("port", *p.Config.GinPort))
+				if err := p.Router.Run(":" + *p.Config.GinPort); err != nil {
 					p.Logger.Error("server failed to start", zap.Error(err))
 				}
 			}()
