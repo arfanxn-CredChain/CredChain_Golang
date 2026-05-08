@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"CredChain_Golang/domain"
-	"CredChain_Golang/infrastructure/gorm/model"
+	"CredChain_Golang/infrastructure/database/gorm/model"
 
 	"gorm.io/gorm"
 )

@@ -9,7 +9,7 @@ import (
 	"CredChain_Golang/config"
 	"CredChain_Golang/domain"
 	cryptoInfra "CredChain_Golang/infrastructure/crypto"
-	gormInfra "CredChain_Golang/infrastructure/gorm"
+	gormInfra "CredChain_Golang/infrastructure/database/gorm"
 	"CredChain_Golang/feature/user"
 	infraLogger "CredChain_Golang/infrastructure/logger"
 

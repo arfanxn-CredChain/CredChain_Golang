@@ -6,7 +6,7 @@ import (
 
 	"CredChain_Golang/domain"
 	domainQuery "CredChain_Golang/domain/query"
-	"CredChain_Golang/infrastructure/gorm/model"
+	"CredChain_Golang/infrastructure/database/gorm/model"
 	"github.com/oklog/ulid/v2"
 	"gorm.io/gorm"
 )
