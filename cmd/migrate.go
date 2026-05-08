@@ -2,9 +2,12 @@ package cmd
 
 import (
 	"CredChain_Golang/config"
-	"CredChain_Golang/infrastructure/database"
 	infraLogger "CredChain_Golang/infrastructure/logger"
+	"fmt"
 
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/spf13/cobra"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
@@ -35,10 +38,17 @@ var migrateUpCmd = &cobra.Command{
 }
 
 func migrateUp(cfg *config.Config, logger *zap.Logger) error {
-	err := database.MigrateUp(cfg, logger)
+	m, err := migrate.New(
+		"file://infrastructure/database/migrations",
+		cfg.PostgresDSN,
+	)
 	if err != nil {
-		logger.Error("migration failed", zap.Error(err))
-		return err
+		return fmt.Errorf("failed to initialize migrations: %w", err)
+	}
+	defer m.Close()
+
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+		return fmt.Errorf("migration failed: %w", err)
 	}
 
 	logger.Info("successfully ran database migrations up")
@@ -58,10 +68,17 @@ var migrateDownCmd = &cobra.Command{
 }
 
 func migrateDown(cfg *config.Config, logger *zap.Logger) error {
-	err := database.MigrateDown(cfg, logger)
+	m, err := migrate.New(
+		"file://infrastructure/database/migrations",
+		cfg.PostgresDSN,
+	)
 	if err != nil {
-		logger.Error("rollback failed", zap.Error(err))
-		return err
+		return fmt.Errorf("failed to initialize migrations: %w", err)
+	}
+	defer m.Close()
+
+	if err := m.Steps(-1); err != nil && err != migrate.ErrNoChange {
+		return fmt.Errorf("rollback failed: %w", err)
 	}
 
 	logger.Info("successfully ran database migrations down")
