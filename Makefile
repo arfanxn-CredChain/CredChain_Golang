@@ -6,7 +6,7 @@ ifneq (,$(wildcard $(ENV_FILE)))
     export
 endif
 
-.PHONY: help check-env check-env-docker clean build serve dev migrate-up migrate-down init-super-admin \
+.PHONY: help check-env check-env-docker clean build serve dev migrate-up migrate-down init-super-admin get-google-id-token \
 	docker-migrate-up docker-migrate-down docker-up-build docker-up \
 	docker-down docker-restart docker-logs docker-ps docker-fresh \
 	docker-clean-data docker-check-backend-healthy
@@ -24,6 +24,7 @@ help:
 	@echo "  make migrate-up        - Run database migrations up (local)"
 	@echo "  make migrate-down      - Rollback database migrations (local)"
 	@echo "  make init-super-admin  - Create super admin user (local)"
+	@echo "  make get-google-id-token - Obtain Google ID token via OAuth (for Postman)"
 	@echo ""
 	@echo "Docker:"
 	@echo "  make docker-up         - Start all services with Docker"
@@ -76,6 +77,9 @@ migrate-down:
 
 init-super-admin:
 	go run main.go init-super-admin --env $(ENV_FILE)
+
+get-google-id-token:
+	go run main.go get-google-id-token --env $(ENV_FILE)
 
 docker-up-build: check-env-docker
 	docker compose up -d --build
