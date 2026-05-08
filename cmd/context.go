@@ -16,9 +16,9 @@ func ConfigFromCmd(cmd *cobra.Command) *config.Config {
 	return cmd.Context().Value(ConfigContextKey).(*config.Config)
 }
 
-// ConfigProviderFromCmd returns an FX provider function that supplies *config.Config.
+// NewConfigFromCmd returns an FX provider function that supplies *config.Config.
 // Use this in fx.Provide() blocks instead of inline closures.
-func ConfigProviderFromCmd(cmd *cobra.Command) func() *config.Config {
+func NewConfigFromCmd(cmd *cobra.Command) func() *config.Config {
 	return func() *config.Config {
 		return ConfigFromCmd(cmd)
 	}

@@ -33,7 +33,7 @@ var serverCmd = &cobra.Command{
 		fx.New(
 			applogger.Module,
 			fx.Provide(
-				ConfigProviderFromCmd(cmd),
+				NewConfigFromCmd(cmd),
 				func(lc fx.Lifecycle) context.Context {
 					ctx, cancel := context.WithCancel(context.Background())
 					lc.Append(fx.Hook{
