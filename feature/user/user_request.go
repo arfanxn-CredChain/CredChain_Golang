@@ -6,13 +6,13 @@ import (
 	"github.com/go-ozzo/ozzo-validation/v4/is"
 )
 
-type StoreUserInput struct {
+type UserStoreInput struct {
 	Name  string      `json:"name"`
 	Email string      `json:"email"`
 	Role  domain.Role `json:"role"`
 }
 
-func (n StoreUserInput) Validate() error {
+func (n UserStoreInput) Validate() error {
 	return validation.ValidateStruct(&n,
 		validation.Field(&n.Name, validation.Required),
 		validation.Field(&n.Email, validation.Required, is.Email),
@@ -20,30 +20,24 @@ func (n StoreUserInput) Validate() error {
 	)
 }
 
-// ToDomain converts a StoreUserInput to a domain User entity.
-func (n StoreUserInput) ToDomain() domain.User {
-	return domain.User{
-		Name:  &n.Name,
-		Email: n.Email,
-		Role:  n.Role,
-	}
+func (n UserStoreInput) ToDomain() domain.User {
+	return domain.User{Name: &n.Name, Email: n.Email, Role: n.Role}
 }
 
-type StoreRequest struct {
-	Users []StoreUserInput `json:"users"`
+type UserStoreRequest struct {
+	Users []UserStoreInput `json:"users"`
 }
 
-func (r StoreRequest) Validate() error {
+func (r UserStoreRequest) Validate() error {
 	return validation.ValidateStruct(&r,
 		validation.Field(&r.Users, validation.Required, validation.Each(validation.By(func(value any) error {
-			u := value.(StoreUserInput)
+			u := value.(UserStoreInput)
 			return u.Validate()
 		}))),
 	)
 }
 
-// ToDomain converts a StoreRequest to a slice of domain User entities.
-func (r StoreRequest) ToDomain() []domain.User {
+func (r UserStoreRequest) ToDomain() []domain.User {
 	if r.Users == nil {
 		return []domain.User{}
 	}
@@ -54,22 +48,20 @@ func (r StoreRequest) ToDomain() []domain.User {
 	return users
 }
 
-type UpdateProfileRequest struct {
+type UserUpdateProfileRequest struct {
 	Name        *string       `json:"name"`
 	Number      *string       `json:"number"`
 	PhoneNumber *string       `json:"phone_number"`
 	Meta        *domain.JSONB `json:"meta"`
 }
 
-func (r UpdateProfileRequest) Validate() error {
-	return nil
-}
+func (r UserUpdateProfileRequest) Validate() error { return nil }
 
-type UpdateEmailRequest struct {
+type UserUpdateEmailRequest struct {
 	Email string `json:"email"`
 }
 
-func (r UpdateEmailRequest) Validate() error {
+func (r UserUpdateEmailRequest) Validate() error {
 	return validation.ValidateStruct(&r,
 		validation.Field(&r.Email, validation.Required, is.Email),
 	)
@@ -87,22 +79,18 @@ func (r UserRoleUpdateRequest) Validate() error {
 	)
 }
 
-type BatchUpdateRoleRequest struct {
+type UserBatchUpdateRoleRequest struct {
 	UserRoles []UserRoleUpdateRequest `json:"user_roles"`
 }
 
-func (r BatchUpdateRoleRequest) Validate() error {
-	return validation.ValidateStruct(&r,
-		validation.Field(&r.UserRoles, validation.Required),
-	)
+func (r UserBatchUpdateRoleRequest) Validate() error {
+	return validation.ValidateStruct(&r, validation.Field(&r.UserRoles, validation.Required))
 }
 
-type BatchDeleteUsersRequest struct {
+type UserBatchDeleteRequest struct {
 	UserIDs []string `json:"user_ids"`
 }
 
-func (r BatchDeleteUsersRequest) Validate() error {
-	return validation.ValidateStruct(&r,
-		validation.Field(&r.UserIDs, validation.Required),
-	)
+func (r UserBatchDeleteRequest) Validate() error {
+	return validation.ValidateStruct(&r, validation.Field(&r.UserIDs, validation.Required))
 }

@@ -10,18 +10,18 @@ import (
 	"gorm.io/gorm"
 )
 
-// GormUserTokenRepository implements domain.UserTokenRepository using GORM
-type GormUserTokenRepository struct {
+// gormUserTokenRepository implements domain.UserTokenRepository using GORM
+type gormUserTokenRepository struct {
 	db *gorm.DB
 }
 
 // NewGormUserTokenRepository creates a new GORM-based user token repository
 func NewGormUserTokenRepository(db *gorm.DB) domain.UserTokenRepository {
-	return &GormUserTokenRepository{db: db}
+	return &gormUserTokenRepository{db: db}
 }
 
 // Store creates new user tokens
-func (r *GormUserTokenRepository) Store(ctx context.Context, tokens ...domain.UserToken) ([]domain.UserToken, error) {
+func (r *gormUserTokenRepository) Store(ctx context.Context, tokens ...domain.UserToken) ([]domain.UserToken, error) {
 	gormTokens := make([]model.UserToken, len(tokens))
 	for i, token := range tokens {
 		gormTokens[i] = model.FromDomainUserToken(token)
@@ -39,7 +39,7 @@ func (r *GormUserTokenRepository) Store(ctx context.Context, tokens ...domain.Us
 }
 
 // FindByToken retrieves a token by its token string
-func (r *GormUserTokenRepository) FindByToken(ctx context.Context, token string) (*domain.UserToken, error) {
+func (r *gormUserTokenRepository) FindByToken(ctx context.Context, token string) (*domain.UserToken, error) {
 	var gormToken model.UserToken
 	if err := r.db.WithContext(ctx).Where("token = ?", token).First(&gormToken).Error; err != nil {
 		return nil, err
@@ -49,7 +49,7 @@ func (r *GormUserTokenRepository) FindByToken(ctx context.Context, token string)
 }
 
 // Find retrieves a token by ID
-func (r *GormUserTokenRepository) Find(ctx context.Context, id string) (*domain.UserToken, error) {
+func (r *gormUserTokenRepository) Find(ctx context.Context, id string) (*domain.UserToken, error) {
 	var gormToken model.UserToken
 	if err := r.db.WithContext(ctx).Where("id = ?", id).First(&gormToken).Error; err != nil {
 		return nil, err
@@ -59,7 +59,7 @@ func (r *GormUserTokenRepository) Find(ctx context.Context, id string) (*domain.
 }
 
 // FindByUserId retrieves all tokens for a user
-func (r *GormUserTokenRepository) FindByUserId(ctx context.Context, userId string) ([]domain.UserToken, error) {
+func (r *gormUserTokenRepository) FindByUserId(ctx context.Context, userId string) ([]domain.UserToken, error) {
 	var gormTokens []model.UserToken
 	if err := r.db.WithContext(ctx).Where("user_id = ?", userId).Find(&gormTokens).Error; err != nil {
 		return nil, err
@@ -73,7 +73,7 @@ func (r *GormUserTokenRepository) FindByUserId(ctx context.Context, userId strin
 }
 
 // Revoke marks tokens as revoked, returns number of revoked tokens
-func (r *GormUserTokenRepository) Revoke(ctx context.Context, tokenIDs ...string) (int64, error) {
+func (r *gormUserTokenRepository) Revoke(ctx context.Context, tokenIDs ...string) (int64, error) {
 	now := time.Now()
 	result := r.db.WithContext(ctx).Model(&model.UserToken{}).
 		Where("id IN ?", tokenIDs).
@@ -82,7 +82,7 @@ func (r *GormUserTokenRepository) Revoke(ctx context.Context, tokenIDs ...string
 }
 
 // RevokeByUserIdAndType revokes all tokens of a specific type for a user
-func (r *GormUserTokenRepository) RevokeByUserIdAndType(ctx context.Context, userId string, tokenType domain.UserTokenType) (int64, error) {
+func (r *gormUserTokenRepository) RevokeByUserIdAndType(ctx context.Context, userId string, tokenType domain.UserTokenType) (int64, error) {
 	now := time.Now()
 	result := r.db.WithContext(ctx).Model(&model.UserToken{}).
 		Where("user_id = ? AND type = ?", userId, tokenType).
@@ -91,7 +91,7 @@ func (r *GormUserTokenRepository) RevokeByUserIdAndType(ctx context.Context, use
 }
 
 // Update updates a single user token
-func (r *GormUserTokenRepository) Update(ctx context.Context, token domain.UserToken) (*domain.UserToken, error) {
+func (r *gormUserTokenRepository) Update(ctx context.Context, token domain.UserToken) (*domain.UserToken, error) {
 	modelToken := model.FromDomainUserToken(token)
 	if err := r.db.WithContext(ctx).Model(&model.UserToken{}).Where("id = ?", token.Id).Updates(modelToken).Error; err != nil {
 		return nil, err

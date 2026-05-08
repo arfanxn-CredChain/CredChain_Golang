@@ -38,50 +38,39 @@ func NewGinRouter(p RouterParams) *gin.Engine {
 
 type RouteParams struct {
 	fx.In
-
-	Lifecycle                   fx.Lifecycle
-	Router                      *gin.Engine
-	Config                      *config.Config
-	Bundle                      *i18n.Bundle
-	AuthHandler                 *auth.Handler
-	UserHandler                 *user.Handler
-	CredHandler                 *credential.Handler
-	Logger                      *zap.Logger
-	AuthMiddleware              gin.HandlerFunc
-	AdminRoleMiddleware         middleware.AdminRoleMiddleware
-	IssuerRoleMiddleware        middleware.IssuerRoleMiddleware
-	SuperAdminRoleMiddleware    middleware.SuperAdminRoleMiddleware
-	LoginRateLimitMiddleware    middleware.LoginRateLimitMiddleware
-	RefreshRateLimitMiddleware  middleware.RefreshRateLimitMiddleware
-	LogoutRateLimitMiddleware   middleware.LogoutRateLimitMiddleware
-	ApiRateLimitMiddleware      middleware.ApiRateLimitMiddleware
+	Lifecycle                  fx.Lifecycle
+	Router                     *gin.Engine
+	Config                     *config.Config
+	Bundle                     *i18n.Bundle
+	AuthHandler                auth.AuthHandler
+	UserHandler                user.UserHandler
+	CredHandler                credential.CredentialHandler
+	Logger                     *zap.Logger
+	AuthMiddleware             gin.HandlerFunc
+	AdminRoleMiddleware        middleware.AdminRoleMiddleware
+	IssuerRoleMiddleware       middleware.IssuerRoleMiddleware
+	SuperAdminRoleMiddleware   middleware.SuperAdminRoleMiddleware
+	LoginRateLimitMiddleware   middleware.LoginRateLimitMiddleware
+	RefreshRateLimitMiddleware middleware.RefreshRateLimitMiddleware
+	LogoutRateLimitMiddleware  middleware.LogoutRateLimitMiddleware
+	ApiRateLimitMiddleware     middleware.ApiRateLimitMiddleware
 }
 
-// RegisterRoutes binds controllers and hooks the Gin start/stop lifecycle
 func RegisterRoutes(p RouteParams) {
-	// Global middleware — order matters:
-	// 1. ErrorLogger runs last (collects c.Error() entries after all handlers complete)
-	// 2. I18nMiddleware runs first so localizers are available to all handlers
 	p.Router.Use(middleware.ErrorLogger(p.Logger))
 	p.Router.Use(middleware.I18nMiddleware(p.Bundle))
-
-	// All API routes namespaced under /api
 	api := p.Router.Group("/api")
 	api.Use(gin.HandlerFunc(p.ApiRateLimitMiddleware))
 	{
-		// Open routes
 		api.GET("/health", func(c *gin.Context) {
 			responder.Send(c, domain.CodeSystemSuccess, gin.H{"status": "ok"})
 		})
 		api.POST("/auth/google", gin.HandlerFunc(p.LoginRateLimitMiddleware), p.AuthHandler.GoogleLogin)
 		api.POST("/auth/refresh", gin.HandlerFunc(p.RefreshRateLimitMiddleware), p.AuthHandler.Refresh)
-
-		// Secure routes
 		secure := api.Group("/")
 		secure.Use(p.AuthMiddleware)
 		{
 			secure.POST("/auth/logout", gin.HandlerFunc(p.LogoutRateLimitMiddleware), p.AuthHandler.Logout)
-			// Users API
 			users := secure.Group("/users")
 			{
 				users.GET("", gin.HandlerFunc(p.AdminRoleMiddleware), p.UserHandler.Paginate)
@@ -93,8 +82,6 @@ func RegisterRoutes(p RouteParams) {
 				users.POST("/batch", gin.HandlerFunc(p.AdminRoleMiddleware), p.UserHandler.Store)
 				users.PUT("/batch/role", gin.HandlerFunc(p.AdminRoleMiddleware), p.UserHandler.BatchUpdateRole)
 			}
-
-			// Credentials API
 			creds := secure.Group("/credentials")
 			{
 				creds.GET("", gin.HandlerFunc(p.AdminRoleMiddleware), p.CredHandler.GetCredentials)
@@ -105,7 +92,6 @@ func RegisterRoutes(p RouteParams) {
 			}
 		}
 	}
-
 	p.Lifecycle.Append(fx.Hook{
 		OnStart: func(context.Context) error {
 			go func() {

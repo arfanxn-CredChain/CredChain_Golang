@@ -11,17 +11,17 @@ import (
 	"gorm.io/gorm"
 )
 
-type GormUserRepository struct {
+type gormUserRepository struct {
 	db *gorm.DB
 }
 
 func NewGormUserRepository(db *gorm.DB) domain.UserRepository {
-	return &GormUserRepository{db: db}
+	return &gormUserRepository{db: db}
 }
 
 // Get retrieves users with pagination and search support (batch operation)
 // Returns: ([]User, int, error) - paginated slice, total count matching search criteria, error
-func (r *GormUserRepository) Get(ctx context.Context, query *domainQuery.Query) ([]domain.User, int, error) {
+func (r *gormUserRepository) Get(ctx context.Context, query *domainQuery.Query) ([]domain.User, int, error) {
 	db := r.db.WithContext(ctx).Model(&model.User{})
 
 	// Search only (filters, includes, groups skipped for now)
@@ -72,7 +72,7 @@ func (r *GormUserRepository) Get(ctx context.Context, query *domainQuery.Query) 
 
 // Find retrieves a single user by ID
 // Returns: (*User, error) - single entity lookup
-func (r *GormUserRepository) Find(ctx context.Context, id string) (*domain.User, error) {
+func (r *gormUserRepository) Find(ctx context.Context, id string) (*domain.User, error) {
 	var user model.User
 	if err := r.db.WithContext(ctx).First(&user, "id = ?", id).Error; err != nil {
 		return nil, err
@@ -83,7 +83,7 @@ func (r *GormUserRepository) Find(ctx context.Context, id string) (*domain.User,
 
 // FindByEmails retrieves users by multiple emails (batch operation)
 // Returns: ([]User, error) - empty slice if no matches
-func (r *GormUserRepository) FindByEmails(ctx context.Context, emails ...string) ([]domain.User, error) {
+func (r *gormUserRepository) FindByEmails(ctx context.Context, emails ...string) ([]domain.User, error) {
 	if len(emails) == 0 {
 		return []domain.User{}, nil
 	}
@@ -100,7 +100,7 @@ func (r *GormUserRepository) FindByEmails(ctx context.Context, emails ...string)
 
 // FindByIds retrieves multiple users by IDs (batch operation)
 // Returns: ([]User, error) - batch lookup, empty slice if no matches
-func (r *GormUserRepository) FindByIds(ctx context.Context, ids ...string) ([]domain.User, error) {
+func (r *gormUserRepository) FindByIds(ctx context.Context, ids ...string) ([]domain.User, error) {
 	if len(ids) == 0 {
 		return []domain.User{}, nil
 	}
@@ -120,7 +120,7 @@ func (r *GormUserRepository) FindByIds(ctx context.Context, ids ...string) ([]do
 
 // Update updates a single user (accepts domain model)
 // Returns: (*User, error) - updated entity
-func (r *GormUserRepository) Update(ctx context.Context, user domain.User) (*domain.User, error) {
+func (r *gormUserRepository) Update(ctx context.Context, user domain.User) (*domain.User, error) {
 	modelUser := model.FromDomainUser(user)
 
 	if err := r.db.WithContext(ctx).Model(&model.User{}).Where("id = ?", user.Id).Updates(modelUser).Error; err != nil {
@@ -133,7 +133,7 @@ func (r *GormUserRepository) Update(ctx context.Context, user domain.User) (*dom
 
 // UpdateRole batch updates roles for multiple users using efficient CASE statement
 // Returns: ([]User, int64, error) - updated users slice, rows affected count, error
-func (r *GormUserRepository) UpdateRole(ctx context.Context, users ...domain.User) ([]domain.User, int64, error) {
+func (r *gormUserRepository) UpdateRole(ctx context.Context, users ...domain.User) ([]domain.User, int64, error) {
 	if len(users) == 0 {
 		return []domain.User{}, 0, nil
 	}
@@ -178,7 +178,7 @@ func (r *GormUserRepository) UpdateRole(ctx context.Context, users ...domain.Use
 
 // Store persists multiple users (batch operation)
 // Returns: ([]User, error) - created users with generated IDs, error
-func (r *GormUserRepository) Store(ctx context.Context, users ...domain.User) ([]domain.User, error) {
+func (r *gormUserRepository) Store(ctx context.Context, users ...domain.User) ([]domain.User, error) {
 	// Generate ULID for users without ID
 	for i := range users {
 		if users[i].Id == "" {
@@ -206,7 +206,7 @@ func (r *GormUserRepository) Store(ctx context.Context, users ...domain.User) ([
 
 // Destroy deletes multiple users by IDs (batch operation)
 // Returns: (int64, error) - rows affected count, error
-func (r *GormUserRepository) Destroy(ctx context.Context, ids ...string) (int64, error) {
+func (r *gormUserRepository) Destroy(ctx context.Context, ids ...string) (int64, error) {
 	if len(ids) == 0 {
 		return 0, nil
 	}

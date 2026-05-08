@@ -36,12 +36,7 @@ var serverCmd = &cobra.Command{
 				NewConfigFromCmd(cmd),
 				func(lc fx.Lifecycle) context.Context {
 					ctx, cancel := context.WithCancel(context.Background())
-					lc.Append(fx.Hook{
-						OnStop: func(ctx context.Context) error {
-							cancel()
-							return nil
-						},
-					})
+					lc.Append(fx.Hook{OnStop: func(ctx context.Context) error { cancel(); return nil }})
 					return ctx
 				},
 				i18n.NewBundle,
@@ -54,14 +49,8 @@ var serverCmd = &cobra.Command{
 				user.NewGormUserRepository,
 				user.NewGormUserTokenRepository,
 				credential.NewGormCredentialRepository,
-				// UoW with repository factories
 				func(db *gorm.DB) domain.UnitOfWork {
-					return gormInfra.NewGormUnitOfWork(
-						db,
-						user.NewGormUserRepository,
-						credential.NewGormCredentialRepository,
-						user.NewGormUserTokenRepository,
-					)
+					return gormInfra.NewGormUnitOfWork(db, user.NewGormUserRepository, credential.NewGormCredentialRepository, user.NewGormUserTokenRepository)
 				},
 				user.NewUserPolicy,
 				middleware.NewAuthMiddleware,

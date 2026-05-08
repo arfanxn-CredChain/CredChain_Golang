@@ -13,7 +13,19 @@ import (
 	"go.uber.org/fx"
 )
 
-type Handler struct {
+type UserHandler interface {
+	Paginate(c *gin.Context)
+	Find(c *gin.Context)
+	GetSelfCredentials(c *gin.Context)
+	FindByAdmin(c *gin.Context)
+	Store(c *gin.Context)
+	UpdateSelfProfile(c *gin.Context)
+	UpdateSelfEmail(c *gin.Context)
+	BatchUpdateRole(c *gin.Context)
+	BatchDeleteUsers(c *gin.Context)
+}
+
+type userHandler struct {
 	userSvc  UserService
 	credRepo domain.CredentialRepository
 }
@@ -24,39 +36,33 @@ type UserHandlerParams struct {
 	CredRepo domain.CredentialRepository
 }
 
-func NewUserHandler(p UserHandlerParams) *Handler {
-	return &Handler{userSvc: p.UserSvc, credRepo: p.CredRepo}
+func NewUserHandler(p UserHandlerParams) UserHandler {
+	return &userHandler{userSvc: p.UserSvc, credRepo: p.CredRepo}
 }
 
-// ... Logic ...
-
-func (h *Handler) Paginate(c *gin.Context) {
+func (h *userHandler) Paginate(c *gin.Context) {
 	var req queryRequest.QueryRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
 		c.Error(err)
 		responder.SendError(c, err)
 		return
 	}
-
 	if err := req.Validate(); err != nil {
 		responder.SendValidationError(c, err)
 		return
 	}
-
 	query, err := req.ToDomain()
 	if err != nil {
 		c.Error(err)
 		responder.SendError(c, err)
 		return
 	}
-
 	users, total, err := h.userSvc.Paginate(c.Request.Context(), query)
 	if err != nil {
 		c.Error(err)
 		responder.SendError(c, err)
 		return
 	}
-
 	responseUsers := make([]response.User, len(users))
 	for i, u := range users {
 		responseUsers[i] = response.FromDomainUser(u)
@@ -64,7 +70,7 @@ func (h *Handler) Paginate(c *gin.Context) {
 	responder.SendPagination(c, domain.CodeUserFetchSuccess, responseUsers, total)
 }
 
-func (h *Handler) Find(c *gin.Context) {
+func (h *userHandler) Find(c *gin.Context) {
 	authUser := httpContext.MustGetUser(c.Request.Context())
 	user, err := h.userSvc.Find(c.Request.Context(), authUser.Id)
 	if err != nil {
@@ -75,7 +81,7 @@ func (h *Handler) Find(c *gin.Context) {
 	responder.Send(c, domain.CodeUserFetchSuccess, response.FromDomainUser(*user))
 }
 
-func (h *Handler) GetSelfCredentials(c *gin.Context) {
+func (h *userHandler) GetSelfCredentials(c *gin.Context) {
 	authUser := httpContext.MustGetUser(c.Request.Context())
 	creds, err := h.credRepo.FindByHolder(c.Request.Context(), authUser.Id)
 	if err != nil {
@@ -89,7 +95,7 @@ func (h *Handler) GetSelfCredentials(c *gin.Context) {
 	responder.Send(c, domain.CodeUserCredentialsFetchSuccess, creds)
 }
 
-func (h *Handler) FindByAdmin(c *gin.Context) {
+func (h *userHandler) FindByAdmin(c *gin.Context) {
 	id := c.Param("id")
 	user, err := h.userSvc.Find(c.Request.Context(), id)
 	if err != nil {
@@ -100,8 +106,8 @@ func (h *Handler) FindByAdmin(c *gin.Context) {
 	responder.Send(c, domain.CodeUserFetchSuccess, response.FromDomainUser(*user))
 }
 
-func (h *Handler) Store(c *gin.Context) {
-	var req StoreRequest
+func (h *userHandler) Store(c *gin.Context) {
+	var req UserStoreRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.Error(err)
 		responder.SendError(c, err)
@@ -125,9 +131,9 @@ func (h *Handler) Store(c *gin.Context) {
 	responder.Send(c, domain.CodeUserStoreSuccess, users)
 }
 
-func (h *Handler) UpdateSelfProfile(c *gin.Context) {
+func (h *userHandler) UpdateSelfProfile(c *gin.Context) {
 	authUser := httpContext.MustGetUser(c.Request.Context())
-	var req UpdateProfileRequest
+	var req UserUpdateProfileRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.Error(err)
 		responder.SendError(c, err)
@@ -146,9 +152,9 @@ func (h *Handler) UpdateSelfProfile(c *gin.Context) {
 	responder.Send(c, domain.CodeUserProfileSuccess, response.FromDomainUser(*user))
 }
 
-func (h *Handler) UpdateSelfEmail(c *gin.Context) {
+func (h *userHandler) UpdateSelfEmail(c *gin.Context) {
 	authUser := httpContext.MustGetUser(c.Request.Context())
-	var req UpdateEmailRequest
+	var req UserUpdateEmailRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.Error(err)
 		responder.SendError(c, err)
@@ -167,8 +173,8 @@ func (h *Handler) UpdateSelfEmail(c *gin.Context) {
 	responder.Send(c, domain.CodeUserEmailSuccess, gin.H{"email": newEmail})
 }
 
-func (h *Handler) BatchUpdateRole(c *gin.Context) {
-	var req BatchUpdateRoleRequest
+func (h *userHandler) BatchUpdateRole(c *gin.Context) {
+	var req UserBatchUpdateRoleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.Error(err)
 		responder.SendError(c, err)
@@ -178,19 +184,14 @@ func (h *Handler) BatchUpdateRole(c *gin.Context) {
 		responder.SendValidationError(c, err)
 		return
 	}
-
 	var domainUpdates []domain.UserRoleUpdate
 	for _, u := range req.UserRoles {
 		if err := u.Validate(); err != nil {
 			responder.SendValidationError(c, err)
 			return
 		}
-		domainUpdates = append(domainUpdates, domain.UserRoleUpdate{
-			UserID: u.UserID,
-			Role:   u.Role,
-		})
+		domainUpdates = append(domainUpdates, domain.UserRoleUpdate{UserID: u.UserID, Role: u.Role})
 	}
-
 	updatedUsers, _, err := h.userSvc.UpdateRole(c.Request.Context(), domainUpdates...)
 	if err != nil {
 		c.Error(err)
@@ -212,8 +213,8 @@ func (h *Handler) BatchUpdateRole(c *gin.Context) {
 	responder.Send(c, domain.CodeUserRoleSuccess, responseUsers)
 }
 
-func (h *Handler) BatchDeleteUsers(c *gin.Context) {
-	var req BatchDeleteUsersRequest
+func (h *userHandler) BatchDeleteUsers(c *gin.Context) {
+	var req UserBatchDeleteRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.Error(err)
 		responder.SendError(c, err)
@@ -223,13 +224,11 @@ func (h *Handler) BatchDeleteUsers(c *gin.Context) {
 		responder.SendValidationError(c, validationErr)
 		return
 	}
-
 	deletedCount, err := h.userSvc.Destroy(c.Request.Context(), req.UserIDs...)
 	if err != nil {
 		c.Error(err)
 		responder.SendError(c, err)
 		return
 	}
-
 	responder.Send(c, domain.CodeUserBatchDeleteSuccess, gin.H{"deleted_count": deletedCount})
 }
