@@ -138,6 +138,9 @@ type UserTokenRepository interface {
 	// Store creates new user tokens
 	Store(ctx context.Context, tokens ...UserToken) ([]UserToken, error)
 
+	// Find retrieves a token by ID
+	Find(ctx context.Context, id string) (*UserToken, error)
+
 	// FindByToken retrieves a token by its token string
 	FindByToken(ctx context.Context, token string) (*UserToken, error)
 
@@ -150,6 +153,6 @@ type UserTokenRepository interface {
 	// RevokeByUserIdAndType revokes all tokens of a specific type for a user, returns rows affected
 	RevokeByUserIdAndType(ctx context.Context, userId string, tokenType UserTokenType) (int64, error)
 
-	// MarkUsed sets the last_used_at timestamp for a token, returns rows affected
-	MarkUsed(ctx context.Context, id string) (int64, error)
+	// Update updates a single user token, returns the updated entity
+	Update(ctx context.Context, token UserToken) (*UserToken, error)
 }

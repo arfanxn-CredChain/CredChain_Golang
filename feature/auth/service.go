@@ -104,7 +104,7 @@ func (s *Service) GoogleLogin(ctx context.Context, idToken string) (domain.User,
 // Returns the authenticated user, the new stored refresh token entity, the new JWT access token string, and any error.
 func (s *Service) Refresh(ctx context.Context, refreshToken string) (domain.User, domain.UserToken, string, error) {
 	// 1. Find refresh token in DB
-	token, err := s.userTokenRepo.FindByToken(ctx, refreshToken)
+	token, err := s.userTokenRepo.Find(ctx, refreshToken)
 	if err != nil {
 		return domain.User{}, domain.UserToken{}, "", domain.NewError(domain.CodeAuthRefreshInvalidToken)
 	}
@@ -130,19 +130,16 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (domain.User
 	var newAccessToken string
 
 	err = s.uow.Execute(ctx, func(uow domain.UnitOfWork) error {
-		// 5a. Mark the refresh token as used
-		_, err = uow.UserToken().MarkUsed(ctx, token.Id)
+		// 5a. Mark token as used and revoke it in a single update
+		now := time.Now()
+		token.LastUsedAt = &now
+		token.RevokedAt = &now
+		_, err = uow.UserToken().Update(ctx, *token)
 		if err != nil {
 			return domain.NewError(domain.CodeSystemInternal, domain.WithError(err))
 		}
 
-		// 5b. Revoke old refresh token (prevents replay attacks)
-		_, err = uow.UserToken().Revoke(ctx, token.Id)
-		if err != nil {
-			return domain.NewError(domain.CodeSystemInternal, domain.WithError(err))
-		}
-
-		// 5c. Generate new access token
+		// 5b. Generate new access token
 		newAccessToken, err = security.GenerateJWT(user.Id, []byte(s.config.JWTSecret), time.Duration(s.config.JWTAccessExpiryMinutes)*time.Minute)
 		if err != nil {
 			return domain.NewError(domain.CodeAuthRefreshJWTFailed, domain.WithError(err))

@@ -48,6 +48,16 @@ func (r *GormUserTokenRepository) FindByToken(ctx context.Context, token string)
 	return &domainToken, nil
 }
 
+// Find retrieves a token by ID
+func (r *GormUserTokenRepository) Find(ctx context.Context, id string) (*domain.UserToken, error) {
+	var gormToken model.UserToken
+	if err := r.db.WithContext(ctx).Where("id = ?", id).First(&gormToken).Error; err != nil {
+		return nil, err
+	}
+	domainToken := gormToken.ToDomain()
+	return &domainToken, nil
+}
+
 // FindByUserId retrieves all tokens for a user
 func (r *GormUserTokenRepository) FindByUserId(ctx context.Context, userId string) ([]domain.UserToken, error) {
 	var gormTokens []model.UserToken
@@ -80,11 +90,15 @@ func (r *GormUserTokenRepository) RevokeByUserIdAndType(ctx context.Context, use
 	return result.RowsAffected, result.Error
 }
 
-// MarkUsed sets the last_used_at timestamp for a token
-func (r *GormUserTokenRepository) MarkUsed(ctx context.Context, id string) (int64, error) {
-	now := time.Now()
-	result := r.db.WithContext(ctx).Model(&model.UserToken{}).
-		Where("id = ?", id).
-		Update("last_used_at", now)
-	return result.RowsAffected, result.Error
+// Update updates a single user token
+func (r *GormUserTokenRepository) Update(ctx context.Context, token domain.UserToken) (*domain.UserToken, error) {
+	modelToken := model.FromDomainUserToken(token)
+	if err := r.db.WithContext(ctx).Model(&model.UserToken{}).Where("id = ?", token.Id).Updates(modelToken).Error; err != nil {
+		return nil, err
+	}
+	updated, err := r.Find(ctx, token.Id)
+	if err != nil {
+		return nil, err
+	}
+	return updated, nil
 }
