@@ -33,6 +33,9 @@ type Config struct {
 	MongoInitPassword        string
 	MongoURI                 string
 	GeminiAPIKey             string
+	GoogleClientID           string
+	GoogleClientSecret       string
+	GoogleRedirectURI        string
 	GinCorsAllowOrigins      []string
 	GinCorsAllowMethods      []string
 	GinCorsAllowHeaders      []string
@@ -98,6 +101,9 @@ func NewConfig(envPath string) (*Config, error) {
 		MongoInitPassword:        getEnv("MONGO_INITDB_ROOT_PASSWORD", ""),
 		MongoURI:                 getEnv("MONGO_URI", ""),
 		GeminiAPIKey:             getEnv("GEMINI_API_KEY", ""),
+		GoogleClientID:           getEnv("GOOGLE_CLIENT_ID", ""),
+		GoogleClientSecret:       getEnv("GOOGLE_CLIENT_SECRET", ""),
+		GoogleRedirectURI:        getEnv("GOOGLE_REDIRECT_URI", "http://localhost:3000/google/callback"),
 		GinCorsAllowOrigins:      getStringSliceEnv("GIN_CORS_ALLOW_ORIGINS", "*"),
 		GinCorsAllowMethods:      getStringSliceEnv("GIN_CORS_ALLOW_METHODS", "GET,POST,PUT,PATCH,DELETE,HEAD,OPTIONS"),
 		GinCorsAllowHeaders:      getStringSliceEnv("GIN_CORS_ALLOW_HEADERS", "Origin,Content-Type,Accept,Authorization,X-Requested-With"),
