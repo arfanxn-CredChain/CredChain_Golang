@@ -23,12 +23,12 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(getGoogleIDTokenCmd)
+	rootCmd.AddCommand(getGoogleIdTokenCmd)
 }
 
-// tokenResponse represents Google's OAuth 2.0 token endpoint response.
+// getGoogleIdTokenResponse represents Google's OAuth 2.0 token endpoint response.
 // See: https://developers.google.com/identity/protocols/oauth2/web-server#exchange-authorization-code
-type tokenResponse struct {
+type getGoogleIdTokenResponse struct {
 	AccessToken  string `json:"access_token"`
 	ExpiresIn    int    `json:"expires_in"`
 	RefreshToken string `json:"refresh_token,omitempty"`
@@ -37,7 +37,7 @@ type tokenResponse struct {
 	IDToken      string `json:"id_token"`
 }
 
-// exchangeCodeForTokens exchanges an authorization code for OAuth tokens from Google.
+// getGoogleIdTokenExchangeCodeForTokens exchanges an authorization code for OAuth tokens from Google.
 //
 // This function performs the "Authorization Code Exchange" step of the OAuth 2.0 flow:
 // 1. Constructs a POST request to Google's token endpoint
@@ -45,7 +45,7 @@ type tokenResponse struct {
 // 3. Parses the response containing access token, refresh token, and ID token
 //
 // The ID token is an OpenID Connect JWT that contains the user's identity claims.
-func exchangeCodeForTokens(clientID, clientSecret, redirectURI, code string) (*tokenResponse, error) {
+func getGoogleIdTokenExchangeCodeForTokens(clientID, clientSecret, redirectURI, code string) (*getGoogleIdTokenResponse, error) {
 	const tokenEndpoint = "https://oauth2.googleapis.com/token"
 
 	// Build form-encoded request body
@@ -83,7 +83,7 @@ func exchangeCodeForTokens(clientID, clientSecret, redirectURI, code string) (*t
 	}
 
 	// Parse JSON response
-	var tokenResp tokenResponse
+	var tokenResp getGoogleIdTokenResponse
 	if err := json.Unmarshal(body, &tokenResp); err != nil {
 		return nil, fmt.Errorf("failed to parse token response: %w", err)
 	}
@@ -96,9 +96,9 @@ func exchangeCodeForTokens(clientID, clientSecret, redirectURI, code string) (*t
 	return &tokenResp, nil
 }
 
-// openBrowser opens the given URL in the user's default web browser.
+// getGoogleIdTokenOpenBrowser opens the given URL in the user's default web browser.
 // Supports macOS (open), Linux (xdg-open), and Windows (start).
-func openBrowser(targetURL string) error {
+func getGoogleIdTokenOpenBrowser(targetURL string) error {
 	var cmd *exec.Cmd
 
 	switch runtime.GOOS {
@@ -115,8 +115,8 @@ func openBrowser(targetURL string) error {
 	return cmd.Start()
 }
 
-// getGoogleIDTokenCmd is the Cobra command for obtaining a Google ID token.
-var getGoogleIDTokenCmd = &cobra.Command{
+// getGoogleIdTokenCmd is the Cobra command for obtaining a Google ID token.
+var getGoogleIdTokenCmd = &cobra.Command{
 	Use:   "get-google-id-token",
 	Short: "Obtain a Google ID token via OAuth 2.0 Authorization Code flow",
 	Long: `Starts a local HTTP server, opens the browser for Google login,
@@ -148,11 +148,11 @@ Workflow:
 		}
 		defer logger.Sync()
 
-		return runGoogleIDTokenFlow(cfg, logger)
+		return getGoogleIdToken(cfg, logger)
 	},
 }
 
-// runGoogleIDTokenFlow orchestrates the full OAuth 2.0 Authorization Code flow.
+// getGoogleIdToken orchestrates the full OAuth 2.0 Authorization Code flow.
 //
 // Flow:
 //  1. Start local HTTP server to receive OAuth callback
@@ -161,7 +161,7 @@ Workflow:
 //  4. Exchange code for token (access token, refresh token, ID token)
 //  5. Print ID token to stdout
 //  6. Shutdown server and exit
-func runGoogleIDTokenFlow(cfg *config.Config, logger *zap.Logger) error {
+func getGoogleIdToken(cfg *config.Config, logger *zap.Logger) error {
 	// Determine redirect URI (use config or default)
 	redirectURI := cfg.GoogleRedirectURI
 	if redirectURI == "" {
@@ -272,7 +272,7 @@ func runGoogleIDTokenFlow(cfg *config.Config, logger *zap.Logger) error {
 	logger.Info("opening browser for Google login...")
 
 	// Open browser (warn if it fails)
-	if err := openBrowser(authURL); err != nil {
+	if err := getGoogleIdTokenOpenBrowser(authURL); err != nil {
 		logger.Warn("failed to open browser automatically", zap.Error(err))
 		logger.Info("please open this URL manually", zap.String("url", authURL))
 	}
@@ -283,7 +283,7 @@ func runGoogleIDTokenFlow(cfg *config.Config, logger *zap.Logger) error {
 		logger.Info("authorization code received, exchanging for tokens...")
 
 		// Exchange authorization code for tokens
-		tokenResp, err := exchangeCodeForTokens(
+		tokenResp, err := getGoogleIdTokenExchangeCodeForTokens(
 			cfg.GoogleClientID,
 			cfg.GoogleClientSecret,
 			redirectURI,
@@ -296,7 +296,7 @@ func runGoogleIDTokenFlow(cfg *config.Config, logger *zap.Logger) error {
 		// Print ID token to stdout (this is what the user needs)
 		fmt.Println("\n=== Google ID Token ===")
 		fmt.Println(tokenResp.IDToken)
-		fmt.Println("======================\n")
+		fmt.Println("======================")
 
 		logger.Info("ID token obtained successfully")
 

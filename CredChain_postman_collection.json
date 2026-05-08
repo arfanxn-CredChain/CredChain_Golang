@@ -1,0 +1,224 @@
+{
+  "info": {
+    "name": "CredChain",
+    "description": "CredChain API collection for testing authentication endpoints.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "BASE_URL",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "ID_TOKEN",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "ACCESS_TOKEN",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "REFRESH_TOKEN",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "USER_ID",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "USER_EMAIL",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Api",
+      "item": [
+        {
+          "name": "Auth",
+          "item": [
+            {
+              "name": "Google Login",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const response = pm.response.json();",
+                      "",
+                      "if (response.code === 200200 && response.data) {",
+                      "    pm.collectionVariables.set(\"ACCESS_TOKEN\", response.data.access_token);",
+                      "    pm.collectionVariables.set(\"REFRESH_TOKEN\", response.data.refresh_token);",
+                      "    pm.collectionVariables.set(\"USER_ID\", response.data.id);",
+                      "    pm.collectionVariables.set(\"USER_EMAIL\", response.data.email);",
+                      "    ",
+                      "    pm.test(\"Login successful\", function() {",
+                      "        pm.response.to.have.status(200);",
+                      "        pm.expect(response.code).to.eql(200200);",
+                      "    });",
+                      "} else {",
+                      "    pm.test(\"Login failed: \" + response.message, function() {",
+                      "        pm.expect(response.code).to.not.eql(200200);",
+                      "    });",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"id_token\": \"{{ID_TOKEN}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/api/auth/google",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["api", "auth", "google"]
+                },
+                "description": "Login with Google ID token. Run 'make get-google-id-token' first to obtain the ID token, then paste it into the ID_TOKEN collection variable."
+              },
+              "response": []
+            },
+            {
+              "name": "Refresh Token",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "if (!pm.collectionVariables.get(\"REFRESH_TOKEN\")) {",
+                      "    pm.test.fail(\"REFRESH_TOKEN not set. Please run 'Google Login' first.\");",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const response = pm.response.json();",
+                      "",
+                      "if (response.code === 200300 && response.data) {",
+                      "    pm.collectionVariables.set(\"ACCESS_TOKEN\", response.data.access_token);",
+                      "    pm.collectionVariables.set(\"REFRESH_TOKEN\", response.data.refresh_token);",
+                      "    ",
+                      "    pm.test(\"Token refreshed successfully\", function() {",
+                      "        pm.response.to.have.status(200);",
+                      "        pm.expect(response.code).to.eql(200300);",
+                      "    });",
+                      "} else {",
+                      "    pm.test(\"Refresh failed: \" + response.message, function() {",
+                      "        pm.expect(response.code).to.not.eql(200300);",
+                      "    });",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refresh_token\": \"{{REFRESH_TOKEN}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/api/auth/refresh",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["api", "auth", "refresh"]
+                },
+                "description": "Rotate access and refresh tokens. Requires a valid refresh token from Google Login."
+              },
+              "response": []
+            },
+            {
+              "name": "Logout",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "if (!pm.collectionVariables.get(\"ACCESS_TOKEN\")) {",
+                      "    pm.test.fail(\"ACCESS_TOKEN not set. Please run 'Google Login' first.\");",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const response = pm.response.json();",
+                      "",
+                      "if (response.code === 200400) {",
+                      "    pm.collectionVariables.set(\"ACCESS_TOKEN\", \"\");",
+                      "    pm.collectionVariables.set(\"REFRESH_TOKEN\", \"\");",
+                      "    pm.collectionVariables.set(\"USER_ID\", \"\");",
+                      "    pm.collectionVariables.set(\"USER_EMAIL\", \"\");",
+                      "    ",
+                      "    pm.test(\"Logged out successfully\", function() {",
+                      "        pm.response.to.have.status(200);",
+                      "        pm.expect(response.code).to.eql(200400);",
+                      "    });",
+                      "} else {",
+                      "    pm.test(\"Logout failed: \" + response.message, function() {",
+                      "        pm.expect(response.code).to.not.eql(200400);",
+                      "    });",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{ACCESS_TOKEN}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/auth/logout",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["api", "auth", "logout"]
+                },
+                "description": "Revoke all refresh tokens for the authenticated user. Requires a valid access token."
+              },
+              "response": []
+            }
+          ],
+          "description": "Authentication endpoints for Google OAuth login, token refresh, and logout."
+        }
+      ],
+      "description": "CredChain API endpoints."
+    }
+  ]
+}
