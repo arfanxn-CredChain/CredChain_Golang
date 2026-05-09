@@ -42,6 +42,8 @@ type Config struct {
 	GinCorsExposeHeaders     []string
 	GinCorsAllowCredentials  *bool
 	GinCorsMaxAge            time.Duration
+	LogLevel                 *string
+	LogOutput                *string
 }
 
 func getIntEnv(key string, defaultVal *int) *int {
@@ -124,6 +126,8 @@ func NewConfig(envPath string) (*Config, error) {
 		GinCorsExposeHeaders:     getStringSliceEnv("GIN_CORS_EXPOSE_HEADERS", defaultCORSExposeHeaders),
 		GinCorsAllowCredentials:  getBoolEnv("GIN_CORS_ALLOW_CREDENTIALS", &defaultGinCorsAllowCredentials),
 		GinCorsMaxAge:            time.Duration(*getIntEnv("GIN_CORS_MAX_AGE", &defaultGinCorsMaxAge)) * time.Second,
+		LogLevel:                 getEnv("LOG_LEVEL", ptr("info")),
+		LogOutput:                getEnv("LOG_OUTPUT", ptr("stdout")),
 	}
 
 	if cfg.JWTSecret == nil {

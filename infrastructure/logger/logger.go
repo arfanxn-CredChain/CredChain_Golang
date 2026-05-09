@@ -2,6 +2,7 @@ package logger
 
 import (
 	"CredChain_Golang/config"
+	"strings"
 
 	"go.uber.org/fx"
 	"go.uber.org/zap"
@@ -14,12 +15,29 @@ type ZapLoggerParams struct {
 }
 
 // NewZapLogger creates a production zap logger with caller info and error-level stack traces.
-// Config is mandatory (reserved for future logger configuration: log level, format, output).
+// Config controls log level (LOG_LEVEL: debug/info/warn/error, default info) and
+// output destination (LOG_OUTPUT: stdout or file path, default stdout).
 func NewZapLogger(p ZapLoggerParams) (*zap.Logger, error) {
 	cfg := zap.NewProductionConfig()
 
-	// AddCaller enabled globally to track exact file:line origins
-	// AddStacktrace explicitly enabled for ErrorLevel and above
+	// Set log level
+	switch strings.ToLower(*p.Config.LogLevel) {
+	case "debug":
+		cfg.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
+	case "warn":
+		cfg.Level = zap.NewAtomicLevelAt(zap.WarnLevel)
+	case "error":
+		cfg.Level = zap.NewAtomicLevelAt(zap.ErrorLevel)
+	default:
+		cfg.Level = zap.NewAtomicLevelAt(zap.InfoLevel)
+	}
+
+	// Set output
+	if *p.Config.LogOutput != "stdout" {
+		cfg.OutputPaths = []string{*p.Config.LogOutput}
+		cfg.ErrorOutputPaths = []string{*p.Config.LogOutput}
+	}
+
 	logger, err := cfg.Build(
 		zap.AddCaller(),
 		zap.AddStacktrace(zap.ErrorLevel),
