@@ -26,10 +26,10 @@ type RouterParams struct {
 func NewGinRouter(p RouterParams) *gin.Engine {
 	r := gin.Default()
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     *p.Config.GinCorsAllowOrigins,
-		AllowMethods:     *p.Config.GinCorsAllowMethods,
-		AllowHeaders:     *p.Config.GinCorsAllowHeaders,
-		ExposeHeaders:    *p.Config.GinCorsExposeHeaders,
+		AllowOrigins:     p.Config.GinCorsAllowOrigins,
+		AllowMethods:     p.Config.GinCorsAllowMethods,
+		AllowHeaders:     p.Config.GinCorsAllowHeaders,
+		ExposeHeaders:    p.Config.GinCorsExposeHeaders,
 		AllowCredentials: *p.Config.GinCorsAllowCredentials,
 		MaxAge:           p.Config.GinCorsMaxAge,
 	}))

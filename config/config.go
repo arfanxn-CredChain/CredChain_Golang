@@ -36,10 +36,10 @@ type Config struct {
 	GoogleClientID           *string
 	GoogleClientSecret       *string
 	GoogleRedirectURI        *string
-	GinCorsAllowOrigins      *[]string
-	GinCorsAllowMethods      *[]string
-	GinCorsAllowHeaders      *[]string
-	GinCorsExposeHeaders     *[]string
+	GinCorsAllowOrigins      []string
+	GinCorsAllowMethods      []string
+	GinCorsAllowHeaders      []string
+	GinCorsExposeHeaders     []string
 	GinCorsAllowCredentials  *bool
 	GinCorsMaxAge            time.Duration
 }
@@ -56,13 +56,12 @@ func getIntEnv(key string, defaultVal *int) *int {
 	return &intVal
 }
 
-func getStringSliceEnv(key string, defaultVal *[]string) *[]string {
-	val := getEnv(key, nil)
-	if val == nil || *val == "" {
+func getStringSliceEnv(key string, defaultVal []string) []string {
+	val := os.Getenv(key)
+	if val == "" {
 		return defaultVal
 	}
-	result := strings.Split(*val, ",")
-	return &result
+	return strings.Split(val, ",")
 }
 
 func getBoolEnv(key string, defaultVal *bool) *bool {
@@ -119,10 +118,10 @@ func NewConfig(envPath string) (*Config, error) {
 		GoogleClientID:           getEnv("GOOGLE_CLIENT_ID", nil),
 		GoogleClientSecret:       getEnv("GOOGLE_CLIENT_SECRET", nil),
 		GoogleRedirectURI:        getEnv("GOOGLE_REDIRECT_URI", &defaultGoogleRedirectURI),
-		GinCorsAllowOrigins:      getStringSliceEnv("GIN_CORS_ALLOW_ORIGINS", &defaultCORSOrigins),
-		GinCorsAllowMethods:      getStringSliceEnv("GIN_CORS_ALLOW_METHODS", &defaultCORSMethods),
-		GinCorsAllowHeaders:      getStringSliceEnv("GIN_CORS_ALLOW_HEADERS", &defaultCORSHeaders),
-		GinCorsExposeHeaders:     getStringSliceEnv("GIN_CORS_EXPOSE_HEADERS", &defaultCORSExposeHeaders),
+		GinCorsAllowOrigins:      getStringSliceEnv("GIN_CORS_ALLOW_ORIGINS", defaultCORSOrigins),
+		GinCorsAllowMethods:      getStringSliceEnv("GIN_CORS_ALLOW_METHODS", defaultCORSMethods),
+		GinCorsAllowHeaders:      getStringSliceEnv("GIN_CORS_ALLOW_HEADERS", defaultCORSHeaders),
+		GinCorsExposeHeaders:     getStringSliceEnv("GIN_CORS_EXPOSE_HEADERS", defaultCORSExposeHeaders),
 		GinCorsAllowCredentials:  getBoolEnv("GIN_CORS_ALLOW_CREDENTIALS", &defaultGinCorsAllowCredentials),
 		GinCorsMaxAge:            time.Duration(*getIntEnv("GIN_CORS_MAX_AGE", &defaultGinCorsMaxAge)) * time.Second,
 	}
