@@ -39,7 +39,7 @@ var serverCmd = &cobra.Command{
 					lc.Append(fx.Hook{OnStop: func(ctx context.Context) error { cancel(); return nil }})
 					return ctx
 				},
-				i18n.NewBundle,
+				i18n.NewI18nBundle,
 				gormInfra.NewGorm,
 				storage.NewStorage,
 				storage.NewIPFSClient,
@@ -57,6 +57,7 @@ var serverCmd = &cobra.Command{
 				middleware.NewAdminRoleMiddleware,
 				middleware.NewIssuerRoleMiddleware,
 				middleware.NewSuperAdminRoleMiddleware,
+				middleware.NewI18nMiddleware,
 				middleware.NewLoginRateLimitMiddleware,
 				middleware.NewRefreshRateLimitMiddleware,
 				middleware.NewLogoutRateLimitMiddleware,

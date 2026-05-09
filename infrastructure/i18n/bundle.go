@@ -1,6 +1,7 @@
 package i18n
 
 import (
+	"CredChain_Golang/config"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -8,18 +9,23 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"golang.org/x/text/language"
+	"go.uber.org/fx"
 )
 
 const (
-	LocalizerContextKey = "localizer"
+	I18nLocalizerContextKey = "i18n_localizer"
 )
 
-func NewBundle() (*i18n.Bundle, error) {
+type I18nBundleParams struct {
+	fx.In
+	Config *config.Config
+}
+
+func NewI18nBundle(p I18nBundleParams) (*i18n.Bundle, error) {
 	bundle := i18n.NewBundle(language.Indonesian)
 	bundle.RegisterUnmarshalFunc("json", json.Unmarshal)
 
-	// Load all files in locales directory
-	localesDir := "./locales"
+	localesDir := *p.Config.I18nLocalesDir
 	files, err := os.ReadDir(localesDir)
 	if err != nil {
 		return nil, err
@@ -37,9 +43,8 @@ func NewBundle() (*i18n.Bundle, error) {
 	return bundle, nil
 }
 
-// GetLocalizer retrieves the *i18n.Localizer from the Gin context.
-func GetLocalizer(c *gin.Context) *i18n.Localizer {
-	val, exists := c.Get(LocalizerContextKey)
+func GetI18nLocalizer(c *gin.Context) *i18n.Localizer {
+	val, exists := c.Get(I18nLocalizerContextKey)
 	if !exists {
 		return nil
 	}
@@ -50,7 +55,6 @@ func GetLocalizer(c *gin.Context) *i18n.Localizer {
 	return localizer
 }
 
-// SetLocalizer injects the *i18n.Localizer into the Gin context.
-func SetLocalizer(c *gin.Context, localizer *i18n.Localizer) {
-	c.Set(LocalizerContextKey, localizer)
+func SetI18nLocalizer(c *gin.Context, localizer *i18n.Localizer) {
+	c.Set(I18nLocalizerContextKey, localizer)
 }

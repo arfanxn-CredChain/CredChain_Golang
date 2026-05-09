@@ -18,7 +18,7 @@ import (
 
 // Send writes a unified success or informational response.
 func Send[T any](c *gin.Context, code int, data T) {
-	localizer := appI18n.GetLocalizer(c)
+	localizer := 	appI18n.GetI18nLocalizer(c)
 	msgKey := getMessageKey(code)
 	message := localize(c, localizer, msgKey, nil)
 
@@ -37,7 +37,7 @@ func SendPagination[T any](c *gin.Context, code int, items []T, total int) {
 
 // SendError writes a unified error response and aborts the request.
 func SendError(c *gin.Context, err error) {
-	localizer := appI18n.GetLocalizer(c)
+	localizer := 	appI18n.GetI18nLocalizer(c)
 
 	var appErr *domain.Error
 	if errors.As(err, &appErr) {
@@ -62,7 +62,7 @@ func SendError(c *gin.Context, err error) {
 
 // SendValidationError handles ozzo-validation.Errors specifically.
 func SendValidationError(c *gin.Context, err error) {
-	localizer := appI18n.GetLocalizer(c)
+	localizer := 	appI18n.GetI18nLocalizer(c)
 
 	vErrs, ok := err.(validation.Errors)
 	if !ok {

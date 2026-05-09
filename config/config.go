@@ -44,6 +44,7 @@ type Config struct {
 	GinCorsMaxAge            time.Duration
 	LogLevel                 *string
 	LogOutput                *string
+	I18nLocalesDir           *string
 }
 
 func getIntEnv(key string, defaultVal *int) *int {
@@ -128,6 +129,7 @@ func NewConfig(envPath string) (*Config, error) {
 		GinCorsMaxAge:            time.Duration(*getIntEnv("GIN_CORS_MAX_AGE", &defaultGinCorsMaxAge)) * time.Second,
 		LogLevel:                 getEnv("LOG_LEVEL", ptr("info")),
 		LogOutput:                getEnv("LOG_OUTPUT", ptr("stdout")),
+		I18nLocalesDir:           getEnv("I18N_LOCALES_DIR", ptr("./locales")),
 	}
 
 	if cfg.JWTSecret == nil {

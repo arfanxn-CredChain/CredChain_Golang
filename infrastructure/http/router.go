@@ -13,7 +13,6 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 )
@@ -41,7 +40,7 @@ type RouteParams struct {
 	Lifecycle                  fx.Lifecycle
 	Router                     *gin.Engine
 	Config                     *config.Config
-	Bundle                     *i18n.Bundle
+	I18nMiddleware             middleware.I18nMiddleware
 	AuthHandler                auth.AuthHandler
 	UserHandler                user.UserHandler
 	CredHandler                credential.CredentialHandler
@@ -58,7 +57,7 @@ type RouteParams struct {
 
 func RegisterRoutes(p RouteParams) {
 	p.Router.Use(middleware.ErrorLogger(p.Logger))
-	p.Router.Use(middleware.I18nMiddleware(p.Bundle))
+	p.Router.Use(gin.HandlerFunc(p.I18nMiddleware))
 	api := p.Router.Group("/api")
 	api.Use(gin.HandlerFunc(p.ApiRateLimitMiddleware))
 	{
