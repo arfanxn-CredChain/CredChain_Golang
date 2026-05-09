@@ -25,7 +25,7 @@ type UserService interface {
 	Find(ctx context.Context, id string) (*domain.User, error)
 	FindByIds(ctx context.Context, ids ...string) ([]domain.User, error)
 	Update(ctx context.Context, user domain.User) (*domain.User, error)
-	UpdateProfile(ctx context.Context, id string, name, number, phoneNumber *string, meta *domain.JSONB) (*domain.User, error)
+	UpdateProfile(ctx context.Context, id string, name, number, phoneNumber *string, meta map[string]any) (*domain.User, error)
 	UpdateEmail(ctx context.Context, id string, email string) (string, error)
 	UpdateRole(ctx context.Context, updates ...domain.UserRoleUpdate) ([]domain.User, int64, error)
 	Store(ctx context.Context, users ...domain.User) ([]domain.User, error)
@@ -204,7 +204,7 @@ func (s *userService) Update(ctx context.Context, user domain.User) (*domain.Use
 	return s.userRepo.Update(ctx, user)
 }
 
-func (s *userService) UpdateProfile(ctx context.Context, id string, name, number, phoneNumber *string, meta *domain.JSONB) (*domain.User, error) {
+func (s *userService) UpdateProfile(ctx context.Context, id string, name, number, phoneNumber *string, meta map[string]any) (*domain.User, error) {
 	return s.userRepo.Update(ctx, domain.User{Id: id, Name: name, Number: number, PhoneNumber: phoneNumber, Meta: meta})
 }
 

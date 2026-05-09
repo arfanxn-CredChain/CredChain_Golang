@@ -84,7 +84,7 @@ type User struct {
 	PhoneNumber      *string    `json:"phone_number"`
 	Email            string     `json:"email"`
 	BirthDate        *time.Time `json:"birth_date"`
-	Meta             *JSONB     `json:"meta"`
+	Meta             map[string]any `json:"meta"`
 	Role             Role       `json:"role"`
 	WalletAddress    string     `json:"wallet_address"`
 	EncryptedWalletPrivateKey string     `json:"-"`

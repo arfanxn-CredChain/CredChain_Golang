@@ -52,7 +52,7 @@ type UserUpdateProfileRequest struct {
 	Name        *string       `json:"name"`
 	Number      *string       `json:"number"`
 	PhoneNumber *string       `json:"phone_number"`
-	Meta        *domain.JSONB `json:"meta"`
+	Meta        map[string]any `json:"meta"`
 }
 
 func (r UserUpdateProfileRequest) Validate() error { return nil }

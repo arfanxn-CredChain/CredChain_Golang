@@ -14,7 +14,7 @@ type Credential struct {
 	IssuerUserID  string     `db:"issuer_user_id" json:"issuer_user_id"`
 	RevokerUserID *string    `db:"revoker_user_id" json:"revoker_user_id"`
 	Name          string     `db:"name" json:"name"`
-	Meta          *JSONB     `db:"meta" json:"meta"`
+	Meta          map[string]any `db:"meta" json:"meta"`
 	TokenID       *string    `db:"token_id" json:"token_id"`
 	FileHash      string     `db:"file_hash" json:"file_hash"`
 	IssuedAt      time.Time  `db:"issued_at" json:"issued_at"`

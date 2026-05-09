@@ -2,8 +2,6 @@ package model
 
 import (
 	"CredChain_Golang/domain"
-	"encoding/json"
-	"gorm.io/datatypes"
 	"time"
 )
 
@@ -14,7 +12,7 @@ type User struct {
 	PhoneNumber      *string        `gorm:"type:varchar(50);column:phone_number" json:"phone_number"`
 	Email            string         `gorm:"type:varchar(255);uniqueIndex;column:email" json:"email"`
 	BirthDate        *time.Time     `gorm:"column:birth_date" json:"birth_date"`
-	Meta             datatypes.JSON `gorm:"type:jsonb;column:meta" json:"meta"`
+	Meta             map[string]any `gorm:"type:jsonb;column:meta" json:"meta"`
 	Role             string         `gorm:"type:varchar(50);column:role" json:"role"`
 	WalletAddress    string         `gorm:"type:varchar(255);column:wallet_address" json:"wallet_address"`
 	EncryptedWalletPrivateKey string         `gorm:"type:varchar(255);column:encrypted_wallet_private_key" json:"-"`
@@ -23,13 +21,6 @@ type User struct {
 }
 
 func (m *User) ToDomain() domain.User {
-	var meta *domain.JSONB
-	if m.Meta != nil {
-		metaData := make(domain.JSONB)
-		json.Unmarshal(m.Meta, &metaData)
-		meta = &metaData
-	}
-
 	return domain.User{
 		Id:               m.Id,
 		Name:             m.Name,
@@ -37,7 +28,7 @@ func (m *User) ToDomain() domain.User {
 		PhoneNumber:      m.PhoneNumber,
 		Email:            m.Email,
 		BirthDate:        m.BirthDate,
-		Meta:             meta,
+		Meta:             m.Meta,
 		Role:             domain.Role(m.Role),
 		WalletAddress:    m.WalletAddress,
 		EncryptedWalletPrivateKey: m.EncryptedWalletPrivateKey,
@@ -47,11 +38,6 @@ func (m *User) ToDomain() domain.User {
 }
 
 func FromDomainUser(u domain.User) User {
-	var meta datatypes.JSON
-	if u.Meta != nil {
-		meta, _ = json.Marshal(*u.Meta)
-	}
-
 	return User{
 		Id:               u.Id,
 		Name:             u.Name,
@@ -59,7 +45,7 @@ func FromDomainUser(u domain.User) User {
 		PhoneNumber:      u.PhoneNumber,
 		Email:            u.Email,
 		BirthDate:        u.BirthDate,
-		Meta:             meta,
+		Meta:             u.Meta,
 		Role:             string(u.Role),
 		WalletAddress:    u.WalletAddress,
 		EncryptedWalletPrivateKey: u.EncryptedWalletPrivateKey,

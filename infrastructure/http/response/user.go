@@ -14,7 +14,7 @@ type User struct {
 	PhoneNumber   *string       `json:"phone_number"`
 	Email         string        `json:"email"`
 	BirthDate     *time.Time    `json:"birth_date"`
-	Meta          *domain.JSONB `json:"meta"`
+	Meta          map[string]any `json:"meta"`
 	Role          domain.Role   `json:"role"`
 	WalletAddress string        `json:"wallet_address"`
 	CreatedAt     time.Time     `json:"created_at"`

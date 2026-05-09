@@ -14,7 +14,7 @@ func TestFromDomainUser_AllFieldsSet(t *testing.T) {
 	phone := "+62812345678"
 	bd := time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC)
 	updatedAt := time.Date(2025, 5, 1, 12, 0, 0, 0, time.UTC)
-	meta := domain.JSONB{"key": "value"}
+	meta := map[string]any{"key": "value"}
 
 	u := domain.User{
 		Id:                        "user-1",
@@ -23,7 +23,7 @@ func TestFromDomainUser_AllFieldsSet(t *testing.T) {
 		PhoneNumber:               &phone,
 		Email:                     "alice@example.com",
 		BirthDate:                 &bd,
-		Meta:                      &meta,
+		Meta:                      meta,
 		Role:                      domain.RoleHolder,
 		WalletAddress:             "0xabc",
 		EncryptedWalletPrivateKey: "secret",
@@ -39,7 +39,7 @@ func TestFromDomainUser_AllFieldsSet(t *testing.T) {
 	assert.Equal(t, &phone, got.PhoneNumber)
 	assert.Equal(t, "alice@example.com", got.Email)
 	assert.Equal(t, &bd, got.BirthDate)
-	assert.Equal(t, &meta, got.Meta)
+	assert.Equal(t, meta, got.Meta)
 	assert.Equal(t, domain.RoleHolder, got.Role)
 	assert.Equal(t, "0xabc", got.WalletAddress)
 	assert.Equal(t, u.CreatedAt, got.CreatedAt)
@@ -82,7 +82,7 @@ func TestToDomain_AllFieldsSet(t *testing.T) {
 	phone := "+62812345678"
 	bd := time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC)
 	updatedAt := time.Date(2025, 5, 1, 12, 0, 0, 0, time.UTC)
-	meta := domain.JSONB{"key": "value"}
+	meta := map[string]any{"key": "value"}
 
 	r := User{
 		ID:            "user-1",
@@ -91,7 +91,7 @@ func TestToDomain_AllFieldsSet(t *testing.T) {
 		PhoneNumber:   &phone,
 		Email:         "alice@example.com",
 		BirthDate:     &bd,
-		Meta:          &meta,
+		Meta:          meta,
 		Role:          domain.RoleHolder,
 		WalletAddress: "0xabc",
 		CreatedAt:     time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
@@ -106,7 +106,7 @@ func TestToDomain_AllFieldsSet(t *testing.T) {
 	assert.Equal(t, &phone, got.PhoneNumber)
 	assert.Equal(t, "alice@example.com", got.Email)
 	assert.Equal(t, &bd, got.BirthDate)
-	assert.Equal(t, &meta, got.Meta)
+	assert.Equal(t, meta, got.Meta)
 	assert.Equal(t, domain.RoleHolder, got.Role)
 	assert.Equal(t, "0xabc", got.WalletAddress)
 	assert.Equal(t, r.CreatedAt, got.CreatedAt)
