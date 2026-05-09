@@ -4,10 +4,7 @@ import (
 	"context"
 
 	"CredChain_Golang/domain"
-	"CredChain_Golang/infrastructure/chain"
 	httpContext "CredChain_Golang/infrastructure/http/context"
-
-	"go.uber.org/fx"
 )
 
 type UserPolicy interface {
@@ -16,24 +13,15 @@ type UserPolicy interface {
 	Delete(ctx context.Context, ids ...string) error
 }
 
-type userPolicy struct {
-	roleService chain.RoleService
-}
+type userPolicy struct{}
 
-type UserPolicyParams struct {
-	fx.In
-	RoleService chain.RoleService
-}
-
-func NewUserPolicy(p UserPolicyParams) UserPolicy {
-	return &userPolicy{roleService: p.RoleService}
+func NewUserPolicy() UserPolicy {
+	return &userPolicy{}
 }
 
 func (p *userPolicy) Store(ctx context.Context, users ...domain.User) error {
 	authUser := httpContext.MustGetUser(ctx)
-	if err := p.roleService.Verify(ctx, authUser.WalletAddress, domain.RoleAdmin); err != nil {
-		return err
-	}
+	// On-chain role verification is handled by AdminRoleMiddleware
 	for _, user := range users {
 		if user.Role == domain.RoleSuperAdmin {
 			return domain.NewError(domain.CodeUserStoreSuperAdminForbidden)
@@ -46,23 +34,16 @@ func (p *userPolicy) Store(ctx context.Context, users ...domain.User) error {
 }
 
 func (p *userPolicy) UpdateRole(ctx context.Context, updates ...domain.UserRoleUpdate) error {
-	authUser := httpContext.MustGetUser(ctx)
-	if err := p.roleService.Verify(ctx, authUser.WalletAddress, domain.RoleAdmin); err != nil {
-		return err
-	}
-	if authUser.Role == domain.RoleAdmin {
-		for _, update := range updates {
-			_ = update
-		}
-	}
+	// On-chain role verification is handled by AdminRoleMiddleware
+	// Note: Target user validation (preventing admin-to-admin updates) is handled
+	// in the service layer where target users are fetched.
+	_ = updates
 	return nil
 }
 
 func (p *userPolicy) Delete(ctx context.Context, ids ...string) error {
 	authUser := httpContext.MustGetUser(ctx)
-	if err := p.roleService.Verify(ctx, authUser.WalletAddress, domain.RoleAdmin); err != nil {
-		return err
-	}
+	// On-chain role verification is handled by AdminRoleMiddleware
 	for _, id := range ids {
 		if id == authUser.Id {
 			return domain.NewError(domain.CodeAuthForbidden)
