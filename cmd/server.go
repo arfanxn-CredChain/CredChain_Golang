@@ -58,6 +58,7 @@ var serverCmd = &cobra.Command{
 				middleware.NewIssuerRoleMiddleware,
 				middleware.NewSuperAdminRoleMiddleware,
 				middleware.NewI18nMiddleware,
+				middleware.NewErrorLoggerMiddleware,
 				middleware.NewLoginRateLimitMiddleware,
 				middleware.NewRefreshRateLimitMiddleware,
 				middleware.NewLogoutRateLimitMiddleware,

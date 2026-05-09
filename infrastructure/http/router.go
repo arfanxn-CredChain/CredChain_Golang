@@ -53,10 +53,11 @@ type RouteParams struct {
 	RefreshRateLimitMiddleware middleware.RefreshRateLimitMiddleware
 	LogoutRateLimitMiddleware  middleware.LogoutRateLimitMiddleware
 	ApiRateLimitMiddleware     middleware.ApiRateLimitMiddleware
+	ErrorLoggerMiddleware      middleware.ErrorLoggerMiddleware
 }
 
 func RegisterRoutes(p RouteParams) {
-	p.Router.Use(middleware.ErrorLogger(p.Logger))
+	p.Router.Use(gin.HandlerFunc(p.ErrorLoggerMiddleware))
 	p.Router.Use(gin.HandlerFunc(p.I18nMiddleware))
 	api := p.Router.Group("/api")
 	api.Use(gin.HandlerFunc(p.ApiRateLimitMiddleware))
