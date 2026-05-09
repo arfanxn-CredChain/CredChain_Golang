@@ -35,7 +35,7 @@ func NewZapLogger(p ZapLoggerParams) (*zap.Logger, error) {
 	// Set output
 	if *p.Config.LogOutput != "stdout" {
 		cfg.OutputPaths = []string{*p.Config.LogOutput}
-		cfg.ErrorOutputPaths = []string{*p.Config.LogOutput}
+		cfg.ErrorOutputPaths = []string{*p.Config.LogOutput, "stderr"}
 	}
 
 	logger, err := cfg.Build(
