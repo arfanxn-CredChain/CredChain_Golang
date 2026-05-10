@@ -45,6 +45,7 @@ var serverCmd = &cobra.Command{
 				storage.NewIPFSClient,
 				ai.NewClient,
 				chain.NewClient,
+				chain.NewRoleService,
 				oauth.NewGoogleOAuthClient,
 				user.NewGormUserRepository,
 				user.NewGormUserTokenRepository,

@@ -6,6 +6,7 @@ import (
 
 	"CredChain_Golang/config"
 	"CredChain_Golang/domain"
+	"CredChain_Golang/infrastructure/chain"
 	httpContext "CredChain_Golang/infrastructure/http/context"
 	"CredChain_Golang/infrastructure/http/responder"
 	"CredChain_Golang/infrastructure/security"
@@ -22,7 +23,7 @@ type AuthMiddlewareParams struct {
 
 type RoleMiddlewareParams struct {
 	fx.In
-	// No dependencies - reads user from context
+	RoleService chain.RoleService
 }
 
 // Named wrapper types for role-based middlewares
@@ -73,36 +74,55 @@ func NewAuthMiddleware(p AuthMiddlewareParams) gin.HandlerFunc {
 
 // NewAdminRoleMiddleware enforces Admin or higher role requirement
 func NewAdminRoleMiddleware(p RoleMiddlewareParams) AdminRoleMiddleware {
-	return AdminRoleMiddleware(requireMinRoleMiddleware(domain.RoleAdmin))
-}
-
-// NewIssuerRoleMiddleware enforces Issuer or higher role requirement
-func NewIssuerRoleMiddleware(p RoleMiddlewareParams) IssuerRoleMiddleware {
-	return IssuerRoleMiddleware(requireMinRoleMiddleware(domain.RoleIssuer))
-}
-
-// NewSuperAdminRoleMiddleware enforces SuperAdmin role requirement
-func NewSuperAdminRoleMiddleware(p RoleMiddlewareParams) SuperAdminRoleMiddleware {
-	return SuperAdminRoleMiddleware(requireMinRoleMiddleware(domain.RoleSuperAdmin))
-}
-
-// requireMinRoleMiddleware returns a middleware that enforces a minimum role requirement
-func requireMinRoleMiddleware(minRole domain.Role) gin.HandlerFunc {
-	return func(c *gin.Context) {
+	return AdminRoleMiddleware(func(c *gin.Context) {
 		user, err := httpContext.GetUser(c.Request.Context())
 		if err != nil {
 			responder.SendError(c, domain.NewError(domain.CodeAuthUnauthorized))
 			c.Abort()
 			return
 		}
-
-		if user.Role.Rank() < minRole.Rank() {
-			responder.SendError(c, domain.NewError(domain.CodeAuthForbidden))
+		if err := p.RoleService.Verify(c.Request.Context(), user.WalletAddress, domain.RoleAdmin); err != nil {
+			responder.SendError(c, err)
 			c.Abort()
 			return
 		}
-
 		c.Next()
-	}
+	})
+}
+
+// NewIssuerRoleMiddleware enforces Issuer or higher role requirement
+func NewIssuerRoleMiddleware(p RoleMiddlewareParams) IssuerRoleMiddleware {
+	return IssuerRoleMiddleware(func(c *gin.Context) {
+		user, err := httpContext.GetUser(c.Request.Context())
+		if err != nil {
+			responder.SendError(c, domain.NewError(domain.CodeAuthUnauthorized))
+			c.Abort()
+			return
+		}
+		if err := p.RoleService.Verify(c.Request.Context(), user.WalletAddress, domain.RoleIssuer); err != nil {
+			responder.SendError(c, err)
+			c.Abort()
+			return
+		}
+		c.Next()
+	})
+}
+
+// NewSuperAdminRoleMiddleware enforces SuperAdmin role requirement
+func NewSuperAdminRoleMiddleware(p RoleMiddlewareParams) SuperAdminRoleMiddleware {
+	return SuperAdminRoleMiddleware(func(c *gin.Context) {
+		user, err := httpContext.GetUser(c.Request.Context())
+		if err != nil {
+			responder.SendError(c, domain.NewError(domain.CodeAuthUnauthorized))
+			c.Abort()
+			return
+		}
+		if err := p.RoleService.Verify(c.Request.Context(), user.WalletAddress, domain.RoleSuperAdmin); err != nil {
+			responder.SendError(c, err)
+			c.Abort()
+			return
+		}
+		c.Next()
+	})
 }
 
