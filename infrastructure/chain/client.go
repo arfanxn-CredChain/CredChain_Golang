@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"CredChain_Golang/config"
+	"CredChain_Golang/infrastructure/chain/contracts"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -30,8 +31,8 @@ import (
 // Services wrap Client with domain-specific interfaces (e.g., AuthorityService).
 type Client struct {
 	EthClient *ethclient.Client
-	Registry  *Registry
-	Authority *Authority
+	Registry  *contracts.Registry
+	Authority *contracts.Authority
 	Relayer   *bind.TransactOpts
 }
 
@@ -85,12 +86,12 @@ func NewClient(p ChainParams) (*Client, error) {
 	registryAddr := common.HexToAddress(*p.Config.RegistryContract)
 	authorityAddr := common.HexToAddress(*p.Config.AuthorityContract)
 
-	registry, err := NewRegistry(registryAddr, ethClient)
+	registry, err := contracts.NewRegistry(registryAddr, ethClient)
 	if err != nil {
 		return nil, fmt.Errorf("failed to bind registry: %w", err)
 	}
 
-	authority, err := NewAuthority(authorityAddr, ethClient)
+	authority, err := contracts.NewAuthority(authorityAddr, ethClient)
 	if err != nil {
 		return nil, fmt.Errorf("failed to bind authority: %w", err)
 	}
