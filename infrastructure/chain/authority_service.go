@@ -47,18 +47,18 @@ type AuthorityService interface {
 	//
 	// Parameters:
 	//   - ctx: Context for timeout/cancellation control
-	//   - addr: Ethereum wallet address (common.Address, 20 bytes)
+	//   - addr: Ethereum wallet address as a hex string with "0x" prefix (42 characters, e.g., "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb")
 	//
 	// Returns:
 	//   - domain.Role: One of RoleHolder, RoleIssuer, RoleAdmin, RoleSuperAdmin
 	//   - error: Non-nil if the blockchain call fails
 	//
 	// Example:
-	//   role, err := service.FindRole(ctx, common.HexToAddress("0x123..."))
+	//   role, err := service.FindRole(ctx, "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb")
 	//   if err != nil {
 	//       return domain.NewError(domain.CodeChainReadFailed, domain.WithError(err))
 	//   }
-	FindRole(ctx context.Context, addr common.Address) (domain.Role, error)
+	FindRole(ctx context.Context, addr string) (domain.Role, error)
 
 	// HasRoleOrAbove checks if the given wallet address has at least the specified
 	// minimum role in the on-chain hierarchy.
@@ -87,7 +87,7 @@ type AuthorityService interface {
 	//
 	// Parameters:
 	//   - ctx: Context for timeout/cancellation control
-	//   - signer: Wallet containing Address and EncryptedPrivateKey for signing
+	//   - signer: Wallet containing Address (hex string with "0x" prefix, 42 characters) and EncryptedPrivateKey for signing
 	//   - users: Variadic list of domain.User entities to update
 	//
 	// Returns:
@@ -112,14 +112,15 @@ type AuthorityService interface {
 	// It increments with each successful transaction from the given address.
 	//
 	// Parameters:
-	//   - addr: Ethereum wallet address as a common.Address
+	//   - ctx: Context for timeout/cancellation control
+	//   - addr: Ethereum wallet address as a hex string with "0x" prefix (42 characters)
 	//
 	// Returns:
 	//   - *big.Int: The current nonce value
 	//   - error: If the blockchain call fails
 	//
 	// Note: This method fetches from Registry.UserToNonce(), not Authority.
-	FindNonce(ctx context.Context, addr common.Address) (*big.Int, error)
+	FindNonce(ctx context.Context, addr string) (*big.Int, error)
 }
 
 // authorityService implements AuthorityService using the Client facade.
