@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 
-	"CredChain_Golang/config"
 	"CredChain_Golang/domain"
 	"CredChain_Golang/feature/auth"
 	"CredChain_Golang/feature/credential"
@@ -45,11 +44,9 @@ var serverCmd = &cobra.Command{
 				storage.NewStorage,
 				storage.NewIPFSClient,
 				ai.NewClient,
-				chain.NewClient,
-				func(client *chain.Client, config *config.Config) chain.AuthorityService {
-					return chain.NewAuthorityService(client, config)
-				},
-				oauth.NewGoogleOAuthClient,
+			chain.NewClient,
+			chain.NewAuthorityService,
+			oauth.NewGoogleOAuthClient,
 				user.NewGormUserRepository,
 				user.NewGormUserTokenRepository,
 				credential.NewGormCredentialRepository,
