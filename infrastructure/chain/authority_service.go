@@ -8,6 +8,7 @@ import (
 
 	"CredChain_Golang/config"
 	"CredChain_Golang/domain"
+	"CredChain_Golang/infrastructure/chain/contracts"
 	cryptoInfra "CredChain_Golang/infrastructure/crypto"
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -187,11 +188,11 @@ func (s *authorityService) UpdateUserRole(ctx context.Context, signer domain.Wal
 	}
 
 	// Convert domain.User to contract-compatible struct
-	userRoles := make([]CredentialAuthorityUserRoleUpdation, len(users))
+	userRoles := make([]contracts.CredentialAuthorityUserRoleUpdation, len(users))
 	for i, user := range users {
 		addr := mustHexToAddress(user.WalletAddress)
 		role := user.Role.ToUint8()
-		userRoles[i] = CredentialAuthorityUserRoleUpdation{
+		userRoles[i] = contracts.CredentialAuthorityUserRoleUpdation{
 			Addr: addr,
 			Role: role,
 		}
@@ -238,7 +239,7 @@ func (s *authorityService) UpdateUserRole(ctx context.Context, signer domain.Wal
 	// Execute transaction on Authority contract
 	tx, err := s.client.Authority.BatchUpdateUserRoleWithSignature(
 		s.client.Relayer,
-		CredentialAuthorityBatchUpdateUserRoleWithSignatureParams{
+		contracts.CredentialAuthorityBatchUpdateUserRoleWithSignatureParams{
 			Signer:    signerAddr,
 			UserRoles: userRoles,
 			Nonce:     nonce,
