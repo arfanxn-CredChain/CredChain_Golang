@@ -154,8 +154,8 @@ func NewAuthorityService(client *Client, cfg *config.Config) AuthorityService {
 }
 
 // FindRole retrieves the on-chain role for the given address.
-func (s *authorityService) FindRole(ctx context.Context, addr common.Address) (domain.Role, error) {
-	roleUint8, err := s.client.Authority.UserToRole(&bind.CallOpts{Context: ctx}, addr)
+func (s *authorityService) FindRole(ctx context.Context, addr string) (domain.Role, error) {
+	roleUint8, err := s.client.Authority.UserToRole(&bind.CallOpts{Context: ctx}, mustHexToAddress(addr))
 	if err != nil {
 		return domain.Role(""), fmt.Errorf("failed to fetch on-chain role: %w", err)
 	}
@@ -164,7 +164,7 @@ func (s *authorityService) FindRole(ctx context.Context, addr common.Address) (d
 
 // HasRoleOrAbove checks if the address has at least the minimum role.
 func (s *authorityService) HasRoleOrAbove(ctx context.Context, addr string, minRole domain.Role) bool {
-	role, err := s.FindRole(ctx, common.HexToAddress(addr))
+	role, err := s.FindRole(ctx, addr)
 	if err != nil {
 		return false
 	}
@@ -172,8 +172,8 @@ func (s *authorityService) HasRoleOrAbove(ctx context.Context, addr string, minR
 }
 
 // FindNonce fetches the deterministic nonce from the Registry contract.
-func (s *authorityService) FindNonce(ctx context.Context, addr common.Address) (*big.Int, error) {
-	nonce, err := s.client.Registry.UserToNonce(&bind.CallOpts{Context: ctx}, addr)
+func (s *authorityService) FindNonce(ctx context.Context, addr string) (*big.Int, error) {
+	nonce, err := s.client.Registry.UserToNonce(&bind.CallOpts{Context: ctx}, mustHexToAddress(addr))
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch nonce from registry: %w", err)
 	}
@@ -189,7 +189,7 @@ func (s *authorityService) UpdateUserRole(ctx context.Context, signer domain.Wal
 	// Convert domain.User to contract-compatible struct
 	userRoles := make([]CredentialAuthorityUserRoleUpdation, len(users))
 	for i, user := range users {
-		addr := common.HexToAddress(user.WalletAddress)
+		addr := mustHexToAddress(user.WalletAddress)
 		role := user.Role.ToUint8()
 		userRoles[i] = CredentialAuthorityUserRoleUpdation{
 			Addr: addr,
@@ -197,10 +197,10 @@ func (s *authorityService) UpdateUserRole(ctx context.Context, signer domain.Wal
 		}
 	}
 
-	signerAddr := common.HexToAddress(signer.Address)
+	signerAddr := mustHexToAddress(signer.Address)
 
 	// Fetch nonce from Registry for replay protection
-	nonce, err := s.FindNonce(ctx, signerAddr)
+	nonce, err := s.FindNonce(ctx, signer.Address)
 	if err != nil {
 		return fmt.Errorf("failed to fetch nonce: %w", err)
 	}
