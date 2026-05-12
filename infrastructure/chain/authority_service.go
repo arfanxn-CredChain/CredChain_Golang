@@ -6,8 +6,8 @@ import (
 	"math/big"
 	"strings"
 
+	"CredChain_Golang/config"
 	"CredChain_Golang/domain"
-	httpContext "CredChain_Golang/infrastructure/http/context"
 	cryptoInfra "CredChain_Golang/infrastructure/crypto"
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -80,29 +80,30 @@ type AuthorityService interface {
 	// UpdateUserRole performs a batch role update for multiple users in a single
 	// blockchain transaction. It handles the complete signature-based authentication flow:
 	//
-	//   1. Fetches the current nonce from CredentialRegistry for the auth user
+	//   1. Fetches the current nonce from CredentialRegistry for the signer
 	//   2. Packs transaction data: signer || nonce || userRoles[]
-	//   3. Signs with the auth user's encrypted private key
+	//   3. Signs with the signer's encrypted private key
 	//   4. Executes BatchUpdateUserRoleWithSignature on CredentialAuthority
 	//
 	// Parameters:
-	//   - ctx: Context with auth user attached (via httpContext.MustGetUser)
+	//   - ctx: Context for timeout/cancellation control
+	//   - signer: Wallet containing Address and EncryptedPrivateKey for signing
 	//   - users: Variadic list of domain.User entities to update
 	//
 	// Returns:
 	//   - error: If any step fails (nonce fetch, decryption, signing, or transaction)
 	//
 	// Requirements:
-	//   - Auth user must have sufficient role to update target users' roles
-	//   - Auth user's wallet must be decrypted and available
+	//   - Signer must have sufficient role to update target users' roles
+	//   - Signer's wallet must be decrypted and available
 	//   - All users must have valid WalletAddress and Role fields
 	//
 	// Example:
-	//   err := service.UpdateUserRole(ctx, user1, user2, user3)
+	//   err := service.UpdateUserRole(ctx, wallet, user1, user2, user3)
 	//   if err != nil {
 	//       return domain.NewError(domain.CodeUserStoreBlockchainSyncFailed, domain.WithError(err))
 	//   }
-	UpdateUserRole(ctx context.Context, users ...domain.User) error
+	UpdateUserRole(ctx context.Context, signer domain.Wallet, users ...domain.User) error
 
 	// FindNonce retrieves the deterministic nonce for the given wallet address from
 	// the CredentialRegistry contract.
@@ -126,12 +127,12 @@ type AuthorityService interface {
 // This is the internal implementation. Use NewAuthorityService() to create instances.
 // The Client facade provides RPC connections, contract bindings, and relayer credentials.
 type authorityService struct {
-	client              *Client
-	walletEncryptionKey string
+	client *Client
+	cfg    *config.Config
 }
 
 // NewAuthorityService creates a new AuthorityService instance using the provided
-// Client facade and wallet encryption key.
+// Client facade and config.
 //
 // The Client must be fully initialized with:
 //   - Valid RPC endpoint connection
@@ -140,14 +141,14 @@ type authorityService struct {
 //
 // Parameters:
 //   - client: The chain.Client facade instance
-//   - walletEncryptionKey: Key used to decrypt user wallet private keys
+//   - cfg: Configuration containing WalletEncryptionKey
 //
 // Returns:
 //   - AuthorityService: A new service instance ready for use
-func NewAuthorityService(client *Client, walletEncryptionKey string) AuthorityService {
+func NewAuthorityService(client *Client, cfg *config.Config) AuthorityService {
 	return &authorityService{
-		client:              client,
-		walletEncryptionKey: walletEncryptionKey,
+		client: client,
+		cfg:    cfg,
 	}
 }
 
@@ -179,7 +180,7 @@ func (s *authorityService) FindNonce(ctx context.Context, addr common.Address) (
 }
 
 // UpdateUserRole performs batch role update with signature authentication.
-func (s *authorityService) UpdateUserRole(ctx context.Context, users ...domain.User) error {
+func (s *authorityService) UpdateUserRole(ctx context.Context, signer domain.Wallet, users ...domain.User) error {
 	if len(users) == 0 {
 		return nil
 	}
@@ -195,18 +196,16 @@ func (s *authorityService) UpdateUserRole(ctx context.Context, users ...domain.U
 		}
 	}
 
-	// Get auth user (signer) from HTTP context
-	authUser := httpContext.MustGetUser(ctx)
-	authUserAddr := common.HexToAddress(authUser.WalletAddress)
+	signerAddr := common.HexToAddress(signer.Address)
 
 	// Fetch nonce from Registry for replay protection
-	nonce, err := s.FindNonce(ctx, authUserAddr)
+	nonce, err := s.FindNonce(ctx, signerAddr)
 	if err != nil {
 		return fmt.Errorf("failed to fetch nonce: %w", err)
 	}
 
-	// Decrypt auth user's wallet private key
-	decryptedKey, err := cryptoInfra.Decrypt(authUser.EncryptedWalletPrivateKey, []byte(s.walletEncryptionKey))
+	// Decrypt signer's wallet private key
+	decryptedKey, err := cryptoInfra.Decrypt(signer.EncryptedPrivateKey, []byte(*s.cfg.WalletEncryptionKey))
 	if err != nil {
 		return fmt.Errorf("failed to decrypt wallet: %w", err)
 	}
@@ -220,7 +219,7 @@ func (s *authorityService) UpdateUserRole(ctx context.Context, users ...domain.U
 	// Pack data for signing: signer || nonce || userRoles[]
 	// This order MUST match the Solidity contract's expected packing
 	var packed []byte
-	packed = append(packed, authUserAddr.Bytes()...)
+	packed = append(packed, signerAddr.Bytes()...)
 	packed = append(packed, common.LeftPadBytes(nonce.Bytes(), 32)...)
 	for _, userRole := range userRoles {
 		packed = append(packed, userRole.Addr.Bytes()...)
@@ -239,7 +238,7 @@ func (s *authorityService) UpdateUserRole(ctx context.Context, users ...domain.U
 	tx, err := s.client.Authority.BatchUpdateUserRoleWithSignature(
 		s.client.Relayer,
 		CredentialAuthorityBatchUpdateUserRoleWithSignatureParams{
-			Signer:    authUserAddr,
+			Signer:    signerAddr,
 			UserRoles: userRoles,
 			Nonce:     nonce,
 			Signature: signature,
