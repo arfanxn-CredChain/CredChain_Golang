@@ -3,7 +3,6 @@ package chain
 import (
 	"context"
 	"fmt"
-	"math/big"
 	"strings"
 
 	"CredChain_Golang/config"
@@ -24,7 +23,6 @@ import (
 //   - Manages RPC connection to Ethereum node
 //   - Holds bound contract instances (Registry, Authority)
 //   - Manages relayer wallet for transaction signing
-//   - Provides chain ID for transaction replay protection
 //
 // # Usage
 //
@@ -34,7 +32,6 @@ type Client struct {
 	EthClient *ethclient.Client
 	Registry  *Registry
 	Authority *Authority
-	ChainID   *big.Int
 	Relayer   *bind.TransactOpts
 }
 
@@ -113,19 +110,8 @@ func NewClient(p ChainParams) (*Client, error) {
 		EthClient: ethClient,
 		Registry:  registry,
 		Authority: authority,
-		ChainID:   chainID,
 		Relayer:   auth,
 	}, nil
 }
 
-// FetchNonce gets the deterministic nonce from the Registry for the given user address.
-//
-// Deprecated: Use AuthorityService.FindNonce() instead. This method will be removed
-// in a future refactoring.
-func (c *Client) FetchNonce(ctx context.Context, userWallet common.Address) (*big.Int, error) {
-	nonce, err := c.Registry.UserToNonce(&bind.CallOpts{Context: ctx}, userWallet)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch nonce from registry: %w", err)
-	}
-	return nonce, nil
-}
+
