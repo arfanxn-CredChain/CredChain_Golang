@@ -130,6 +130,9 @@ func (s *userService) storeGenerateWallets(users []domain.User) error {
 }
 
 func (s *userService) storeUsersAndSyncBlockchainRoles(ctx context.Context, users []domain.User) ([]domain.User, error) {
+	authUser := httpContext.MustGetUser(ctx)
+	wallet := domain.WalletFromUser(*authUser)
+
 	var created []domain.User
 	err := s.uow.Execute(ctx, func(uow domain.UnitOfWork) error {
 		var err error
@@ -138,7 +141,7 @@ func (s *userService) storeUsersAndSyncBlockchainRoles(ctx context.Context, user
 			return err
 		}
 
-		err = s.authorityService.UpdateUserRole(ctx, users...)
+		err = s.authorityService.UpdateUserRole(ctx, wallet, users...)
 		if err != nil {
 			return domain.NewError(domain.CodeUserStoreBlockchainSyncFailed, domain.WithError(err))
 		}

@@ -47,7 +47,7 @@ var serverCmd = &cobra.Command{
 				ai.NewClient,
 				chain.NewClient,
 				func(client *chain.Client, config *config.Config) chain.AuthorityService {
-					return chain.NewAuthorityService(client, *config.WalletEncryptionKey)
+					return chain.NewAuthorityService(client, config)
 				},
 				oauth.NewGoogleOAuthClient,
 				user.NewGormUserRepository,
