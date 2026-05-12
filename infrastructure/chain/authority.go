@@ -29,9 +29,31 @@ var (
 	_ = abi.ConvertType
 )
 
+// CredentialAuthorityBatchUpdateUserRoleWithSignatureParams is an auto generated low-level Go binding around an user-defined struct.
+type CredentialAuthorityBatchUpdateUserRoleWithSignatureParams struct {
+	Signer    common.Address
+	UserRoles []CredentialAuthorityUserRoleUpdation
+	Nonce     *big.Int
+	Signature []byte
+}
+
+// CredentialAuthorityTransferSuperAdminWithSignatureParams is an auto generated low-level Go binding around an user-defined struct.
+type CredentialAuthorityTransferSuperAdminWithSignatureParams struct {
+	Signer        common.Address
+	NewSuperAdmin common.Address
+	Nonce         *big.Int
+	Signature     []byte
+}
+
+// CredentialAuthorityUserRoleUpdation is an auto generated low-level Go binding around an user-defined struct.
+type CredentialAuthorityUserRoleUpdation struct {
+	Addr common.Address
+	Role uint8
+}
+
 // AuthorityMetaData contains all meta data concerning the Authority contract.
 var AuthorityMetaData = &bind.MetaData{
-	ABI: "[{\"inputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[],\"name\":\"AdminUpdatePeerAdminRoleForbidden\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"BatchUpdateUserRoleLengthMismatchForbidden\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"ECDSAInvalidSignature\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"length\",\"type\":\"uint256\"}],\"name\":\"ECDSAInvalidSignatureLength\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"s\",\"type\":\"bytes32\"}],\"name\":\"ECDSAInvalidSignatureS\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InvalidInitialization\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InvalidNonceForbidden\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InvalidSignatureForbidden\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"NotInitializing\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"OnlyDeployerForbidden\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"SameRoleUpdateForbidden\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"SignerRoleAdminRequiredForbidden\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"SuperAdminRoleForbidden\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"SuperAdminRoleUpdateForbidden\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"SuperAdminZeroAddressForbidden\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"TargetUserZeroAddressForbidden\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"TransferSuperAdminToSelfForbidden\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint64\",\"name\":\"version\",\"type\":\"uint64\"}],\"name\":\"Initialized\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"oldSuperAdmin\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newSuperAdmin\",\"type\":\"address\"}],\"name\":\"SuperAdminTransferred\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"user\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"enumCredentialAuthority.Role\",\"name\":\"oldRole\",\"type\":\"uint8\"},{\"indexed\":false,\"internalType\":\"enumCredentialAuthority.Role\",\"name\":\"newRole\",\"type\":\"uint8\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"updatedBy\",\"type\":\"address\"}],\"name\":\"UserRoleUpdated\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"signer\",\"type\":\"address\"},{\"internalType\":\"address[]\",\"name\":\"targetUsers\",\"type\":\"address[]\"},{\"internalType\":\"enumCredentialAuthority.Role[]\",\"name\":\"newRoles\",\"type\":\"uint8[]\"},{\"internalType\":\"uint256\",\"name\":\"nonce\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"}],\"name\":\"batchUpdateUserRoleWithSignature\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"config\",\"outputs\":[{\"internalType\":\"contractCredentialConfig\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"superAdminUser\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"_config\",\"type\":\"address\"}],\"name\":\"initialize\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"user\",\"type\":\"address\"}],\"name\":\"isAdminOrHigher\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"user\",\"type\":\"address\"}],\"name\":\"isHolder\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"user\",\"type\":\"address\"}],\"name\":\"isIssuerOrHigher\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"user\",\"type\":\"address\"}],\"name\":\"isSuperAdmin\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"offset\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"limit\",\"type\":\"uint256\"}],\"name\":\"paginateUsers\",\"outputs\":[{\"internalType\":\"address[]\",\"name\":\"\",\"type\":\"address[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"signer\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"newSuperAdmin\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"nonce\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"}],\"name\":\"transferSuperAdminWithSignature\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"name\":\"userToIndex\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"name\":\"userToNonce\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"name\":\"userToRole\",\"outputs\":[{\"internalType\":\"enumCredentialAuthority.Role\",\"name\":\"\",\"type\":\"uint8\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"users\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]",
+	ABI: "[{\"inputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[],\"name\":\"AdminUpdatePeerAdminRoleError\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"ECDSAInvalidSignature\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"length\",\"type\":\"uint256\"}],\"name\":\"ECDSAInvalidSignatureLength\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"s\",\"type\":\"bytes32\"}],\"name\":\"ECDSAInvalidSignatureS\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InvalidAddressError\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InvalidInitialization\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InvalidNonceError\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InvalidSignatureError\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"MaxBatchExceededError\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"NotDeployerError\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"NotInitializing\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"RoleBelowAdminError\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"RoleBelowIssuerError\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"RoleNotSuperAdminError\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"SameRoleUpdateError\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"SuperAdminRoleNotUpdatableError\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"TransferSuperAdminToSelfError\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint64\",\"name\":\"version\",\"type\":\"uint64\"}],\"name\":\"Initialized\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"oldSuperAdmin\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newSuperAdmin\",\"type\":\"address\"}],\"name\":\"SuperAdminTransferred\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"user\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"enumCredentialAuthority.Role\",\"name\":\"oldRole\",\"type\":\"uint8\"},{\"indexed\":false,\"internalType\":\"enumCredentialAuthority.Role\",\"name\":\"newRole\",\"type\":\"uint8\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"updatedBy\",\"type\":\"address\"}],\"name\":\"UserRoleUpdated\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"MAX_BATCH_ROLE\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"signer\",\"type\":\"address\"},{\"components\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"},{\"internalType\":\"enumCredentialAuthority.Role\",\"name\":\"role\",\"type\":\"uint8\"}],\"internalType\":\"structCredentialAuthority.UserRoleUpdation[]\",\"name\":\"userRoles\",\"type\":\"tuple[]\"},{\"internalType\":\"uint256\",\"name\":\"nonce\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"}],\"internalType\":\"structCredentialAuthority.BatchUpdateUserRoleWithSignatureParams\",\"name\":\"params\",\"type\":\"tuple\"}],\"name\":\"batchUpdateUserRoleWithSignature\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"config\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"user\",\"type\":\"address\"},{\"internalType\":\"enumCredentialAuthority.Role\",\"name\":\"minimumRole\",\"type\":\"uint8\"}],\"name\":\"hasRoleOrAbove\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"superAdminUser\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"_config\",\"type\":\"address\"}],\"name\":\"initialize\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"offset\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"limit\",\"type\":\"uint256\"}],\"name\":\"paginateUsers\",\"outputs\":[{\"internalType\":\"address[]\",\"name\":\"\",\"type\":\"address[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"signer\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"newSuperAdmin\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"nonce\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"}],\"internalType\":\"structCredentialAuthority.TransferSuperAdminWithSignatureParams\",\"name\":\"params\",\"type\":\"tuple\"}],\"name\":\"transferSuperAdminWithSignature\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"name\":\"userToIndex\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"name\":\"userToNonce\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"name\":\"userToRole\",\"outputs\":[{\"internalType\":\"enumCredentialAuthority.Role\",\"name\":\"\",\"type\":\"uint8\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"users\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]",
 }
 
 // AuthorityABI is the input ABI used to generate the binding from.
@@ -146,7 +168,7 @@ func bindAuthority(address common.Address, caller bind.ContractCaller, transacto
 // sets the output to result. The result type might be a single field for simple
 // returns, a slice of interfaces for anonymous returns and a struct for named
 // returns.
-func (_Authority *AuthorityRaw) Call(opts *bind.CallOpts, result *[]any, method string, params ...any) error {
+func (_Authority *AuthorityRaw) Call(opts *bind.CallOpts, result *[]interface{}, method string, params ...interface{}) error {
 	return _Authority.Contract.AuthorityCaller.contract.Call(opts, result, method, params...)
 }
 
@@ -157,7 +179,7 @@ func (_Authority *AuthorityRaw) Transfer(opts *bind.TransactOpts) (*types.Transa
 }
 
 // Transact invokes the (paid) contract method with params as input values.
-func (_Authority *AuthorityRaw) Transact(opts *bind.TransactOpts, method string, params ...any) (*types.Transaction, error) {
+func (_Authority *AuthorityRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
 	return _Authority.Contract.AuthorityTransactor.contract.Transact(opts, method, params...)
 }
 
@@ -165,7 +187,7 @@ func (_Authority *AuthorityRaw) Transact(opts *bind.TransactOpts, method string,
 // sets the output to result. The result type might be a single field for simple
 // returns, a slice of interfaces for anonymous returns and a struct for named
 // returns.
-func (_Authority *AuthorityCallerRaw) Call(opts *bind.CallOpts, result *[]any, method string, params ...any) error {
+func (_Authority *AuthorityCallerRaw) Call(opts *bind.CallOpts, result *[]interface{}, method string, params ...interface{}) error {
 	return _Authority.Contract.contract.Call(opts, result, method, params...)
 }
 
@@ -176,15 +198,46 @@ func (_Authority *AuthorityTransactorRaw) Transfer(opts *bind.TransactOpts) (*ty
 }
 
 // Transact invokes the (paid) contract method with params as input values.
-func (_Authority *AuthorityTransactorRaw) Transact(opts *bind.TransactOpts, method string, params ...any) (*types.Transaction, error) {
+func (_Authority *AuthorityTransactorRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
 	return _Authority.Contract.contract.Transact(opts, method, params...)
+}
+
+// MAXBATCHROLE is a free data retrieval call binding the contract method 0xd07e9e0e.
+//
+// Solidity: function MAX_BATCH_ROLE() view returns(uint256)
+func (_Authority *AuthorityCaller) MAXBATCHROLE(opts *bind.CallOpts) (*big.Int, error) {
+	var out []interface{}
+	err := _Authority.contract.Call(opts, &out, "MAX_BATCH_ROLE")
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// MAXBATCHROLE is a free data retrieval call binding the contract method 0xd07e9e0e.
+//
+// Solidity: function MAX_BATCH_ROLE() view returns(uint256)
+func (_Authority *AuthoritySession) MAXBATCHROLE() (*big.Int, error) {
+	return _Authority.Contract.MAXBATCHROLE(&_Authority.CallOpts)
+}
+
+// MAXBATCHROLE is a free data retrieval call binding the contract method 0xd07e9e0e.
+//
+// Solidity: function MAX_BATCH_ROLE() view returns(uint256)
+func (_Authority *AuthorityCallerSession) MAXBATCHROLE() (*big.Int, error) {
+	return _Authority.Contract.MAXBATCHROLE(&_Authority.CallOpts)
 }
 
 // Config is a free data retrieval call binding the contract method 0x79502c55.
 //
 // Solidity: function config() view returns(address)
 func (_Authority *AuthorityCaller) Config(opts *bind.CallOpts) (common.Address, error) {
-	var out []any
+	var out []interface{}
 	err := _Authority.contract.Call(opts, &out, "config")
 
 	if err != nil {
@@ -211,12 +264,12 @@ func (_Authority *AuthorityCallerSession) Config() (common.Address, error) {
 	return _Authority.Contract.Config(&_Authority.CallOpts)
 }
 
-// IsAdminOrHigher is a free data retrieval call binding the contract method 0x9672d91a.
+// HasRoleOrAbove is a free data retrieval call binding the contract method 0x6e24d2f1.
 //
-// Solidity: function isAdminOrHigher(address user) view returns(bool)
-func (_Authority *AuthorityCaller) IsAdminOrHigher(opts *bind.CallOpts, user common.Address) (bool, error) {
-	var out []any
-	err := _Authority.contract.Call(opts, &out, "isAdminOrHigher", user)
+// Solidity: function hasRoleOrAbove(address user, uint8 minimumRole) view returns(bool)
+func (_Authority *AuthorityCaller) HasRoleOrAbove(opts *bind.CallOpts, user common.Address, minimumRole uint8) (bool, error) {
+	var out []interface{}
+	err := _Authority.contract.Call(opts, &out, "hasRoleOrAbove", user, minimumRole)
 
 	if err != nil {
 		return *new(bool), err
@@ -228,118 +281,25 @@ func (_Authority *AuthorityCaller) IsAdminOrHigher(opts *bind.CallOpts, user com
 
 }
 
-// IsAdminOrHigher is a free data retrieval call binding the contract method 0x9672d91a.
+// HasRoleOrAbove is a free data retrieval call binding the contract method 0x6e24d2f1.
 //
-// Solidity: function isAdminOrHigher(address user) view returns(bool)
-func (_Authority *AuthoritySession) IsAdminOrHigher(user common.Address) (bool, error) {
-	return _Authority.Contract.IsAdminOrHigher(&_Authority.CallOpts, user)
+// Solidity: function hasRoleOrAbove(address user, uint8 minimumRole) view returns(bool)
+func (_Authority *AuthoritySession) HasRoleOrAbove(user common.Address, minimumRole uint8) (bool, error) {
+	return _Authority.Contract.HasRoleOrAbove(&_Authority.CallOpts, user, minimumRole)
 }
 
-// IsAdminOrHigher is a free data retrieval call binding the contract method 0x9672d91a.
+// HasRoleOrAbove is a free data retrieval call binding the contract method 0x6e24d2f1.
 //
-// Solidity: function isAdminOrHigher(address user) view returns(bool)
-func (_Authority *AuthorityCallerSession) IsAdminOrHigher(user common.Address) (bool, error) {
-	return _Authority.Contract.IsAdminOrHigher(&_Authority.CallOpts, user)
-}
-
-// IsHolder is a free data retrieval call binding the contract method 0xd4d7b19a.
-//
-// Solidity: function isHolder(address user) view returns(bool)
-func (_Authority *AuthorityCaller) IsHolder(opts *bind.CallOpts, user common.Address) (bool, error) {
-	var out []any
-	err := _Authority.contract.Call(opts, &out, "isHolder", user)
-
-	if err != nil {
-		return *new(bool), err
-	}
-
-	out0 := *abi.ConvertType(out[0], new(bool)).(*bool)
-
-	return out0, err
-
-}
-
-// IsHolder is a free data retrieval call binding the contract method 0xd4d7b19a.
-//
-// Solidity: function isHolder(address user) view returns(bool)
-func (_Authority *AuthoritySession) IsHolder(user common.Address) (bool, error) {
-	return _Authority.Contract.IsHolder(&_Authority.CallOpts, user)
-}
-
-// IsHolder is a free data retrieval call binding the contract method 0xd4d7b19a.
-//
-// Solidity: function isHolder(address user) view returns(bool)
-func (_Authority *AuthorityCallerSession) IsHolder(user common.Address) (bool, error) {
-	return _Authority.Contract.IsHolder(&_Authority.CallOpts, user)
-}
-
-// IsIssuerOrHigher is a free data retrieval call binding the contract method 0x5805f526.
-//
-// Solidity: function isIssuerOrHigher(address user) view returns(bool)
-func (_Authority *AuthorityCaller) IsIssuerOrHigher(opts *bind.CallOpts, user common.Address) (bool, error) {
-	var out []any
-	err := _Authority.contract.Call(opts, &out, "isIssuerOrHigher", user)
-
-	if err != nil {
-		return *new(bool), err
-	}
-
-	out0 := *abi.ConvertType(out[0], new(bool)).(*bool)
-
-	return out0, err
-
-}
-
-// IsIssuerOrHigher is a free data retrieval call binding the contract method 0x5805f526.
-//
-// Solidity: function isIssuerOrHigher(address user) view returns(bool)
-func (_Authority *AuthoritySession) IsIssuerOrHigher(user common.Address) (bool, error) {
-	return _Authority.Contract.IsIssuerOrHigher(&_Authority.CallOpts, user)
-}
-
-// IsIssuerOrHigher is a free data retrieval call binding the contract method 0x5805f526.
-//
-// Solidity: function isIssuerOrHigher(address user) view returns(bool)
-func (_Authority *AuthorityCallerSession) IsIssuerOrHigher(user common.Address) (bool, error) {
-	return _Authority.Contract.IsIssuerOrHigher(&_Authority.CallOpts, user)
-}
-
-// IsSuperAdmin is a free data retrieval call binding the contract method 0xdf7f453b.
-//
-// Solidity: function isSuperAdmin(address user) view returns(bool)
-func (_Authority *AuthorityCaller) IsSuperAdmin(opts *bind.CallOpts, user common.Address) (bool, error) {
-	var out []any
-	err := _Authority.contract.Call(opts, &out, "isSuperAdmin", user)
-
-	if err != nil {
-		return *new(bool), err
-	}
-
-	out0 := *abi.ConvertType(out[0], new(bool)).(*bool)
-
-	return out0, err
-
-}
-
-// IsSuperAdmin is a free data retrieval call binding the contract method 0xdf7f453b.
-//
-// Solidity: function isSuperAdmin(address user) view returns(bool)
-func (_Authority *AuthoritySession) IsSuperAdmin(user common.Address) (bool, error) {
-	return _Authority.Contract.IsSuperAdmin(&_Authority.CallOpts, user)
-}
-
-// IsSuperAdmin is a free data retrieval call binding the contract method 0xdf7f453b.
-//
-// Solidity: function isSuperAdmin(address user) view returns(bool)
-func (_Authority *AuthorityCallerSession) IsSuperAdmin(user common.Address) (bool, error) {
-	return _Authority.Contract.IsSuperAdmin(&_Authority.CallOpts, user)
+// Solidity: function hasRoleOrAbove(address user, uint8 minimumRole) view returns(bool)
+func (_Authority *AuthorityCallerSession) HasRoleOrAbove(user common.Address, minimumRole uint8) (bool, error) {
+	return _Authority.Contract.HasRoleOrAbove(&_Authority.CallOpts, user, minimumRole)
 }
 
 // PaginateUsers is a free data retrieval call binding the contract method 0xe940665f.
 //
 // Solidity: function paginateUsers(uint256 offset, uint256 limit) view returns(address[])
 func (_Authority *AuthorityCaller) PaginateUsers(opts *bind.CallOpts, offset *big.Int, limit *big.Int) ([]common.Address, error) {
-	var out []any
+	var out []interface{}
 	err := _Authority.contract.Call(opts, &out, "paginateUsers", offset, limit)
 
 	if err != nil {
@@ -370,7 +330,7 @@ func (_Authority *AuthorityCallerSession) PaginateUsers(offset *big.Int, limit *
 //
 // Solidity: function userToIndex(address ) view returns(uint256)
 func (_Authority *AuthorityCaller) UserToIndex(opts *bind.CallOpts, arg0 common.Address) (*big.Int, error) {
-	var out []any
+	var out []interface{}
 	err := _Authority.contract.Call(opts, &out, "userToIndex", arg0)
 
 	if err != nil {
@@ -401,7 +361,7 @@ func (_Authority *AuthorityCallerSession) UserToIndex(arg0 common.Address) (*big
 //
 // Solidity: function userToNonce(address ) view returns(uint256)
 func (_Authority *AuthorityCaller) UserToNonce(opts *bind.CallOpts, arg0 common.Address) (*big.Int, error) {
-	var out []any
+	var out []interface{}
 	err := _Authority.contract.Call(opts, &out, "userToNonce", arg0)
 
 	if err != nil {
@@ -432,7 +392,7 @@ func (_Authority *AuthorityCallerSession) UserToNonce(arg0 common.Address) (*big
 //
 // Solidity: function userToRole(address ) view returns(uint8)
 func (_Authority *AuthorityCaller) UserToRole(opts *bind.CallOpts, arg0 common.Address) (uint8, error) {
-	var out []any
+	var out []interface{}
 	err := _Authority.contract.Call(opts, &out, "userToRole", arg0)
 
 	if err != nil {
@@ -463,7 +423,7 @@ func (_Authority *AuthorityCallerSession) UserToRole(arg0 common.Address) (uint8
 //
 // Solidity: function users(uint256 ) view returns(address)
 func (_Authority *AuthorityCaller) Users(opts *bind.CallOpts, arg0 *big.Int) (common.Address, error) {
-	var out []any
+	var out []interface{}
 	err := _Authority.contract.Call(opts, &out, "users", arg0)
 
 	if err != nil {
@@ -490,25 +450,25 @@ func (_Authority *AuthorityCallerSession) Users(arg0 *big.Int) (common.Address, 
 	return _Authority.Contract.Users(&_Authority.CallOpts, arg0)
 }
 
-// BatchUpdateUserRoleWithSignature is a paid mutator transaction binding the contract method 0x89846779.
+// BatchUpdateUserRoleWithSignature is a paid mutator transaction binding the contract method 0x1bfdfa6b.
 //
-// Solidity: function batchUpdateUserRoleWithSignature(address signer, address[] targetUsers, uint8[] newRoles, uint256 nonce, bytes signature) returns()
-func (_Authority *AuthorityTransactor) BatchUpdateUserRoleWithSignature(opts *bind.TransactOpts, signer common.Address, targetUsers []common.Address, newRoles []uint8, nonce *big.Int, signature []byte) (*types.Transaction, error) {
-	return _Authority.contract.Transact(opts, "batchUpdateUserRoleWithSignature", signer, targetUsers, newRoles, nonce, signature)
+// Solidity: function batchUpdateUserRoleWithSignature((address,(address,uint8)[],uint256,bytes) params) returns()
+func (_Authority *AuthorityTransactor) BatchUpdateUserRoleWithSignature(opts *bind.TransactOpts, params CredentialAuthorityBatchUpdateUserRoleWithSignatureParams) (*types.Transaction, error) {
+	return _Authority.contract.Transact(opts, "batchUpdateUserRoleWithSignature", params)
 }
 
-// BatchUpdateUserRoleWithSignature is a paid mutator transaction binding the contract method 0x89846779.
+// BatchUpdateUserRoleWithSignature is a paid mutator transaction binding the contract method 0x1bfdfa6b.
 //
-// Solidity: function batchUpdateUserRoleWithSignature(address signer, address[] targetUsers, uint8[] newRoles, uint256 nonce, bytes signature) returns()
-func (_Authority *AuthoritySession) BatchUpdateUserRoleWithSignature(signer common.Address, targetUsers []common.Address, newRoles []uint8, nonce *big.Int, signature []byte) (*types.Transaction, error) {
-	return _Authority.Contract.BatchUpdateUserRoleWithSignature(&_Authority.TransactOpts, signer, targetUsers, newRoles, nonce, signature)
+// Solidity: function batchUpdateUserRoleWithSignature((address,(address,uint8)[],uint256,bytes) params) returns()
+func (_Authority *AuthoritySession) BatchUpdateUserRoleWithSignature(params CredentialAuthorityBatchUpdateUserRoleWithSignatureParams) (*types.Transaction, error) {
+	return _Authority.Contract.BatchUpdateUserRoleWithSignature(&_Authority.TransactOpts, params)
 }
 
-// BatchUpdateUserRoleWithSignature is a paid mutator transaction binding the contract method 0x89846779.
+// BatchUpdateUserRoleWithSignature is a paid mutator transaction binding the contract method 0x1bfdfa6b.
 //
-// Solidity: function batchUpdateUserRoleWithSignature(address signer, address[] targetUsers, uint8[] newRoles, uint256 nonce, bytes signature) returns()
-func (_Authority *AuthorityTransactorSession) BatchUpdateUserRoleWithSignature(signer common.Address, targetUsers []common.Address, newRoles []uint8, nonce *big.Int, signature []byte) (*types.Transaction, error) {
-	return _Authority.Contract.BatchUpdateUserRoleWithSignature(&_Authority.TransactOpts, signer, targetUsers, newRoles, nonce, signature)
+// Solidity: function batchUpdateUserRoleWithSignature((address,(address,uint8)[],uint256,bytes) params) returns()
+func (_Authority *AuthorityTransactorSession) BatchUpdateUserRoleWithSignature(params CredentialAuthorityBatchUpdateUserRoleWithSignatureParams) (*types.Transaction, error) {
+	return _Authority.Contract.BatchUpdateUserRoleWithSignature(&_Authority.TransactOpts, params)
 }
 
 // Initialize is a paid mutator transaction binding the contract method 0x485cc955.
@@ -532,25 +492,25 @@ func (_Authority *AuthorityTransactorSession) Initialize(superAdminUser common.A
 	return _Authority.Contract.Initialize(&_Authority.TransactOpts, superAdminUser, _config)
 }
 
-// TransferSuperAdminWithSignature is a paid mutator transaction binding the contract method 0x2962405a.
+// TransferSuperAdminWithSignature is a paid mutator transaction binding the contract method 0x86dc7a91.
 //
-// Solidity: function transferSuperAdminWithSignature(address signer, address newSuperAdmin, uint256 nonce, bytes signature) returns()
-func (_Authority *AuthorityTransactor) TransferSuperAdminWithSignature(opts *bind.TransactOpts, signer common.Address, newSuperAdmin common.Address, nonce *big.Int, signature []byte) (*types.Transaction, error) {
-	return _Authority.contract.Transact(opts, "transferSuperAdminWithSignature", signer, newSuperAdmin, nonce, signature)
+// Solidity: function transferSuperAdminWithSignature((address,address,uint256,bytes) params) returns()
+func (_Authority *AuthorityTransactor) TransferSuperAdminWithSignature(opts *bind.TransactOpts, params CredentialAuthorityTransferSuperAdminWithSignatureParams) (*types.Transaction, error) {
+	return _Authority.contract.Transact(opts, "transferSuperAdminWithSignature", params)
 }
 
-// TransferSuperAdminWithSignature is a paid mutator transaction binding the contract method 0x2962405a.
+// TransferSuperAdminWithSignature is a paid mutator transaction binding the contract method 0x86dc7a91.
 //
-// Solidity: function transferSuperAdminWithSignature(address signer, address newSuperAdmin, uint256 nonce, bytes signature) returns()
-func (_Authority *AuthoritySession) TransferSuperAdminWithSignature(signer common.Address, newSuperAdmin common.Address, nonce *big.Int, signature []byte) (*types.Transaction, error) {
-	return _Authority.Contract.TransferSuperAdminWithSignature(&_Authority.TransactOpts, signer, newSuperAdmin, nonce, signature)
+// Solidity: function transferSuperAdminWithSignature((address,address,uint256,bytes) params) returns()
+func (_Authority *AuthoritySession) TransferSuperAdminWithSignature(params CredentialAuthorityTransferSuperAdminWithSignatureParams) (*types.Transaction, error) {
+	return _Authority.Contract.TransferSuperAdminWithSignature(&_Authority.TransactOpts, params)
 }
 
-// TransferSuperAdminWithSignature is a paid mutator transaction binding the contract method 0x2962405a.
+// TransferSuperAdminWithSignature is a paid mutator transaction binding the contract method 0x86dc7a91.
 //
-// Solidity: function transferSuperAdminWithSignature(address signer, address newSuperAdmin, uint256 nonce, bytes signature) returns()
-func (_Authority *AuthorityTransactorSession) TransferSuperAdminWithSignature(signer common.Address, newSuperAdmin common.Address, nonce *big.Int, signature []byte) (*types.Transaction, error) {
-	return _Authority.Contract.TransferSuperAdminWithSignature(&_Authority.TransactOpts, signer, newSuperAdmin, nonce, signature)
+// Solidity: function transferSuperAdminWithSignature((address,address,uint256,bytes) params) returns()
+func (_Authority *AuthorityTransactorSession) TransferSuperAdminWithSignature(params CredentialAuthorityTransferSuperAdminWithSignatureParams) (*types.Transaction, error) {
+	return _Authority.Contract.TransferSuperAdminWithSignature(&_Authority.TransactOpts, params)
 }
 
 // AuthorityInitializedIterator is returned from FilterInitialized and is used to iterate over the raw logs and unpacked data for Initialized events raised by the Authority contract.
@@ -766,11 +726,11 @@ type AuthoritySuperAdminTransferred struct {
 // Solidity: event SuperAdminTransferred(address indexed oldSuperAdmin, address indexed newSuperAdmin)
 func (_Authority *AuthorityFilterer) FilterSuperAdminTransferred(opts *bind.FilterOpts, oldSuperAdmin []common.Address, newSuperAdmin []common.Address) (*AuthoritySuperAdminTransferredIterator, error) {
 
-	var oldSuperAdminRule []any
+	var oldSuperAdminRule []interface{}
 	for _, oldSuperAdminItem := range oldSuperAdmin {
 		oldSuperAdminRule = append(oldSuperAdminRule, oldSuperAdminItem)
 	}
-	var newSuperAdminRule []any
+	var newSuperAdminRule []interface{}
 	for _, newSuperAdminItem := range newSuperAdmin {
 		newSuperAdminRule = append(newSuperAdminRule, newSuperAdminItem)
 	}
@@ -787,11 +747,11 @@ func (_Authority *AuthorityFilterer) FilterSuperAdminTransferred(opts *bind.Filt
 // Solidity: event SuperAdminTransferred(address indexed oldSuperAdmin, address indexed newSuperAdmin)
 func (_Authority *AuthorityFilterer) WatchSuperAdminTransferred(opts *bind.WatchOpts, sink chan<- *AuthoritySuperAdminTransferred, oldSuperAdmin []common.Address, newSuperAdmin []common.Address) (event.Subscription, error) {
 
-	var oldSuperAdminRule []any
+	var oldSuperAdminRule []interface{}
 	for _, oldSuperAdminItem := range oldSuperAdmin {
 		oldSuperAdminRule = append(oldSuperAdminRule, oldSuperAdminItem)
 	}
-	var newSuperAdminRule []any
+	var newSuperAdminRule []interface{}
 	for _, newSuperAdminItem := range newSuperAdmin {
 		newSuperAdminRule = append(newSuperAdminRule, newSuperAdminItem)
 	}
@@ -921,12 +881,12 @@ type AuthorityUserRoleUpdated struct {
 // Solidity: event UserRoleUpdated(address indexed user, uint8 oldRole, uint8 newRole, address indexed updatedBy)
 func (_Authority *AuthorityFilterer) FilterUserRoleUpdated(opts *bind.FilterOpts, user []common.Address, updatedBy []common.Address) (*AuthorityUserRoleUpdatedIterator, error) {
 
-	var userRule []any
+	var userRule []interface{}
 	for _, userItem := range user {
 		userRule = append(userRule, userItem)
 	}
 
-	var updatedByRule []any
+	var updatedByRule []interface{}
 	for _, updatedByItem := range updatedBy {
 		updatedByRule = append(updatedByRule, updatedByItem)
 	}
@@ -943,12 +903,12 @@ func (_Authority *AuthorityFilterer) FilterUserRoleUpdated(opts *bind.FilterOpts
 // Solidity: event UserRoleUpdated(address indexed user, uint8 oldRole, uint8 newRole, address indexed updatedBy)
 func (_Authority *AuthorityFilterer) WatchUserRoleUpdated(opts *bind.WatchOpts, sink chan<- *AuthorityUserRoleUpdated, user []common.Address, updatedBy []common.Address) (event.Subscription, error) {
 
-	var userRule []any
+	var userRule []interface{}
 	for _, userItem := range user {
 		userRule = append(userRule, userItem)
 	}
 
-	var updatedByRule []any
+	var updatedByRule []interface{}
 	for _, updatedByItem := range updatedBy {
 		updatedByRule = append(updatedByRule, updatedByItem)
 	}

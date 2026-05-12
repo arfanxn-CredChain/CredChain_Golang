@@ -23,7 +23,7 @@ type AuthMiddlewareParams struct {
 
 type RoleMiddlewareParams struct {
 	fx.In
-	RoleService chain.RoleService
+	AuthorityService chain.AuthorityService
 }
 
 // Named wrapper types for role-based middlewares
@@ -81,8 +81,8 @@ func NewAdminRoleMiddleware(p RoleMiddlewareParams) AdminRoleMiddleware {
 			c.Abort()
 			return
 		}
-		if err := p.RoleService.Verify(c.Request.Context(), user.WalletAddress, domain.RoleAdmin); err != nil {
-			responder.SendError(c, err)
+		if !p.AuthorityService.HasRoleOrAbove(c.Request.Context(), user.WalletAddress, domain.RoleAdmin) {
+			responder.SendError(c, domain.NewError(domain.CodeAuthForbidden))
 			c.Abort()
 			return
 		}
@@ -99,8 +99,8 @@ func NewIssuerRoleMiddleware(p RoleMiddlewareParams) IssuerRoleMiddleware {
 			c.Abort()
 			return
 		}
-		if err := p.RoleService.Verify(c.Request.Context(), user.WalletAddress, domain.RoleIssuer); err != nil {
-			responder.SendError(c, err)
+		if !p.AuthorityService.HasRoleOrAbove(c.Request.Context(), user.WalletAddress, domain.RoleIssuer) {
+			responder.SendError(c, domain.NewError(domain.CodeAuthForbidden))
 			c.Abort()
 			return
 		}
@@ -117,8 +117,8 @@ func NewSuperAdminRoleMiddleware(p RoleMiddlewareParams) SuperAdminRoleMiddlewar
 			c.Abort()
 			return
 		}
-		if err := p.RoleService.Verify(c.Request.Context(), user.WalletAddress, domain.RoleSuperAdmin); err != nil {
-			responder.SendError(c, err)
+		if !p.AuthorityService.HasRoleOrAbove(c.Request.Context(), user.WalletAddress, domain.RoleSuperAdmin) {
+			responder.SendError(c, domain.NewError(domain.CodeAuthForbidden))
 			c.Abort()
 			return
 		}

@@ -29,6 +29,22 @@ var (
 	_ = abi.ConvertType
 )
 
+// CredentialRegistryBatchIssueCredentialsWithSignatureParams is an auto generated low-level Go binding around an user-defined struct.
+type CredentialRegistryBatchIssueCredentialsWithSignatureParams struct {
+	Issuer      common.Address
+	Credentials []CredentialRegistryCredentialIssuance
+	Nonce       *big.Int
+	Signature   []byte
+}
+
+// CredentialRegistryBatchRevokeCredentialsWithSignatureParams is an auto generated low-level Go binding around an user-defined struct.
+type CredentialRegistryBatchRevokeCredentialsWithSignatureParams struct {
+	Revoker       common.Address
+	CredentialIds []*big.Int
+	Nonce         *big.Int
+	Signature     []byte
+}
+
 // CredentialRegistryCredential is an auto generated low-level Go binding around an user-defined struct.
 type CredentialRegistryCredential struct {
 	Id        *big.Int
@@ -41,9 +57,16 @@ type CredentialRegistryCredential struct {
 	Uri       string
 }
 
+// CredentialRegistryCredentialIssuance is an auto generated low-level Go binding around an user-defined struct.
+type CredentialRegistryCredentialIssuance struct {
+	Holder common.Address
+	Hash   string
+	Uri    string
+}
+
 // RegistryMetaData contains all meta data concerning the Registry contract.
 var RegistryMetaData = &bind.MetaData{
-	ABI: "[{\"inputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[],\"name\":\"BatchIssueCredentialsLengthMismatchForbidden\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"ConfigZeroAddressForbidden\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"CredentialNotFound\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"CredentialTransferForbidden\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"ECDSAInvalidSignature\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"length\",\"type\":\"uint256\"}],\"name\":\"ECDSAInvalidSignatureLength\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"s\",\"type\":\"bytes32\"}],\"name\":\"ECDSAInvalidSignatureS\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"ERC721IncorrectOwner\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"operator\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"ERC721InsufficientApproval\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"approver\",\"type\":\"address\"}],\"name\":\"ERC721InvalidApprover\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"operator\",\"type\":\"address\"}],\"name\":\"ERC721InvalidOperator\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"ERC721InvalidOwner\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"receiver\",\"type\":\"address\"}],\"name\":\"ERC721InvalidReceiver\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"}],\"name\":\"ERC721InvalidSender\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"ERC721NonexistentToken\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"HolderZeroAddressForbidden\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InvalidInitialization\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InvalidNonceForbidden\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InvalidSignatureForbidden\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"IssueIssuedCredentialForbidden\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"IssuerRoleRequiredForbidden\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"NotInitializing\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"OnlyDeployerForbidden\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"RevokeRevokedCredentialForbidden\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"approved\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"Approval\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"operator\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"approved\",\"type\":\"bool\"}],\"name\":\"ApprovalForAll\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"holder\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"issuer\",\"type\":\"address\"}],\"name\":\"CredentialIssued\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"revoker\",\"type\":\"address\"}],\"name\":\"CredentialRevoked\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint64\",\"name\":\"version\",\"type\":\"uint64\"}],\"name\":\"Initialized\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"to\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"Transfer\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"to\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"approve\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"balanceOf\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"issuer\",\"type\":\"address\"},{\"internalType\":\"string[]\",\"name\":\"hashes\",\"type\":\"string[]\"},{\"internalType\":\"address[]\",\"name\":\"holders\",\"type\":\"address[]\"},{\"internalType\":\"string[]\",\"name\":\"uris\",\"type\":\"string[]\"},{\"internalType\":\"uint256\",\"name\":\"nonce\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"}],\"name\":\"batchIssueCredentialsWithSignature\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"revoker\",\"type\":\"address\"},{\"internalType\":\"uint256[]\",\"name\":\"ids\",\"type\":\"uint256[]\"},{\"internalType\":\"uint256\",\"name\":\"nonce\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"}],\"name\":\"batchRevokeCredentialsWithSignature\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"config\",\"outputs\":[{\"internalType\":\"contractCredentialConfig\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"credentialIdToCredential\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"holder\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"hash\",\"type\":\"string\"},{\"internalType\":\"address\",\"name\":\"issuer\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"revoker\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"issuedAt\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"revokedAt\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"uri\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"credentials\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"name\":\"findCredential\",\"outputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"holder\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"hash\",\"type\":\"string\"},{\"internalType\":\"address\",\"name\":\"issuer\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"revoker\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"issuedAt\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"revokedAt\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"uri\",\"type\":\"string\"}],\"internalType\":\"structCredentialRegistry.Credential\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"getApproved\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"holderToCredentialIds\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_config\",\"type\":\"address\"}],\"name\":\"initialize\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"operator\",\"type\":\"address\"}],\"name\":\"isApprovedForAll\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"holder\",\"type\":\"address\"},{\"internalType\":\"uint256[]\",\"name\":\"credentialIds\",\"type\":\"uint256[]\"}],\"name\":\"isHolderOfCredentialIds\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"name\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"ownerOf\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"offset\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"limit\",\"type\":\"uint256\"}],\"name\":\"paginateCredentials\",\"outputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"holder\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"hash\",\"type\":\"string\"},{\"internalType\":\"address\",\"name\":\"issuer\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"revoker\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"issuedAt\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"revokedAt\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"uri\",\"type\":\"string\"}],\"internalType\":\"structCredentialRegistry.Credential[]\",\"name\":\"\",\"type\":\"tuple[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"holder\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"offset\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"limit\",\"type\":\"uint256\"}],\"name\":\"paginateCredentialsByHolder\",\"outputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"holder\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"hash\",\"type\":\"string\"},{\"internalType\":\"address\",\"name\":\"issuer\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"revoker\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"issuedAt\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"revokedAt\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"uri\",\"type\":\"string\"}],\"internalType\":\"structCredentialRegistry.Credential[]\",\"name\":\"\",\"type\":\"tuple[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256[]\",\"name\":\"ids\",\"type\":\"uint256[]\"}],\"name\":\"paginateCredentialsByIds\",\"outputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"holder\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"hash\",\"type\":\"string\"},{\"internalType\":\"address\",\"name\":\"issuer\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"revoker\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"issuedAt\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"revokedAt\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"uri\",\"type\":\"string\"}],\"internalType\":\"structCredentialRegistry.Credential[]\",\"name\":\"\",\"type\":\"tuple[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"to\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"safeTransferFrom\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"to\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"name\":\"safeTransferFrom\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"operator\",\"type\":\"address\"},{\"internalType\":\"bool\",\"name\":\"approved\",\"type\":\"bool\"}],\"name\":\"setApprovalForAll\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes4\",\"name\":\"interfaceId\",\"type\":\"bytes4\"}],\"name\":\"supportsInterface\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"symbol\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"tokenURI\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"to\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"transferFrom\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"name\":\"userToNonce\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]",
+	ABI: "[{\"inputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[],\"name\":\"CredentialNotFoundError\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"CredentialTransferError\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"ECDSAInvalidSignature\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"length\",\"type\":\"uint256\"}],\"name\":\"ECDSAInvalidSignatureLength\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"s\",\"type\":\"bytes32\"}],\"name\":\"ECDSAInvalidSignatureS\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"ERC721IncorrectOwner\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"operator\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"ERC721InsufficientApproval\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"approver\",\"type\":\"address\"}],\"name\":\"ERC721InvalidApprover\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"operator\",\"type\":\"address\"}],\"name\":\"ERC721InvalidOperator\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"ERC721InvalidOwner\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"receiver\",\"type\":\"address\"}],\"name\":\"ERC721InvalidReceiver\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"}],\"name\":\"ERC721InvalidSender\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"ERC721NonexistentToken\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InvalidAddressError\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InvalidInitialization\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InvalidNonceError\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InvalidSignatureError\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"IssueIssuedCredentialError\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"MaxBatchExceededError\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"NotDeployerError\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"NotInitializing\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"RevokeRevokedCredentialError\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"RoleBelowAdminError\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"RoleBelowIssuerError\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"RoleNotSuperAdminError\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"approved\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"Approval\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"operator\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"approved\",\"type\":\"bool\"}],\"name\":\"ApprovalForAll\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"holder\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"issuer\",\"type\":\"address\"}],\"name\":\"CredentialIssued\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"revoker\",\"type\":\"address\"}],\"name\":\"CredentialRevoked\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint64\",\"name\":\"version\",\"type\":\"uint64\"}],\"name\":\"Initialized\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"to\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"Transfer\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"MAX_BATCH_CREDENTIAL\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"to\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"approve\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"balanceOf\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"issuer\",\"type\":\"address\"},{\"components\":[{\"internalType\":\"address\",\"name\":\"holder\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"hash\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"uri\",\"type\":\"string\"}],\"internalType\":\"structCredentialRegistry.CredentialIssuance[]\",\"name\":\"credentials\",\"type\":\"tuple[]\"},{\"internalType\":\"uint256\",\"name\":\"nonce\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"}],\"internalType\":\"structCredentialRegistry.BatchIssueCredentialsWithSignatureParams\",\"name\":\"params\",\"type\":\"tuple\"}],\"name\":\"batchIssueCredentialsWithSignature\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"revoker\",\"type\":\"address\"},{\"internalType\":\"uint256[]\",\"name\":\"credentialIds\",\"type\":\"uint256[]\"},{\"internalType\":\"uint256\",\"name\":\"nonce\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"}],\"internalType\":\"structCredentialRegistry.BatchRevokeCredentialsWithSignatureParams\",\"name\":\"params\",\"type\":\"tuple\"}],\"name\":\"batchRevokeCredentialsWithSignature\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"config\",\"outputs\":[{\"internalType\":\"contractCredentialConfig\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"credentialIdToCredential\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"holder\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"hash\",\"type\":\"string\"},{\"internalType\":\"address\",\"name\":\"issuer\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"revoker\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"issuedAt\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"revokedAt\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"uri\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"credentials\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"name\":\"findCredential\",\"outputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"holder\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"hash\",\"type\":\"string\"},{\"internalType\":\"address\",\"name\":\"issuer\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"revoker\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"issuedAt\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"revokedAt\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"uri\",\"type\":\"string\"}],\"internalType\":\"structCredentialRegistry.Credential\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"getApproved\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256[]\",\"name\":\"ids\",\"type\":\"uint256[]\"}],\"name\":\"getCredentialsByIds\",\"outputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"holder\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"hash\",\"type\":\"string\"},{\"internalType\":\"address\",\"name\":\"issuer\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"revoker\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"issuedAt\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"revokedAt\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"uri\",\"type\":\"string\"}],\"internalType\":\"structCredentialRegistry.Credential[]\",\"name\":\"\",\"type\":\"tuple[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"holderToCredentialIds\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_config\",\"type\":\"address\"}],\"name\":\"initialize\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"operator\",\"type\":\"address\"}],\"name\":\"isApprovedForAll\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"holder\",\"type\":\"address\"},{\"internalType\":\"uint256[]\",\"name\":\"credentialIds\",\"type\":\"uint256[]\"}],\"name\":\"isHolderOfCredentialIds\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"name\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"ownerOf\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"offset\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"limit\",\"type\":\"uint256\"}],\"name\":\"paginateCredentials\",\"outputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"holder\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"hash\",\"type\":\"string\"},{\"internalType\":\"address\",\"name\":\"issuer\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"revoker\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"issuedAt\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"revokedAt\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"uri\",\"type\":\"string\"}],\"internalType\":\"structCredentialRegistry.Credential[]\",\"name\":\"\",\"type\":\"tuple[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"holder\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"offset\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"limit\",\"type\":\"uint256\"}],\"name\":\"paginateCredentialsByHolder\",\"outputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"holder\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"hash\",\"type\":\"string\"},{\"internalType\":\"address\",\"name\":\"issuer\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"revoker\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"issuedAt\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"revokedAt\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"uri\",\"type\":\"string\"}],\"internalType\":\"structCredentialRegistry.Credential[]\",\"name\":\"\",\"type\":\"tuple[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"to\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"safeTransferFrom\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"to\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"name\":\"safeTransferFrom\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"operator\",\"type\":\"address\"},{\"internalType\":\"bool\",\"name\":\"approved\",\"type\":\"bool\"}],\"name\":\"setApprovalForAll\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes4\",\"name\":\"interfaceId\",\"type\":\"bytes4\"}],\"name\":\"supportsInterface\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"symbol\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"tokenURI\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"to\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"transferFrom\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"name\":\"userToNonce\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]",
 }
 
 // RegistryABI is the input ABI used to generate the binding from.
@@ -158,7 +181,7 @@ func bindRegistry(address common.Address, caller bind.ContractCaller, transactor
 // sets the output to result. The result type might be a single field for simple
 // returns, a slice of interfaces for anonymous returns and a struct for named
 // returns.
-func (_Registry *RegistryRaw) Call(opts *bind.CallOpts, result *[]any, method string, params ...any) error {
+func (_Registry *RegistryRaw) Call(opts *bind.CallOpts, result *[]interface{}, method string, params ...interface{}) error {
 	return _Registry.Contract.RegistryCaller.contract.Call(opts, result, method, params...)
 }
 
@@ -169,7 +192,7 @@ func (_Registry *RegistryRaw) Transfer(opts *bind.TransactOpts) (*types.Transact
 }
 
 // Transact invokes the (paid) contract method with params as input values.
-func (_Registry *RegistryRaw) Transact(opts *bind.TransactOpts, method string, params ...any) (*types.Transaction, error) {
+func (_Registry *RegistryRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
 	return _Registry.Contract.RegistryTransactor.contract.Transact(opts, method, params...)
 }
 
@@ -177,7 +200,7 @@ func (_Registry *RegistryRaw) Transact(opts *bind.TransactOpts, method string, p
 // sets the output to result. The result type might be a single field for simple
 // returns, a slice of interfaces for anonymous returns and a struct for named
 // returns.
-func (_Registry *RegistryCallerRaw) Call(opts *bind.CallOpts, result *[]any, method string, params ...any) error {
+func (_Registry *RegistryCallerRaw) Call(opts *bind.CallOpts, result *[]interface{}, method string, params ...interface{}) error {
 	return _Registry.Contract.contract.Call(opts, result, method, params...)
 }
 
@@ -188,15 +211,46 @@ func (_Registry *RegistryTransactorRaw) Transfer(opts *bind.TransactOpts) (*type
 }
 
 // Transact invokes the (paid) contract method with params as input values.
-func (_Registry *RegistryTransactorRaw) Transact(opts *bind.TransactOpts, method string, params ...any) (*types.Transaction, error) {
+func (_Registry *RegistryTransactorRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
 	return _Registry.Contract.contract.Transact(opts, method, params...)
+}
+
+// MAXBATCHCREDENTIAL is a free data retrieval call binding the contract method 0x55e469d5.
+//
+// Solidity: function MAX_BATCH_CREDENTIAL() view returns(uint256)
+func (_Registry *RegistryCaller) MAXBATCHCREDENTIAL(opts *bind.CallOpts) (*big.Int, error) {
+	var out []interface{}
+	err := _Registry.contract.Call(opts, &out, "MAX_BATCH_CREDENTIAL")
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// MAXBATCHCREDENTIAL is a free data retrieval call binding the contract method 0x55e469d5.
+//
+// Solidity: function MAX_BATCH_CREDENTIAL() view returns(uint256)
+func (_Registry *RegistrySession) MAXBATCHCREDENTIAL() (*big.Int, error) {
+	return _Registry.Contract.MAXBATCHCREDENTIAL(&_Registry.CallOpts)
+}
+
+// MAXBATCHCREDENTIAL is a free data retrieval call binding the contract method 0x55e469d5.
+//
+// Solidity: function MAX_BATCH_CREDENTIAL() view returns(uint256)
+func (_Registry *RegistryCallerSession) MAXBATCHCREDENTIAL() (*big.Int, error) {
+	return _Registry.Contract.MAXBATCHCREDENTIAL(&_Registry.CallOpts)
 }
 
 // BalanceOf is a free data retrieval call binding the contract method 0x70a08231.
 //
 // Solidity: function balanceOf(address owner) view returns(uint256)
 func (_Registry *RegistryCaller) BalanceOf(opts *bind.CallOpts, owner common.Address) (*big.Int, error) {
-	var out []any
+	var out []interface{}
 	err := _Registry.contract.Call(opts, &out, "balanceOf", owner)
 
 	if err != nil {
@@ -227,7 +281,7 @@ func (_Registry *RegistryCallerSession) BalanceOf(owner common.Address) (*big.In
 //
 // Solidity: function config() view returns(address)
 func (_Registry *RegistryCaller) Config(opts *bind.CallOpts) (common.Address, error) {
-	var out []any
+	var out []interface{}
 	err := _Registry.contract.Call(opts, &out, "config")
 
 	if err != nil {
@@ -267,7 +321,7 @@ func (_Registry *RegistryCaller) CredentialIdToCredential(opts *bind.CallOpts, a
 	RevokedAt *big.Int
 	Uri       string
 }, error) {
-	var out []any
+	var out []interface{}
 	err := _Registry.contract.Call(opts, &out, "credentialIdToCredential", arg0)
 
 	outstruct := new(struct {
@@ -333,7 +387,7 @@ func (_Registry *RegistryCallerSession) CredentialIdToCredential(arg0 *big.Int) 
 //
 // Solidity: function credentials(uint256 ) view returns(uint256)
 func (_Registry *RegistryCaller) Credentials(opts *bind.CallOpts, arg0 *big.Int) (*big.Int, error) {
-	var out []any
+	var out []interface{}
 	err := _Registry.contract.Call(opts, &out, "credentials", arg0)
 
 	if err != nil {
@@ -364,7 +418,7 @@ func (_Registry *RegistryCallerSession) Credentials(arg0 *big.Int) (*big.Int, er
 //
 // Solidity: function findCredential(uint256 id) view returns((uint256,address,string,address,address,uint256,uint256,string))
 func (_Registry *RegistryCaller) FindCredential(opts *bind.CallOpts, id *big.Int) (CredentialRegistryCredential, error) {
-	var out []any
+	var out []interface{}
 	err := _Registry.contract.Call(opts, &out, "findCredential", id)
 
 	if err != nil {
@@ -395,7 +449,7 @@ func (_Registry *RegistryCallerSession) FindCredential(id *big.Int) (CredentialR
 //
 // Solidity: function getApproved(uint256 tokenId) view returns(address)
 func (_Registry *RegistryCaller) GetApproved(opts *bind.CallOpts, tokenId *big.Int) (common.Address, error) {
-	var out []any
+	var out []interface{}
 	err := _Registry.contract.Call(opts, &out, "getApproved", tokenId)
 
 	if err != nil {
@@ -422,11 +476,42 @@ func (_Registry *RegistryCallerSession) GetApproved(tokenId *big.Int) (common.Ad
 	return _Registry.Contract.GetApproved(&_Registry.CallOpts, tokenId)
 }
 
+// GetCredentialsByIds is a free data retrieval call binding the contract method 0xfb87720d.
+//
+// Solidity: function getCredentialsByIds(uint256[] ids) view returns((uint256,address,string,address,address,uint256,uint256,string)[])
+func (_Registry *RegistryCaller) GetCredentialsByIds(opts *bind.CallOpts, ids []*big.Int) ([]CredentialRegistryCredential, error) {
+	var out []interface{}
+	err := _Registry.contract.Call(opts, &out, "getCredentialsByIds", ids)
+
+	if err != nil {
+		return *new([]CredentialRegistryCredential), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new([]CredentialRegistryCredential)).(*[]CredentialRegistryCredential)
+
+	return out0, err
+
+}
+
+// GetCredentialsByIds is a free data retrieval call binding the contract method 0xfb87720d.
+//
+// Solidity: function getCredentialsByIds(uint256[] ids) view returns((uint256,address,string,address,address,uint256,uint256,string)[])
+func (_Registry *RegistrySession) GetCredentialsByIds(ids []*big.Int) ([]CredentialRegistryCredential, error) {
+	return _Registry.Contract.GetCredentialsByIds(&_Registry.CallOpts, ids)
+}
+
+// GetCredentialsByIds is a free data retrieval call binding the contract method 0xfb87720d.
+//
+// Solidity: function getCredentialsByIds(uint256[] ids) view returns((uint256,address,string,address,address,uint256,uint256,string)[])
+func (_Registry *RegistryCallerSession) GetCredentialsByIds(ids []*big.Int) ([]CredentialRegistryCredential, error) {
+	return _Registry.Contract.GetCredentialsByIds(&_Registry.CallOpts, ids)
+}
+
 // HolderToCredentialIds is a free data retrieval call binding the contract method 0xf464ff94.
 //
 // Solidity: function holderToCredentialIds(address , uint256 ) view returns(uint256)
 func (_Registry *RegistryCaller) HolderToCredentialIds(opts *bind.CallOpts, arg0 common.Address, arg1 *big.Int) (*big.Int, error) {
-	var out []any
+	var out []interface{}
 	err := _Registry.contract.Call(opts, &out, "holderToCredentialIds", arg0, arg1)
 
 	if err != nil {
@@ -457,7 +542,7 @@ func (_Registry *RegistryCallerSession) HolderToCredentialIds(arg0 common.Addres
 //
 // Solidity: function isApprovedForAll(address owner, address operator) view returns(bool)
 func (_Registry *RegistryCaller) IsApprovedForAll(opts *bind.CallOpts, owner common.Address, operator common.Address) (bool, error) {
-	var out []any
+	var out []interface{}
 	err := _Registry.contract.Call(opts, &out, "isApprovedForAll", owner, operator)
 
 	if err != nil {
@@ -488,7 +573,7 @@ func (_Registry *RegistryCallerSession) IsApprovedForAll(owner common.Address, o
 //
 // Solidity: function isHolderOfCredentialIds(address holder, uint256[] credentialIds) view returns(bool)
 func (_Registry *RegistryCaller) IsHolderOfCredentialIds(opts *bind.CallOpts, holder common.Address, credentialIds []*big.Int) (bool, error) {
-	var out []any
+	var out []interface{}
 	err := _Registry.contract.Call(opts, &out, "isHolderOfCredentialIds", holder, credentialIds)
 
 	if err != nil {
@@ -519,7 +604,7 @@ func (_Registry *RegistryCallerSession) IsHolderOfCredentialIds(holder common.Ad
 //
 // Solidity: function name() view returns(string)
 func (_Registry *RegistryCaller) Name(opts *bind.CallOpts) (string, error) {
-	var out []any
+	var out []interface{}
 	err := _Registry.contract.Call(opts, &out, "name")
 
 	if err != nil {
@@ -550,7 +635,7 @@ func (_Registry *RegistryCallerSession) Name() (string, error) {
 //
 // Solidity: function ownerOf(uint256 tokenId) view returns(address)
 func (_Registry *RegistryCaller) OwnerOf(opts *bind.CallOpts, tokenId *big.Int) (common.Address, error) {
-	var out []any
+	var out []interface{}
 	err := _Registry.contract.Call(opts, &out, "ownerOf", tokenId)
 
 	if err != nil {
@@ -581,7 +666,7 @@ func (_Registry *RegistryCallerSession) OwnerOf(tokenId *big.Int) (common.Addres
 //
 // Solidity: function paginateCredentials(uint256 offset, uint256 limit) view returns((uint256,address,string,address,address,uint256,uint256,string)[])
 func (_Registry *RegistryCaller) PaginateCredentials(opts *bind.CallOpts, offset *big.Int, limit *big.Int) ([]CredentialRegistryCredential, error) {
-	var out []any
+	var out []interface{}
 	err := _Registry.contract.Call(opts, &out, "paginateCredentials", offset, limit)
 
 	if err != nil {
@@ -612,7 +697,7 @@ func (_Registry *RegistryCallerSession) PaginateCredentials(offset *big.Int, lim
 //
 // Solidity: function paginateCredentialsByHolder(address holder, uint256 offset, uint256 limit) view returns((uint256,address,string,address,address,uint256,uint256,string)[])
 func (_Registry *RegistryCaller) PaginateCredentialsByHolder(opts *bind.CallOpts, holder common.Address, offset *big.Int, limit *big.Int) ([]CredentialRegistryCredential, error) {
-	var out []any
+	var out []interface{}
 	err := _Registry.contract.Call(opts, &out, "paginateCredentialsByHolder", holder, offset, limit)
 
 	if err != nil {
@@ -639,42 +724,11 @@ func (_Registry *RegistryCallerSession) PaginateCredentialsByHolder(holder commo
 	return _Registry.Contract.PaginateCredentialsByHolder(&_Registry.CallOpts, holder, offset, limit)
 }
 
-// PaginateCredentialsByIds is a free data retrieval call binding the contract method 0xc58043e1.
-//
-// Solidity: function paginateCredentialsByIds(uint256[] ids) view returns((uint256,address,string,address,address,uint256,uint256,string)[])
-func (_Registry *RegistryCaller) PaginateCredentialsByIds(opts *bind.CallOpts, ids []*big.Int) ([]CredentialRegistryCredential, error) {
-	var out []any
-	err := _Registry.contract.Call(opts, &out, "paginateCredentialsByIds", ids)
-
-	if err != nil {
-		return *new([]CredentialRegistryCredential), err
-	}
-
-	out0 := *abi.ConvertType(out[0], new([]CredentialRegistryCredential)).(*[]CredentialRegistryCredential)
-
-	return out0, err
-
-}
-
-// PaginateCredentialsByIds is a free data retrieval call binding the contract method 0xc58043e1.
-//
-// Solidity: function paginateCredentialsByIds(uint256[] ids) view returns((uint256,address,string,address,address,uint256,uint256,string)[])
-func (_Registry *RegistrySession) PaginateCredentialsByIds(ids []*big.Int) ([]CredentialRegistryCredential, error) {
-	return _Registry.Contract.PaginateCredentialsByIds(&_Registry.CallOpts, ids)
-}
-
-// PaginateCredentialsByIds is a free data retrieval call binding the contract method 0xc58043e1.
-//
-// Solidity: function paginateCredentialsByIds(uint256[] ids) view returns((uint256,address,string,address,address,uint256,uint256,string)[])
-func (_Registry *RegistryCallerSession) PaginateCredentialsByIds(ids []*big.Int) ([]CredentialRegistryCredential, error) {
-	return _Registry.Contract.PaginateCredentialsByIds(&_Registry.CallOpts, ids)
-}
-
 // SupportsInterface is a free data retrieval call binding the contract method 0x01ffc9a7.
 //
 // Solidity: function supportsInterface(bytes4 interfaceId) view returns(bool)
 func (_Registry *RegistryCaller) SupportsInterface(opts *bind.CallOpts, interfaceId [4]byte) (bool, error) {
-	var out []any
+	var out []interface{}
 	err := _Registry.contract.Call(opts, &out, "supportsInterface", interfaceId)
 
 	if err != nil {
@@ -705,7 +759,7 @@ func (_Registry *RegistryCallerSession) SupportsInterface(interfaceId [4]byte) (
 //
 // Solidity: function symbol() view returns(string)
 func (_Registry *RegistryCaller) Symbol(opts *bind.CallOpts) (string, error) {
-	var out []any
+	var out []interface{}
 	err := _Registry.contract.Call(opts, &out, "symbol")
 
 	if err != nil {
@@ -736,7 +790,7 @@ func (_Registry *RegistryCallerSession) Symbol() (string, error) {
 //
 // Solidity: function tokenURI(uint256 tokenId) view returns(string)
 func (_Registry *RegistryCaller) TokenURI(opts *bind.CallOpts, tokenId *big.Int) (string, error) {
-	var out []any
+	var out []interface{}
 	err := _Registry.contract.Call(opts, &out, "tokenURI", tokenId)
 
 	if err != nil {
@@ -767,7 +821,7 @@ func (_Registry *RegistryCallerSession) TokenURI(tokenId *big.Int) (string, erro
 //
 // Solidity: function userToNonce(address ) view returns(uint256)
 func (_Registry *RegistryCaller) UserToNonce(opts *bind.CallOpts, arg0 common.Address) (*big.Int, error) {
-	var out []any
+	var out []interface{}
 	err := _Registry.contract.Call(opts, &out, "userToNonce", arg0)
 
 	if err != nil {
@@ -815,46 +869,46 @@ func (_Registry *RegistryTransactorSession) Approve(to common.Address, tokenId *
 	return _Registry.Contract.Approve(&_Registry.TransactOpts, to, tokenId)
 }
 
-// BatchIssueCredentialsWithSignature is a paid mutator transaction binding the contract method 0xcb07c41d.
+// BatchIssueCredentialsWithSignature is a paid mutator transaction binding the contract method 0xef2655ad.
 //
-// Solidity: function batchIssueCredentialsWithSignature(address issuer, string[] hashes, address[] holders, string[] uris, uint256 nonce, bytes signature) returns()
-func (_Registry *RegistryTransactor) BatchIssueCredentialsWithSignature(opts *bind.TransactOpts, issuer common.Address, hashes []string, holders []common.Address, uris []string, nonce *big.Int, signature []byte) (*types.Transaction, error) {
-	return _Registry.contract.Transact(opts, "batchIssueCredentialsWithSignature", issuer, hashes, holders, uris, nonce, signature)
+// Solidity: function batchIssueCredentialsWithSignature((address,(address,string,string)[],uint256,bytes) params) returns()
+func (_Registry *RegistryTransactor) BatchIssueCredentialsWithSignature(opts *bind.TransactOpts, params CredentialRegistryBatchIssueCredentialsWithSignatureParams) (*types.Transaction, error) {
+	return _Registry.contract.Transact(opts, "batchIssueCredentialsWithSignature", params)
 }
 
-// BatchIssueCredentialsWithSignature is a paid mutator transaction binding the contract method 0xcb07c41d.
+// BatchIssueCredentialsWithSignature is a paid mutator transaction binding the contract method 0xef2655ad.
 //
-// Solidity: function batchIssueCredentialsWithSignature(address issuer, string[] hashes, address[] holders, string[] uris, uint256 nonce, bytes signature) returns()
-func (_Registry *RegistrySession) BatchIssueCredentialsWithSignature(issuer common.Address, hashes []string, holders []common.Address, uris []string, nonce *big.Int, signature []byte) (*types.Transaction, error) {
-	return _Registry.Contract.BatchIssueCredentialsWithSignature(&_Registry.TransactOpts, issuer, hashes, holders, uris, nonce, signature)
+// Solidity: function batchIssueCredentialsWithSignature((address,(address,string,string)[],uint256,bytes) params) returns()
+func (_Registry *RegistrySession) BatchIssueCredentialsWithSignature(params CredentialRegistryBatchIssueCredentialsWithSignatureParams) (*types.Transaction, error) {
+	return _Registry.Contract.BatchIssueCredentialsWithSignature(&_Registry.TransactOpts, params)
 }
 
-// BatchIssueCredentialsWithSignature is a paid mutator transaction binding the contract method 0xcb07c41d.
+// BatchIssueCredentialsWithSignature is a paid mutator transaction binding the contract method 0xef2655ad.
 //
-// Solidity: function batchIssueCredentialsWithSignature(address issuer, string[] hashes, address[] holders, string[] uris, uint256 nonce, bytes signature) returns()
-func (_Registry *RegistryTransactorSession) BatchIssueCredentialsWithSignature(issuer common.Address, hashes []string, holders []common.Address, uris []string, nonce *big.Int, signature []byte) (*types.Transaction, error) {
-	return _Registry.Contract.BatchIssueCredentialsWithSignature(&_Registry.TransactOpts, issuer, hashes, holders, uris, nonce, signature)
+// Solidity: function batchIssueCredentialsWithSignature((address,(address,string,string)[],uint256,bytes) params) returns()
+func (_Registry *RegistryTransactorSession) BatchIssueCredentialsWithSignature(params CredentialRegistryBatchIssueCredentialsWithSignatureParams) (*types.Transaction, error) {
+	return _Registry.Contract.BatchIssueCredentialsWithSignature(&_Registry.TransactOpts, params)
 }
 
-// BatchRevokeCredentialsWithSignature is a paid mutator transaction binding the contract method 0x743b84ba.
+// BatchRevokeCredentialsWithSignature is a paid mutator transaction binding the contract method 0x23b1812d.
 //
-// Solidity: function batchRevokeCredentialsWithSignature(address revoker, uint256[] ids, uint256 nonce, bytes signature) returns()
-func (_Registry *RegistryTransactor) BatchRevokeCredentialsWithSignature(opts *bind.TransactOpts, revoker common.Address, ids []*big.Int, nonce *big.Int, signature []byte) (*types.Transaction, error) {
-	return _Registry.contract.Transact(opts, "batchRevokeCredentialsWithSignature", revoker, ids, nonce, signature)
+// Solidity: function batchRevokeCredentialsWithSignature((address,uint256[],uint256,bytes) params) returns()
+func (_Registry *RegistryTransactor) BatchRevokeCredentialsWithSignature(opts *bind.TransactOpts, params CredentialRegistryBatchRevokeCredentialsWithSignatureParams) (*types.Transaction, error) {
+	return _Registry.contract.Transact(opts, "batchRevokeCredentialsWithSignature", params)
 }
 
-// BatchRevokeCredentialsWithSignature is a paid mutator transaction binding the contract method 0x743b84ba.
+// BatchRevokeCredentialsWithSignature is a paid mutator transaction binding the contract method 0x23b1812d.
 //
-// Solidity: function batchRevokeCredentialsWithSignature(address revoker, uint256[] ids, uint256 nonce, bytes signature) returns()
-func (_Registry *RegistrySession) BatchRevokeCredentialsWithSignature(revoker common.Address, ids []*big.Int, nonce *big.Int, signature []byte) (*types.Transaction, error) {
-	return _Registry.Contract.BatchRevokeCredentialsWithSignature(&_Registry.TransactOpts, revoker, ids, nonce, signature)
+// Solidity: function batchRevokeCredentialsWithSignature((address,uint256[],uint256,bytes) params) returns()
+func (_Registry *RegistrySession) BatchRevokeCredentialsWithSignature(params CredentialRegistryBatchRevokeCredentialsWithSignatureParams) (*types.Transaction, error) {
+	return _Registry.Contract.BatchRevokeCredentialsWithSignature(&_Registry.TransactOpts, params)
 }
 
-// BatchRevokeCredentialsWithSignature is a paid mutator transaction binding the contract method 0x743b84ba.
+// BatchRevokeCredentialsWithSignature is a paid mutator transaction binding the contract method 0x23b1812d.
 //
-// Solidity: function batchRevokeCredentialsWithSignature(address revoker, uint256[] ids, uint256 nonce, bytes signature) returns()
-func (_Registry *RegistryTransactorSession) BatchRevokeCredentialsWithSignature(revoker common.Address, ids []*big.Int, nonce *big.Int, signature []byte) (*types.Transaction, error) {
-	return _Registry.Contract.BatchRevokeCredentialsWithSignature(&_Registry.TransactOpts, revoker, ids, nonce, signature)
+// Solidity: function batchRevokeCredentialsWithSignature((address,uint256[],uint256,bytes) params) returns()
+func (_Registry *RegistryTransactorSession) BatchRevokeCredentialsWithSignature(params CredentialRegistryBatchRevokeCredentialsWithSignatureParams) (*types.Transaction, error) {
+	return _Registry.Contract.BatchRevokeCredentialsWithSignature(&_Registry.TransactOpts, params)
 }
 
 // Initialize is a paid mutator transaction binding the contract method 0xc4d66de8.
@@ -1042,15 +1096,15 @@ type RegistryApproval struct {
 // Solidity: event Approval(address indexed owner, address indexed approved, uint256 indexed tokenId)
 func (_Registry *RegistryFilterer) FilterApproval(opts *bind.FilterOpts, owner []common.Address, approved []common.Address, tokenId []*big.Int) (*RegistryApprovalIterator, error) {
 
-	var ownerRule []any
+	var ownerRule []interface{}
 	for _, ownerItem := range owner {
 		ownerRule = append(ownerRule, ownerItem)
 	}
-	var approvedRule []any
+	var approvedRule []interface{}
 	for _, approvedItem := range approved {
 		approvedRule = append(approvedRule, approvedItem)
 	}
-	var tokenIdRule []any
+	var tokenIdRule []interface{}
 	for _, tokenIdItem := range tokenId {
 		tokenIdRule = append(tokenIdRule, tokenIdItem)
 	}
@@ -1067,15 +1121,15 @@ func (_Registry *RegistryFilterer) FilterApproval(opts *bind.FilterOpts, owner [
 // Solidity: event Approval(address indexed owner, address indexed approved, uint256 indexed tokenId)
 func (_Registry *RegistryFilterer) WatchApproval(opts *bind.WatchOpts, sink chan<- *RegistryApproval, owner []common.Address, approved []common.Address, tokenId []*big.Int) (event.Subscription, error) {
 
-	var ownerRule []any
+	var ownerRule []interface{}
 	for _, ownerItem := range owner {
 		ownerRule = append(ownerRule, ownerItem)
 	}
-	var approvedRule []any
+	var approvedRule []interface{}
 	for _, approvedItem := range approved {
 		approvedRule = append(approvedRule, approvedItem)
 	}
-	var tokenIdRule []any
+	var tokenIdRule []interface{}
 	for _, tokenIdItem := range tokenId {
 		tokenIdRule = append(tokenIdRule, tokenIdItem)
 	}
@@ -1204,11 +1258,11 @@ type RegistryApprovalForAll struct {
 // Solidity: event ApprovalForAll(address indexed owner, address indexed operator, bool approved)
 func (_Registry *RegistryFilterer) FilterApprovalForAll(opts *bind.FilterOpts, owner []common.Address, operator []common.Address) (*RegistryApprovalForAllIterator, error) {
 
-	var ownerRule []any
+	var ownerRule []interface{}
 	for _, ownerItem := range owner {
 		ownerRule = append(ownerRule, ownerItem)
 	}
-	var operatorRule []any
+	var operatorRule []interface{}
 	for _, operatorItem := range operator {
 		operatorRule = append(operatorRule, operatorItem)
 	}
@@ -1225,11 +1279,11 @@ func (_Registry *RegistryFilterer) FilterApprovalForAll(opts *bind.FilterOpts, o
 // Solidity: event ApprovalForAll(address indexed owner, address indexed operator, bool approved)
 func (_Registry *RegistryFilterer) WatchApprovalForAll(opts *bind.WatchOpts, sink chan<- *RegistryApprovalForAll, owner []common.Address, operator []common.Address) (event.Subscription, error) {
 
-	var ownerRule []any
+	var ownerRule []interface{}
 	for _, ownerItem := range owner {
 		ownerRule = append(ownerRule, ownerItem)
 	}
-	var operatorRule []any
+	var operatorRule []interface{}
 	for _, operatorItem := range operator {
 		operatorRule = append(operatorRule, operatorItem)
 	}
@@ -1358,15 +1412,15 @@ type RegistryCredentialIssued struct {
 // Solidity: event CredentialIssued(uint256 indexed id, address indexed holder, address indexed issuer)
 func (_Registry *RegistryFilterer) FilterCredentialIssued(opts *bind.FilterOpts, id []*big.Int, holder []common.Address, issuer []common.Address) (*RegistryCredentialIssuedIterator, error) {
 
-	var idRule []any
+	var idRule []interface{}
 	for _, idItem := range id {
 		idRule = append(idRule, idItem)
 	}
-	var holderRule []any
+	var holderRule []interface{}
 	for _, holderItem := range holder {
 		holderRule = append(holderRule, holderItem)
 	}
-	var issuerRule []any
+	var issuerRule []interface{}
 	for _, issuerItem := range issuer {
 		issuerRule = append(issuerRule, issuerItem)
 	}
@@ -1383,15 +1437,15 @@ func (_Registry *RegistryFilterer) FilterCredentialIssued(opts *bind.FilterOpts,
 // Solidity: event CredentialIssued(uint256 indexed id, address indexed holder, address indexed issuer)
 func (_Registry *RegistryFilterer) WatchCredentialIssued(opts *bind.WatchOpts, sink chan<- *RegistryCredentialIssued, id []*big.Int, holder []common.Address, issuer []common.Address) (event.Subscription, error) {
 
-	var idRule []any
+	var idRule []interface{}
 	for _, idItem := range id {
 		idRule = append(idRule, idItem)
 	}
-	var holderRule []any
+	var holderRule []interface{}
 	for _, holderItem := range holder {
 		holderRule = append(holderRule, holderItem)
 	}
-	var issuerRule []any
+	var issuerRule []interface{}
 	for _, issuerItem := range issuer {
 		issuerRule = append(issuerRule, issuerItem)
 	}
@@ -1519,11 +1573,11 @@ type RegistryCredentialRevoked struct {
 // Solidity: event CredentialRevoked(uint256 indexed id, address indexed revoker)
 func (_Registry *RegistryFilterer) FilterCredentialRevoked(opts *bind.FilterOpts, id []*big.Int, revoker []common.Address) (*RegistryCredentialRevokedIterator, error) {
 
-	var idRule []any
+	var idRule []interface{}
 	for _, idItem := range id {
 		idRule = append(idRule, idItem)
 	}
-	var revokerRule []any
+	var revokerRule []interface{}
 	for _, revokerItem := range revoker {
 		revokerRule = append(revokerRule, revokerItem)
 	}
@@ -1540,11 +1594,11 @@ func (_Registry *RegistryFilterer) FilterCredentialRevoked(opts *bind.FilterOpts
 // Solidity: event CredentialRevoked(uint256 indexed id, address indexed revoker)
 func (_Registry *RegistryFilterer) WatchCredentialRevoked(opts *bind.WatchOpts, sink chan<- *RegistryCredentialRevoked, id []*big.Int, revoker []common.Address) (event.Subscription, error) {
 
-	var idRule []any
+	var idRule []interface{}
 	for _, idItem := range id {
 		idRule = append(idRule, idItem)
 	}
-	var revokerRule []any
+	var revokerRule []interface{}
 	for _, revokerItem := range revoker {
 		revokerRule = append(revokerRule, revokerItem)
 	}
@@ -1807,15 +1861,15 @@ type RegistryTransfer struct {
 // Solidity: event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)
 func (_Registry *RegistryFilterer) FilterTransfer(opts *bind.FilterOpts, from []common.Address, to []common.Address, tokenId []*big.Int) (*RegistryTransferIterator, error) {
 
-	var fromRule []any
+	var fromRule []interface{}
 	for _, fromItem := range from {
 		fromRule = append(fromRule, fromItem)
 	}
-	var toRule []any
+	var toRule []interface{}
 	for _, toItem := range to {
 		toRule = append(toRule, toItem)
 	}
-	var tokenIdRule []any
+	var tokenIdRule []interface{}
 	for _, tokenIdItem := range tokenId {
 		tokenIdRule = append(tokenIdRule, tokenIdItem)
 	}
@@ -1832,15 +1886,15 @@ func (_Registry *RegistryFilterer) FilterTransfer(opts *bind.FilterOpts, from []
 // Solidity: event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)
 func (_Registry *RegistryFilterer) WatchTransfer(opts *bind.WatchOpts, sink chan<- *RegistryTransfer, from []common.Address, to []common.Address, tokenId []*big.Int) (event.Subscription, error) {
 
-	var fromRule []any
+	var fromRule []interface{}
 	for _, fromItem := range from {
 		fromRule = append(fromRule, fromItem)
 	}
-	var toRule []any
+	var toRule []interface{}
 	for _, toItem := range to {
 		toRule = append(toRule, toItem)
 	}
-	var tokenIdRule []any
+	var tokenIdRule []interface{}
 	for _, tokenIdItem := range tokenId {
 		tokenIdRule = append(tokenIdRule, tokenIdItem)
 	}

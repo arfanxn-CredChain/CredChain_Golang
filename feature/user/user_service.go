@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"slices"
-	"strings"
 
 	"CredChain_Golang/config"
 	"CredChain_Golang/domain"
@@ -13,8 +12,6 @@ import (
 	cryptoInfra "CredChain_Golang/infrastructure/crypto"
 	httpContext "CredChain_Golang/infrastructure/http/context"
 
-	"github.com/ethereum/go-ethereum/accounts"
-	"github.com/ethereum/go-ethereum/common"
 	ethCrypto "github.com/ethereum/go-ethereum/crypto"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
@@ -33,22 +30,22 @@ type UserService interface {
 }
 
 type userService struct {
-	userRepo            domain.UserRepository
-	uow                 domain.UnitOfWork
+	userRepo         domain.UserRepository
+	uow              domain.UnitOfWork
 	walletEncryptionKey string
-	chainClient         *chain.Client
-	logger              *zap.Logger
-	policy              UserPolicy
+	authorityService chain.AuthorityService
+	logger           *zap.Logger
+	policy           UserPolicy
 }
 
 type UserServiceParams struct {
 	fx.In
-	UserRepo    domain.UserRepository
-	UoW         domain.UnitOfWork
-	Config      *config.Config
-	ChainClient *chain.Client
-	Logger      *zap.Logger
-	Policy      UserPolicy
+	UserRepo         domain.UserRepository
+	UoW              domain.UnitOfWork
+	Config           *config.Config
+	AuthorityService chain.AuthorityService
+	Logger           *zap.Logger
+	Policy           UserPolicy
 }
 
 func NewUserService(p UserServiceParams) UserService {
@@ -56,7 +53,7 @@ func NewUserService(p UserServiceParams) UserService {
 		userRepo:            p.UserRepo,
 		uow:                 p.UoW,
 		walletEncryptionKey: *p.Config.WalletEncryptionKey,
-		chainClient:         p.ChainClient,
+		authorityService:    p.AuthorityService,
 		logger:              p.Logger,
 		policy:              p.Policy,
 	}
@@ -133,52 +130,19 @@ func (s *userService) storeGenerateWallets(users []domain.User) error {
 }
 
 func (s *userService) storeUsersAndSyncBlockchainRoles(ctx context.Context, users []domain.User) ([]domain.User, error) {
-	authUser := httpContext.MustGetUser(ctx)
-	targetUsers := make([]common.Address, len(users))
-	newRoles := make([]uint8, len(users))
-	for i, user := range users {
-		targetUsers[i] = common.HexToAddress(user.WalletAddress)
-		newRoles[i] = user.Role.ToUint8()
-	}
-	authUserAddr := common.HexToAddress(authUser.WalletAddress)
-	nonce, err := s.chainClient.FetchNonce(ctx, authUserAddr)
-	if err != nil {
-		return nil, domain.NewError(domain.CodeUserStoreBlockchainSyncFailed, domain.WithError(err))
-	}
-	decryptedKey, err := cryptoInfra.Decrypt(authUser.EncryptedWalletPrivateKey, []byte(s.walletEncryptionKey))
-	if err != nil {
-		return nil, domain.NewError(domain.CodeUserStoreBlockchainSyncFailed, domain.WithError(err))
-	}
-	privateKey, err := ethCrypto.HexToECDSA(strings.TrimPrefix(string(decryptedKey), "0x"))
-	if err != nil {
-		return nil, domain.NewError(domain.CodeUserStoreBlockchainSyncFailed, domain.WithError(err))
-	}
-	var packed []byte
-	packed = append(packed, authUserAddr.Bytes()...)
-	for _, addr := range targetUsers {
-		packed = append(packed, addr.Bytes()...)
-	}
-	for _, role := range newRoles {
-		packed = append(packed, role)
-	}
-	packed = append(packed, common.LeftPadBytes(nonce.Bytes(), 32)...)
-	digest := ethCrypto.Keccak256(packed)
-	signature, err := ethCrypto.Sign(accounts.TextHash(digest), privateKey)
-	if err != nil {
-		return nil, domain.NewError(domain.CodeUserStoreBlockchainSyncFailed, domain.WithError(err))
-	}
-	signature[64] += 27
 	var created []domain.User
-	err = s.uow.Execute(ctx, func(uow domain.UnitOfWork) error {
+	err := s.uow.Execute(ctx, func(uow domain.UnitOfWork) error {
+		var err error
 		created, err = uow.User().Store(ctx, users...)
 		if err != nil {
 			return err
 		}
-		tx, err := s.chainClient.Authority.BatchUpdateUserRoleWithSignature(s.chainClient.Relayer, authUserAddr, targetUsers, newRoles, nonce, signature)
+
+		err = s.authorityService.UpdateUserRole(ctx, users...)
 		if err != nil {
 			return domain.NewError(domain.CodeUserStoreBlockchainSyncFailed, domain.WithError(err))
 		}
-		s.logger.Info("user roles updated on chain", zap.String("tx_hash", tx.Hash().Hex()), zap.Int("user_count", len(users)))
+
 		return nil
 	})
 	return created, err
