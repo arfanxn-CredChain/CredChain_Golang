@@ -1,44 +1,15 @@
 {
   "info": {
+    "_postman_id": "1461e5b0-ec16-45a4-a6c7-59dc61135341",
     "name": "CredChain",
     "description": "CredChain API collection for testing authentication endpoints.",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "17284024",
+    "_collection_link": "https://go.postman.co/collection/17284024-1461e5b0-ec16-45a4-a6c7-59dc61135341?source=collection_link"
   },
-  "variable": [
-    {
-      "key": "BASE_URL",
-      "value": "http://localhost:8080",
-      "type": "string"
-    },
-    {
-      "key": "ID_TOKEN",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "ACCESS_TOKEN",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "REFRESH_TOKEN",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "USER_ID",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "USER_EMAIL",
-      "value": "",
-      "type": "string"
-    }
-  ],
   "item": [
     {
-      "name": "Api",
+      "name": "API",
       "item": [
         {
           "name": "Auth",
@@ -68,11 +39,16 @@
                       "    });",
                       "}"
                     ],
-                    "type": "text/javascript"
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
                   }
                 }
               ],
               "request": {
+                "auth": {
+                  "type": "noauth"
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -86,8 +62,14 @@
                 },
                 "url": {
                   "raw": "{{BASE_URL}}/api/auth/google",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["api", "auth", "google"]
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "api",
+                    "auth",
+                    "google"
+                  ]
                 },
                 "description": "Login with Google ID token. Run 'make get-google-id-token' first to obtain the ID token, then paste it into the ID_TOKEN collection variable."
               },
@@ -104,7 +86,9 @@
                       "    pm.test.fail(\"REFRESH_TOKEN not set. Please run 'Google Login' first.\");",
                       "}"
                     ],
-                    "type": "text/javascript"
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
                   }
                 },
                 {
@@ -127,11 +111,16 @@
                       "    });",
                       "}"
                     ],
-                    "type": "text/javascript"
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
                   }
                 }
               ],
               "request": {
+                "auth": {
+                  "type": "noauth"
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -145,8 +134,14 @@
                 },
                 "url": {
                   "raw": "{{BASE_URL}}/api/auth/refresh",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["api", "auth", "refresh"]
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "api",
+                    "auth",
+                    "refresh"
+                  ]
                 },
                 "description": "Rotate access and refresh tokens. Requires a valid refresh token from Google Login."
               },
@@ -163,7 +158,9 @@
                       "    pm.test.fail(\"ACCESS_TOKEN not set. Please run 'Google Login' first.\");",
                       "}"
                     ],
-                    "type": "text/javascript"
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
                   }
                 },
                 {
@@ -188,27 +185,25 @@
                       "    });",
                       "}"
                     ],
-                    "type": "text/javascript"
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
                   }
                 }
               ],
               "request": {
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{ACCESS_TOKEN}}",
-                      "type": "string"
-                    }
-                  ]
-                },
                 "method": "POST",
                 "header": [],
                 "url": {
                   "raw": "{{BASE_URL}}/api/auth/logout",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["api", "auth", "logout"]
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "api",
+                    "auth",
+                    "logout"
+                  ]
                 },
                 "description": "Revoke all refresh tokens for the authenticated user. Requires a valid access token."
               },
@@ -218,7 +213,67 @@
           "description": "Authentication endpoints for Google OAuth login, token refresh, and logout."
         }
       ],
-      "description": "CredChain API endpoints."
+      "description": "CredChain API endpoints.",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{ACCESS_TOKEN}}",
+            "type": "string"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              ""
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              ""
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "BASE_URL",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "ID_TOKEN",
+      "value": ""
+    },
+    {
+      "key": "ACCESS_TOKEN",
+      "value": ""
+    },
+    {
+      "key": "REFRESH_TOKEN",
+      "value": ""
+    },
+    {
+      "key": "USER_ID",
+      "value": ""
+    },
+    {
+      "key": "USER_EMAIL",
+      "value": ""
     }
   ]
 }
