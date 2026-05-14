@@ -95,7 +95,7 @@ func (s *authService) GoogleLogin(ctx context.Context, idToken string) (domain.U
 }
 
 func (s *authService) Refresh(ctx context.Context, refreshToken string) (domain.User, domain.UserToken, string, error) {
-	token, err := s.userTokenRepo.Find(ctx, refreshToken)
+	token, err := s.userTokenRepo.FindByToken(ctx, refreshToken)
 	if err != nil {
 		return domain.User{}, domain.UserToken{}, "", domain.NewError(domain.CodeAuthRefreshInvalidToken)
 	}
