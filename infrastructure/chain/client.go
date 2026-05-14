@@ -36,7 +36,7 @@ type Client struct {
 	Relayer   *bind.TransactOpts
 }
 
-type ChainParams struct {
+type ClientParams struct {
 	fx.In
 	Config *config.Config
 }
@@ -59,12 +59,12 @@ type ChainParams struct {
 // application lifetime. It is safe for concurrent use.
 //
 // Parameters:
-//   - p: ChainParams with Config from FX container
+//   - p: ClientParams with Config from FX container
 //
 // Returns:
 //   - *Client: Initialized client instance
 //   - error: If RPC connection, contract binding, or key setup fails
-func NewClient(p ChainParams) (*Client, error) {
+func NewClient(p ClientParams) (*Client, error) {
 	if p.Config.RPCURL == nil {
 		return nil, fmt.Errorf("RPC_URL not configured")
 	}
@@ -114,5 +114,3 @@ func NewClient(p ChainParams) (*Client, error) {
 		Relayer:   auth,
 	}, nil
 }
-
-

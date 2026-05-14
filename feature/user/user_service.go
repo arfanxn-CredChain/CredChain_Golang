@@ -32,7 +32,7 @@ type UserService interface {
 type userService struct {
 	userRepo         domain.UserRepository
 	uow              domain.UnitOfWork
-	walletEncryptionKey string
+	cfg              *config.Config
 	authorityService chain.AuthorityService
 	logger           *zap.Logger
 	policy           UserPolicy
@@ -50,12 +50,12 @@ type UserServiceParams struct {
 
 func NewUserService(p UserServiceParams) UserService {
 	return &userService{
-		userRepo:            p.UserRepo,
-		uow:                 p.UoW,
-		walletEncryptionKey: *p.Config.WalletEncryptionKey,
-		authorityService:    p.AuthorityService,
-		logger:              p.Logger,
-		policy:              p.Policy,
+		userRepo:         p.UserRepo,
+		uow:              p.UoW,
+		cfg:              p.Config,
+		authorityService: p.AuthorityService,
+		logger:           p.Logger,
+		policy:           p.Policy,
 	}
 }
 
@@ -119,7 +119,7 @@ func (s *userService) storeGenerateWallets(users []domain.User) error {
 		}
 		privateKeyHex := hex.EncodeToString(ethCrypto.FromECDSA(key))
 		address := ethCrypto.PubkeyToAddress(key.PublicKey).Hex()
-		encrypted, err := cryptoInfra.Encrypt([]byte(privateKeyHex), []byte(s.walletEncryptionKey))
+		encrypted, err := cryptoInfra.Encrypt([]byte(privateKeyHex), []byte(*s.cfg.WalletEncryptionKey))
 		if err != nil {
 			return domain.NewError(domain.CodeUserStoreWalletGenerationFailed, domain.WithError(err))
 		}
