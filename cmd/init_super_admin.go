@@ -3,8 +3,10 @@ package cmd
 import (
 	"context"
 	"crypto/ecdsa"
+	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"CredChain_Golang/config"
 	"CredChain_Golang/domain"
@@ -41,15 +43,50 @@ func init() {
 	initSuperAdminCmd.Flags().StringVar(&initSuperAdminMeta, "meta", "", "Super admin meta as JSON string (optional)")
 }
 
-// initSuperAdminValidateConfig checks required env vars for super admin initialization
-func initSuperAdminValidateConfig(cfg *config.Config) error {
-	if cfg.InitialSuperAdminEmail == nil || cfg.InitialSuperAdminPrivKey == nil || cfg.WalletEncryptionKey == nil {
-		return fmt.Errorf("missing core environment variables for super admin initialization")
+// initSuperAdminValidateConfig validates required configuration for super admin initialization.
+// Flags take priority over environment variables.
+//
+// Parameters:
+//   - cfg: Config from environment variables
+//   - email: Email from CLI flag (takes priority over cfg.InitialSuperAdminEmail)
+//   - privKey: Private key from CLI flag (takes priority over cfg.InitialSuperAdminPrivKey)
+//
+// Returns:
+//   - finalEmail: Resolved email address (flag > env)
+//   - finalPrivKey: Resolved private key (flag > env)
+//   - error: If required fields are missing
+func initSuperAdminValidateConfig(cfg *config.Config, email, privKey string) (string, string, error) {
+	finalEmail := email
+	if finalEmail == "" {
+		if cfg.InitialSuperAdminEmail == nil {
+			return "", "", fmt.Errorf("email is required (use --email flag or INITIAL_SUPER_ADMIN_EMAIL env var)")
+		}
+		finalEmail = *cfg.InitialSuperAdminEmail
 	}
-	return nil
+
+	finalPrivKey := privKey
+	if finalPrivKey == "" {
+		if cfg.InitialSuperAdminPrivKey == nil {
+			return "", "", fmt.Errorf("private key is required (use --private-key flag or INITIAL_SUPER_ADMIN_PRIVATE_KEY env var)")
+		}
+		finalPrivKey = *cfg.InitialSuperAdminPrivKey
+	}
+
+	if cfg.WalletEncryptionKey == nil {
+		return "", "", fmt.Errorf("wallet encryption key is required (WALLET_ENCRYPTION_KEY env var)")
+	}
+
+	return finalEmail, finalPrivKey, nil
 }
 
-// initSuperAdminParseWallet derives wallet address from hex private key
+// initSuperAdminParseWallet derives wallet address from hex private key.
+//
+// Parameters:
+//   - privKeyHex: Hexadecimal private key string (with or without 0x prefix)
+//
+// Returns:
+//   - string: Ethereum wallet address in hexadecimal format
+//   - error: If private key format is invalid
 func initSuperAdminParseWallet(privKeyHex string) (string, error) {
 	privKey, err := crypto.HexToECDSA(strings.TrimPrefix(privKeyHex, "0x"))
 	if err != nil {
@@ -65,7 +102,15 @@ func initSuperAdminParseWallet(privKeyHex string) (string, error) {
 	return crypto.PubkeyToAddress(*publicKeyECDSA).Hex(), nil
 }
 
-// initSuperAdminEncryptKey encrypts private key for storage
+// initSuperAdminEncryptKey encrypts private key for storage.
+//
+// Parameters:
+//   - privKey: Raw private key hex string to encrypt
+//   - encryptionKey: 32-byte encryption key from WALLET_ENCRYPTION_KEY env var
+//
+// Returns:
+//   - string: Encrypted private key for database storage
+//   - error: If encryption fails
 func initSuperAdminEncryptKey(privKey, encryptionKey string) (string, error) {
 	encryptionKeyBytes := make([]byte, 32)
 	copy(encryptionKeyBytes, []byte(encryptionKey))
@@ -78,35 +123,116 @@ func initSuperAdminEncryptKey(privKey, encryptionKey string) (string, error) {
 	return encrypted, nil
 }
 
-// initSuperAdminBuildUser constructs domain.User with super admin fields
-func initSuperAdminBuildUser(email, walletAddress, encryptedKey string) domain.User {
-	name := "Super Admin"
+// initSuperAdminBuildUser constructs a domain.User with super admin role and all provided fields.
+//
+// Parameters:
+//   - email: User email address (required)
+//   - walletAddress: Ethereum wallet address derived from private key (required)
+//   - encryptedKey: Encrypted wallet private key for storage (required)
+//   - name: User name (optional, may be nil)
+//   - number: User number/ID like employee or student number (optional, may be nil)
+//   - phoneNumber: User phone number (optional, may be nil)
+//   - birthDate: User birth date in ISO 8601 format (optional, may be nil)
+//   - meta: User metadata as JSON object (optional, may be nil)
+//
+// Returns:
+//   - domain.User: Complete user entity with RoleSuperAdmin
+func initSuperAdminBuildUser(
+	email string,
+	walletAddress string,
+	encryptedKey string,
+	name *string,
+	number *string,
+	phoneNumber *string,
+	birthDate *time.Time,
+	meta map[string]any,
+) domain.User {
 	return domain.User{
-		Name:                      &name,
+		Name:                      name,
+		Number:                    number,
+		PhoneNumber:               phoneNumber,
 		Email:                     email,
+		BirthDate:                 birthDate,
+		Meta:                      meta,
 		Role:                      domain.RoleSuperAdmin,
 		WalletAddress:             walletAddress,
 		EncryptedWalletPrivateKey: encryptedKey,
 	}
 }
 
+// initSuperAdminGetBirthDate resolves birth date from CLI flag or environment variable.
+// Flag takes priority over environment variable.
+func initSuperAdminGetBirthDate(cfg *config.Config, birthDateFlag string) *time.Time {
+	if birthDateFlag != "" {
+		t, err := time.Parse(time.DateOnly, birthDateFlag)
+		if err == nil {
+			return &t
+		}
+	}
+	return cfg.InitialSuperAdminBirthDate
+}
+
+// initSuperAdminGetMeta resolves meta JSON from CLI flag or environment variable.
+// Flag takes priority over environment variable.
+func initSuperAdminGetMeta(cfg *config.Config, metaFlag string) map[string]any {
+	if metaFlag != "" {
+		var result map[string]any
+		if err := json.Unmarshal([]byte(metaFlag), &result); err == nil {
+			return result
+		}
+	}
+	return cfg.InitialSuperAdminMeta
+}
+
+// initSuperAdminGetString resolves a string field from CLI flag or environment variable.
+// Flag takes priority over environment variable.
+func initSuperAdminGetString(cfgVal *string, flagVal string) *string {
+	if flagVal != "" {
+		return &flagVal
+	}
+	return cfgVal
+}
+
+// getStringValue returns the string value or "(not set)" for nil pointers.
+func getStringValue(s *string) string {
+	if s == nil {
+		return "(not set)"
+	}
+	return *s
+}
+
+// getTimeValue returns the time or zero time for nil pointers.
+func getTimeValue(t *time.Time) time.Time {
+	if t == nil {
+		return time.Time{}
+	}
+	return *t
+}
+
 // initSuperAdmin is the main FX-invoked function
 func initSuperAdmin(cfg *config.Config, userRepo domain.UserRepository, logger *zap.Logger) error {
-	if err := initSuperAdminValidateConfig(cfg); err != nil {
-		return err
-	}
+	birthDate := initSuperAdminGetBirthDate(cfg, initSuperAdminBirthDate)
+	meta := initSuperAdminGetMeta(cfg, initSuperAdminMeta)
+	name := initSuperAdminGetString(cfg.InitialSuperAdminName, initSuperAdminName)
+	number := initSuperAdminGetString(cfg.InitialSuperAdminNumber, initSuperAdminNumber)
+	phone := initSuperAdminGetString(cfg.InitialSuperAdminPhoneNumber, initSuperAdminPhone)
 
-	walletAddress, err := initSuperAdminParseWallet(*cfg.InitialSuperAdminPrivKey)
+	email, privKey, err := initSuperAdminValidateConfig(cfg, initSuperAdminEmail, initSuperAdminPrivKey)
 	if err != nil {
 		return err
 	}
 
-	encryptedKey, err := initSuperAdminEncryptKey(*cfg.InitialSuperAdminPrivKey, *cfg.WalletEncryptionKey)
+	walletAddress, err := initSuperAdminParseWallet(privKey)
 	if err != nil {
 		return err
 	}
 
-	existing, err := userRepo.FindByEmails(context.Background(), *cfg.InitialSuperAdminEmail)
+	encryptedKey, err := initSuperAdminEncryptKey(privKey, *cfg.WalletEncryptionKey)
+	if err != nil {
+		return err
+	}
+
+	existing, err := userRepo.FindByEmails(context.Background(), email)
 	if err != nil {
 		return err
 	}
@@ -117,21 +243,67 @@ func initSuperAdmin(cfg *config.Config, userRepo domain.UserRepository, logger *
 		return fmt.Errorf("%s", msg)
 	}
 
-	adminUser := initSuperAdminBuildUser(*cfg.InitialSuperAdminEmail, walletAddress, encryptedKey)
+	adminUser := initSuperAdminBuildUser(email, walletAddress, encryptedKey, name, number, phone, birthDate, meta)
 
 	_, err = userRepo.Store(context.Background(), adminUser)
 	if err != nil {
 		return err
 	}
 
-	logger.Info("super admin initialized")
+	logger.Info("super admin initialized",
+		zap.String("email", adminUser.Email),
+		zap.String("walletAddress", adminUser.WalletAddress),
+		zap.String("name", getStringValue(adminUser.Name)),
+		zap.String("number", getStringValue(adminUser.Number)),
+		zap.String("phoneNumber", getStringValue(adminUser.PhoneNumber)),
+		zap.Time("birthDate", getTimeValue(adminUser.BirthDate)),
+		zap.Any("meta", adminUser.Meta),
+	)
 	return nil
 }
 
 var initSuperAdminCmd = &cobra.Command{
 	Use:   "init-super-admin",
 	Short: "Initializes the Super Admin based on .env config",
-	Long:  "Creates the inaugural Super Admin securely in Postgres, parsing the Ethereum Wallet automatically from the given initial Private Key.",
+	Long: `Creates the inaugural Super Admin securely in Postgres, parsing the Ethereum Wallet automatically from the given private key.
+
+Environment Variables:
+  INITIAL_SUPER_ADMIN_NAME         Super admin name (optional)
+  INITIAL_SUPER_ADMIN_NUMBER       Super admin number/ID like employee or student number (optional)
+  INITIAL_SUPER_ADMIN_PHONE_NUMBER Super admin phone number in international format (optional)
+  INITIAL_SUPER_ADMIN_EMAIL        Super admin email address (required)
+  INITIAL_SUPER_ADMIN_PRIVATE_KEY  Super admin wallet private key, 64-char hex with 0x prefix (required)
+  INITIAL_SUPER_ADMIN_BIRTH_DATE   Super admin birth date in ISO 8601 format YYYY-MM-DD (optional)
+  INITIAL_SUPER_ADMIN_META         Super admin metadata as JSON string (optional)
+
+CLI Flags (take priority over env vars):
+  --name          Super admin name (optional)
+  --number        Super admin number/ID (optional)
+  --phone         Super admin phone number (optional)
+  --email         Super admin email (required)
+  --private-key   Super admin wallet private key (required)
+  --birth-date    Super admin birth date (YYYY-MM-DD, optional)
+  --meta          Super admin meta as JSON string (optional)
+
+Examples:
+  # Use environment variables only
+  make init-super-admin
+
+  # Override email with CLI flag
+  go run main.go init-super-admin --email admin@example.com --private-key 0x...
+
+  # Set all fields via flags
+  go run main.go init-super-admin \
+    --email admin@example.com \
+    --private-key 0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d \
+    --name "Admin Name" \
+    --number 1234 \
+    --phone 628123456789 \
+    --birth-date 2000-01-01 \
+    --meta '{"department":"engineering"}'
+
+  # Mix env and flags (flags take priority)
+  INITIAL_SUPER_ADMIN_EMAIL=admin@example.com go run main.go init-super-admin --name "Custom Name" --private-key 0x...`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fx.New(
 			infraLogger.Module,
