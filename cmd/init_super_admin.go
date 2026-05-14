@@ -14,6 +14,7 @@ import (
 	gormInfra "CredChain_Golang/infrastructure/database/gorm"
 	"CredChain_Golang/feature/user"
 	infraLogger "CredChain_Golang/infrastructure/logger"
+	"CredChain_Golang/infrastructure/chain"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/spf13/cobra"
@@ -304,15 +305,17 @@ Examples:
 
   # Mix env and flags (flags take priority)
   INITIAL_SUPER_ADMIN_EMAIL=admin@example.com go run main.go init-super-admin --name "Custom Name" --private-key 0x...`,
-	Run: func(cmd *cobra.Command, args []string) {
-		fx.New(
-			infraLogger.Module,
-			fx.Provide(
-				NewConfigFromCmd(cmd),
-				gormInfra.NewGorm,
-				user.NewGormUserRepository,
-			),
-			fx.Invoke(initSuperAdmin),
-		).Run()
-	},
+		Run: func(cmd *cobra.Command, args []string) {
+			fx.New(
+				infraLogger.Module,
+				fx.Provide(
+					NewConfigFromCmd(cmd),
+					gormInfra.NewGorm,
+					user.NewGormUserRepository,
+					chain.NewClient,
+					chain.NewAuthorityService,
+				),
+				fx.Invoke(initSuperAdmin),
+			).Run()
+		},
 }
