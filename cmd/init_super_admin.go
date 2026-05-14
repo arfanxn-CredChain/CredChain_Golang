@@ -297,6 +297,13 @@ var initSuperAdminCmd = &cobra.Command{
 	Short: "Initializes the Super Admin based on .env config",
 	Long: `Creates the inaugural Super Admin securely in Postgres, parsing the Ethereum Wallet automatically from the given private key.
 
+Pre-Initialization Checks:
+  1. On-Chain Verification: Verifies the provided wallet address already has
+     the SuperAdmin role in the CredentialAuthority smart contract. If the
+     wallet does not have SuperAdmin role on-chain, initialization fails.
+  2. Database Check: Verifies no SuperAdmin user exists in the database.
+     Only one SuperAdmin is allowed per database instance.
+
 Environment Variables:
   INITIAL_SUPER_ADMIN_NAME         Super admin name (optional)
   INITIAL_SUPER_ADMIN_NUMBER       Super admin number/ID like employee or student number (optional)
