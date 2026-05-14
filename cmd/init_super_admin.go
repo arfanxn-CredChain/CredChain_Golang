@@ -210,6 +210,29 @@ func getTimeValue(t *time.Time) time.Time {
 	return *t
 }
 
+// initSuperAdminVerifyOnChainRole verifies that the wallet address has SuperAdmin role on-chain.
+// Returns an error if the wallet does not have the required role.
+//
+// Parameters:
+//   - ctx: Context for timeout/cancellation control
+//   - authorityService: AuthorityService for blockchain role lookup
+//   - walletAddress: Ethereum wallet address to verify (hex string with "0x" prefix)
+//
+// Returns:
+//   - error: nil if verification passes, error if wallet doesn't have SuperAdmin role
+func initSuperAdminVerifyOnChainRole(ctx context.Context, authorityService chain.AuthorityService, walletAddress string) error {
+	onChainRole, err := authorityService.FindRole(ctx, walletAddress)
+	if err != nil {
+		return fmt.Errorf("failed to verify on-chain role: %w", err)
+	}
+
+	if onChainRole != domain.RoleSuperAdmin {
+		return fmt.Errorf("wallet address %s does not have SuperAdmin role on-chain (current role: %s). Please ensure the wallet is registered as SuperAdmin in the CredentialAuthority contract before initializing", walletAddress, onChainRole)
+	}
+
+	return nil
+}
+
 // initSuperAdmin is the main FX-invoked function
 func initSuperAdmin(cfg *config.Config, userRepo domain.UserRepository, authorityService chain.AuthorityService, logger *zap.Logger) error {
 	birthDate := initSuperAdminGetBirthDate(cfg, initSuperAdminBirthDate)
