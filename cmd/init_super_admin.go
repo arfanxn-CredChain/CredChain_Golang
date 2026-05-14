@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -342,7 +343,7 @@ Examples:
   # Mix env and flags (flags take priority)
   INITIAL_SUPER_ADMIN_EMAIL=admin@example.com go run main.go init-super-admin --name "Custom Name" --private-key 0x...`,
 		Run: func(cmd *cobra.Command, args []string) {
-			fx.New(
+			app := fx.New(
 				infraLogger.Module,
 				fx.Provide(
 					NewConfigFromCmd(cmd),
@@ -351,7 +352,20 @@ Examples:
 					chain.NewClient,
 					chain.NewAuthorityService,
 				),
-				fx.Invoke(initSuperAdmin),
-			).Run()
+				fx.Invoke(func(shutdowner fx.Shutdowner, cfg *config.Config, userRepo domain.UserRepository, authorityService chain.AuthorityService, logger *zap.Logger) {
+					go func() {
+						if err := initSuperAdmin(cfg, userRepo, authorityService, logger); err != nil {
+							logger.Error("init-super-admin failed", zap.Error(err))
+						}
+						shutdowner.Shutdown()
+					}()
+				}),
+			)
+
+			if err := app.Start(context.Background()); err != nil {
+				log.Fatal(err)
+			}
+
+			<-app.Done()
 		},
 }
