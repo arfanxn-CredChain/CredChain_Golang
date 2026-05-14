@@ -183,20 +183,14 @@ func getTimeEnv(key string, fallback *time.Time) *time.Time {
 }
 
 // getJSONEnv parses an environment variable as a JSON object into map[string]any.
-// Returns empty map[string]{} if the environment variable is empty or parsing fails and fallback is nil.
+// Returns nil if the environment variable is empty or parsing fails.
 func getJSONEnv(key string, fallback map[string]any) map[string]any {
 	val := os.Getenv(key)
 	if val == "" {
-		if fallback == nil {
-			return map[string]any{}
-		}
 		return fallback
 	}
 	var result map[string]any
 	if err := json.Unmarshal([]byte(val), &result); err != nil {
-		if fallback == nil {
-			return map[string]any{}
-		}
 		return fallback
 	}
 	return result
