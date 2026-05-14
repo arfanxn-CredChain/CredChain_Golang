@@ -19,8 +19,26 @@ import (
 	"go.uber.org/zap"
 )
 
+var (
+	initSuperAdminName        string
+	initSuperAdminNumber      string
+	initSuperAdminPhone       string
+	initSuperAdminEmail       string
+	initSuperAdminPrivKey     string
+	initSuperAdminBirthDate   string
+	initSuperAdminMeta        string
+)
+
 func init() {
 	rootCmd.AddCommand(initSuperAdminCmd)
+
+	initSuperAdminCmd.Flags().StringVar(&initSuperAdminName, "name", "", "Super admin name (optional)")
+	initSuperAdminCmd.Flags().StringVar(&initSuperAdminNumber, "number", "", "Super admin number/ID (optional)")
+	initSuperAdminCmd.Flags().StringVar(&initSuperAdminPhone, "phone", "", "Super admin phone number (optional)")
+	initSuperAdminCmd.Flags().StringVar(&initSuperAdminEmail, "email", "", "Super admin email (required)")
+	initSuperAdminCmd.Flags().StringVar(&initSuperAdminPrivKey, "private-key", "", "Super admin wallet private key (required)")
+	initSuperAdminCmd.Flags().StringVar(&initSuperAdminBirthDate, "birth-date", "", "Super admin birth date in ISO 8601 format (YYYY-MM-DD, optional)")
+	initSuperAdminCmd.Flags().StringVar(&initSuperAdminMeta, "meta", "", "Super admin meta as JSON string (optional)")
 }
 
 // initSuperAdminValidateConfig checks required env vars for super admin initialization
