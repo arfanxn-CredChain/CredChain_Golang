@@ -101,6 +101,9 @@ type UserRepository interface {
 	Find(ctx context.Context, id string) (*User, error)
 	FindByEmails(ctx context.Context, emails ...string) ([]User, error)
 
+	// Role-based lookups
+	FindByRole(ctx context.Context, role Role) ([]User, error)
+
 	// Multiple item lookups
 	FindByIds(ctx context.Context, ids ...string) ([]User, error)
 
