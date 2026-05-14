@@ -98,6 +98,20 @@ func (r *gormUserRepository) FindByEmails(ctx context.Context, emails ...string)
 	return domainUsers, nil
 }
 
+// FindByRole retrieves all users with the specified role
+// Returns: ([]User, error) - empty slice if no matches
+func (r *gormUserRepository) FindByRole(ctx context.Context, role domain.Role) ([]domain.User, error) {
+	var users []model.User
+	if err := r.db.WithContext(ctx).Where("role = ?", role).Find(&users).Error; err != nil {
+		return nil, err
+	}
+	domainUsers := make([]domain.User, len(users))
+	for i, u := range users {
+		domainUsers[i] = u.ToDomain()
+	}
+	return domainUsers, nil
+}
+
 // FindByIds retrieves multiple users by IDs (batch operation)
 // Returns: ([]User, error) - batch lookup, empty slice if no matches
 func (r *gormUserRepository) FindByIds(ctx context.Context, ids ...string) ([]domain.User, error) {
