@@ -211,7 +211,7 @@ func getTimeValue(t *time.Time) time.Time {
 }
 
 // initSuperAdmin is the main FX-invoked function
-func initSuperAdmin(cfg *config.Config, userRepo domain.UserRepository, logger *zap.Logger) error {
+func initSuperAdmin(cfg *config.Config, userRepo domain.UserRepository, authorityService chain.AuthorityService, logger *zap.Logger) error {
 	birthDate := initSuperAdminGetBirthDate(cfg, initSuperAdminBirthDate)
 	meta := initSuperAdminGetMeta(cfg, initSuperAdminMeta)
 	name := initSuperAdminGetString(cfg.InitialSuperAdminName, initSuperAdminName)
