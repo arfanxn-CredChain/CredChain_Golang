@@ -251,20 +251,26 @@ func initSuperAdmin(cfg *config.Config, userRepo domain.UserRepository, authorit
 		return err
 	}
 
+	// Verify the wallet address has SuperAdmin role on-chain
+	if err := initSuperAdminVerifyOnChainRole(context.Background(), authorityService, walletAddress); err != nil {
+		return err
+	}
+
+	// Check if any super admin already exists in the database
+	existingSuperAdmins, err := userRepo.FindByRole(context.Background(), domain.RoleSuperAdmin)
+	if err != nil {
+		return err
+	}
+
+	if len(existingSuperAdmins) > 0 {
+		msg := "super admin already exists in database"
+		logger.Error(msg)
+		return fmt.Errorf("%s", msg)
+	}
+
 	encryptedKey, err := initSuperAdminEncryptKey(privKey, *cfg.WalletEncryptionKey)
 	if err != nil {
 		return err
-	}
-
-	existing, err := userRepo.FindByEmails(context.Background(), email)
-	if err != nil {
-		return err
-	}
-
-	if len(existing) > 0 {
-		msg := "super admin already exists"
-		logger.Error(msg)
-		return fmt.Errorf("%s", msg)
 	}
 
 	adminUser := initSuperAdminBuildUser(email, walletAddress, encryptedKey, name, number, phone, birthDate, meta)
