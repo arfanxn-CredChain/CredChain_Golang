@@ -7,8 +7,13 @@ import (
 	"google.golang.org/api/idtoken"
 )
 
-// GoogleOAuthClient wraps the Google ID token validator
-type GoogleOAuthClient struct {
+// GoogleOAuthClient is the interface for Google ID token validation.
+type GoogleOAuthClient interface {
+	Validate(ctx context.Context, idToken, audience string) (*idtoken.Payload, error)
+}
+
+// googleOAuthClient is the concrete implementation wrapping the Google ID token validator.
+type googleOAuthClient struct {
 	*idtoken.Validator
 }
 
@@ -18,13 +23,13 @@ type GoogleOAuthParams struct {
 }
 
 // NewGoogleOAuthClient creates a Google ID token validator
-func NewGoogleOAuthClient(p GoogleOAuthParams) (*GoogleOAuthClient, error) {
+func NewGoogleOAuthClient(p GoogleOAuthParams) (GoogleOAuthClient, error) {
 	validator, err := idtoken.NewValidator(p.Ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return &GoogleOAuthClient{Validator: validator}, nil
+	return &googleOAuthClient{Validator: validator}, nil
 }
 
 // ExtractEmailFromGoogleIdToken extracts email from Google ID token payload

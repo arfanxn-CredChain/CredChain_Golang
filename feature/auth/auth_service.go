@@ -24,7 +24,7 @@ type authService struct {
 	userRepo      domain.UserRepository
 	userTokenRepo domain.UserTokenRepository
 	uow           domain.UnitOfWork
-	oauthClient   *oauth.GoogleOAuthClient
+	oauthClient   oauth.GoogleOAuthClient
 	config        *config.Config
 }
 
@@ -33,7 +33,7 @@ type AuthServiceParams struct {
 	UserRepo      domain.UserRepository
 	UserTokenRepo domain.UserTokenRepository
 	UoW           domain.UnitOfWork
-	OAuthClient   *oauth.GoogleOAuthClient
+	OAuthClient   oauth.GoogleOAuthClient
 	Config        *config.Config
 }
 
