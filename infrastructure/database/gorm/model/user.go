@@ -12,7 +12,7 @@ type User struct {
 	PhoneNumber      *string        `gorm:"type:varchar(50);column:phone_number" json:"phone_number"`
 	Email            string         `gorm:"type:varchar(255);uniqueIndex;column:email" json:"email"`
 	BirthDate        *time.Time     `gorm:"column:birth_date" json:"birth_date"`
-	Meta             map[string]any `gorm:"type:jsonb;column:meta" json:"meta"`
+	Meta             map[string]any `gorm:"type:jsonb;serializer:json;column:meta" json:"meta"`
 	Role             string         `gorm:"type:varchar(50);column:role" json:"role"`
 	WalletAddress    string         `gorm:"type:varchar(255);column:wallet_address" json:"wallet_address"`
 	EncryptedWalletPrivateKey string         `gorm:"type:varchar(255);column:encrypted_wallet_private_key" json:"-"`
