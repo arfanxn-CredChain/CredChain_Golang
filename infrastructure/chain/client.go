@@ -31,8 +31,8 @@ import (
 // Services wrap Client with domain-specific interfaces (e.g., AuthorityService).
 type Client struct {
 	EthClient *ethclient.Client
-	Registry  *contracts.Registry
-	Authority *contracts.Authority
+	Registry  RegistryBinding
+	Authority AuthorityBinding
 	Relayer   *bind.TransactOpts
 }
 
