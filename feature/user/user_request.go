@@ -1,15 +1,21 @@
 package user
 
 import (
+	"time"
+
 	"CredChain_Golang/domain"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/go-ozzo/ozzo-validation/v4/is"
 )
 
 type UserStoreInput struct {
-	Name  string      `json:"name"`
-	Email string      `json:"email"`
-	Role  domain.Role `json:"role"`
+	Name        string         `json:"name"`
+	Email       string         `json:"email"`
+	Role        domain.Role    `json:"role"`
+	Number      *string        `json:"number"`
+	PhoneNumber *string        `json:"phone_number"`
+	BirthDate   *string        `json:"birth_date"`
+	Meta        map[string]any `json:"meta"`
 }
 
 func (n UserStoreInput) Validate() error {
@@ -17,11 +23,26 @@ func (n UserStoreInput) Validate() error {
 		validation.Field(&n.Name, validation.Required),
 		validation.Field(&n.Email, validation.Required, is.Email),
 		validation.Field(&n.Role, validation.Required, validation.In(domain.RoleAdmin, domain.RoleIssuer, domain.RoleHolder)),
+		validation.Field(&n.BirthDate, validation.Date("2006-01-02")),
 	)
 }
 
 func (n UserStoreInput) ToDomain() domain.User {
-	return domain.User{Name: &n.Name, Email: n.Email, Role: n.Role}
+	var birthDate *time.Time
+	if n.BirthDate != nil && *n.BirthDate != "" {
+		if t, err := time.Parse("2006-01-02", *n.BirthDate); err == nil {
+			birthDate = &t
+		}
+	}
+	return domain.User{
+		Name:        &n.Name,
+		Email:       n.Email,
+		Role:        n.Role,
+		Number:      n.Number,
+		PhoneNumber: n.PhoneNumber,
+		BirthDate:   birthDate,
+		Meta:        n.Meta,
+	}
 }
 
 type UserStoreRequest struct {
