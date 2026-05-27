@@ -182,3 +182,70 @@ func TestUserRoleUpdateRequest_Validate(t *testing.T) {
 		})
 	}
 }
+
+func TestUserStoreRequest_Validate_EmptyUsers(t *testing.T) {
+	r := UserStoreRequest{Users: nil}
+	assert.Error(t, r.Validate())
+}
+
+func TestUserStoreRequest_Validate_InvalidNested(t *testing.T) {
+	r := UserStoreRequest{Users: []UserStoreInput{
+		{Name: "Bob", Email: "not-an-email", Role: domain.RoleHolder},
+	}}
+	assert.Error(t, r.Validate())
+}
+
+func TestUserStoreRequest_Validate_Valid(t *testing.T) {
+	r := UserStoreRequest{Users: []UserStoreInput{
+		{Name: "Bob", Email: "bob@x.com", Role: domain.RoleHolder},
+	}}
+	assert.NoError(t, r.Validate())
+}
+
+func TestUserStoreRequest_ToDomain_NilSlice(t *testing.T) {
+	r := UserStoreRequest{Users: nil}
+	got := r.ToDomain()
+	assert.NotNil(t, got)
+	assert.Empty(t, got)
+}
+
+func TestUserStoreRequest_ToDomain_MultiUser(t *testing.T) {
+	r := UserStoreRequest{Users: []UserStoreInput{
+		{Name: "Alice", Email: "a@x.com", Role: domain.RoleHolder},
+		{Name: "Bob", Email: "b@x.com", Role: domain.RoleIssuer},
+	}}
+	got := r.ToDomain()
+	assert.Len(t, got, 2)
+	assert.Equal(t, "a@x.com", got[0].Email)
+	assert.Equal(t, "b@x.com", got[1].Email)
+}
+
+func TestUserUpdateProfileRequest_Validate_AlwaysNil(t *testing.T) {
+	r := UserUpdateProfileRequest{}
+	assert.NoError(t, r.Validate())
+	name := "x"
+	r2 := UserUpdateProfileRequest{Name: &name}
+	assert.NoError(t, r2.Validate())
+}
+
+func TestUserBatchUpdateRoleRequest_Validate_Empty(t *testing.T) {
+	r := UserBatchUpdateRoleRequest{UserRoles: nil}
+	assert.Error(t, r.Validate())
+}
+
+func TestUserBatchUpdateRoleRequest_Validate_Valid(t *testing.T) {
+	r := UserBatchUpdateRoleRequest{UserRoles: []UserRoleUpdateRequest{
+		{UserID: "u1", Role: domain.RoleIssuer},
+	}}
+	assert.NoError(t, r.Validate())
+}
+
+func TestUserBatchDeleteRequest_Validate_Empty(t *testing.T) {
+	r := UserBatchDeleteRequest{UserIDs: nil}
+	assert.Error(t, r.Validate())
+}
+
+func TestUserBatchDeleteRequest_Validate_Valid(t *testing.T) {
+	r := UserBatchDeleteRequest{UserIDs: []string{"u1", "u2"}}
+	assert.NoError(t, r.Validate())
+}
