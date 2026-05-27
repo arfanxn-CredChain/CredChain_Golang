@@ -26,7 +26,7 @@ func (r *gormUserRepository) Get(ctx context.Context, query *domainQuery.Query) 
 
 	// Search only (filters, includes, groups skipped for now)
 	if query.HasSearch() {
-		db = db.Where("name ILIKE ? OR email ILIKE ?",
+		db = db.Where("LOWER(name) LIKE LOWER(?) OR LOWER(email) LIKE LOWER(?)",
 			"%"+query.Search+"%", "%"+query.Search+"%")
 	}
 
