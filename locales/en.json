@@ -29,7 +29,7 @@
 
   "error_email_duplicate_in_batch": "Duplicate emails found in batch: {{.emails}}",
   "error_email_duplicate_in_database": "Email already exists in database: {{.emails}}",
-  "error_store_wallet_generation_failed": "Failed to generate wallet for user at index {{.index}}",
+  "error_store_wallet_generation_failed": "Failed to generate wallet",
   "error_store_blockchain_sync_failed": "Failed to sync user roles to blockchain",
   "error_store_super_admin_forbidden": "Cannot create SuperAdmin users via batch",
   "error_store_admin_create_admin_forbidden": "Admins cannot create Admin or SuperAdmin users",

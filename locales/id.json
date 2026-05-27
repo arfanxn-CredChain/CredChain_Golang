@@ -29,7 +29,7 @@
 
   "error_email_duplicate_in_batch": "Ditemukan email duplikat dalam batch: {{.emails}}",
   "error_email_duplicate_in_database": "Email sudah ada di database: {{.emails}}",
-  "error_store_wallet_generation_failed": "Gagal membuat dompet untuk pengguna pada indeks {{.index}}",
+  "error_store_wallet_generation_failed": "Gagal membuat wallet",
   "error_store_blockchain_sync_failed": "Gagal menyinkronkan peran pengguna ke blockchain",
   "error_store_super_admin_forbidden": "Tidak dapat membuat pengguna SuperAdmin melalui batch",
   "error_store_admin_create_admin_forbidden": "Admin tidak dapat membuat pengguna Admin atau SuperAdmin",
