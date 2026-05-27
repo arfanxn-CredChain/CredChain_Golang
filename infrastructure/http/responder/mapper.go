@@ -118,8 +118,13 @@ var HttpCodes = map[int]int{
 	domain.CodeUserRoleFailed:                       http.StatusInternalServerError,
 	domain.CodeUserRoleAdminUpdatePeerForbidden:     http.StatusForbidden,
 	domain.CodeUserRoleSignerAdminRequiredForbidden: http.StatusForbidden,
+	domain.CodeUserRoleSameRoleUpdateForbidden:      http.StatusForbidden,
+	domain.CodeUserRoleSuperAdminBatchForbidden:     http.StatusForbidden,
 	domain.CodeUserCredentialsFetchSuccess: http.StatusOK,
 	domain.CodeUserCredentialsFetchFailed:  http.StatusInternalServerError,
+	domain.CodeUserBatchDeleteSuccess: http.StatusOK,
+	domain.CodeUserBatchDeleteFailed:  http.StatusInternalServerError,
+	domain.CodeUserDeleteAdminForbidden: http.StatusForbidden,
 
 	domain.CodeCredentialFetchSuccess:  http.StatusOK,
 	domain.CodeCredentialFetchNotFound: http.StatusNotFound,
