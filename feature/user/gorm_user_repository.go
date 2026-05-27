@@ -170,7 +170,7 @@ func (r *gormUserRepository) UpdateRole(ctx context.Context, users ...domain.Use
 	}
 
 	query := "UPDATE users SET role = " + caseStmt + " WHERE id IN (?)"
-	finalArgs := append(args, ids...)
+	finalArgs := append(args, ids)
 
 	result := db.Exec(query, finalArgs...)
 	if err := result.Error; err != nil {
