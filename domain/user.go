@@ -78,18 +78,18 @@ type UserRoleUpdate struct {
 
 // User represents a row in the users table
 type User struct {
-	Id               string     `json:"id"`
-	Name             *string    `json:"name"`
-	Number           *string    `json:"number"`
-	PhoneNumber      *string    `json:"phone_number"`
-	Email            string     `json:"email"`
-	BirthDate        *time.Time `json:"birth_date"`
-	Meta             map[string]any `json:"meta"`
-	Role             Role       `json:"role"`
-	WalletAddress    string     `json:"wallet_address"`
-	EncryptedWalletPrivateKey string     `json:"-"`
-	CreatedAt        time.Time  `json:"created_at"`
-	UpdatedAt        *time.Time `json:"updated_at"`
+	Id                        string         `json:"id"`
+	Name                      *string        `json:"name"`
+	Number                    *string        `json:"number"`
+	PhoneNumber               *string        `json:"phone_number"`
+	Email                     string         `json:"email"`
+	BirthDate                 *time.Time     `json:"birth_date"`
+	Meta                      map[string]any `json:"meta"`
+	Role                      Role           `json:"role"`
+	WalletAddress             string         `json:"wallet_address"`
+	EncryptedWalletPrivateKey string         `json:"-"`
+	CreatedAt                 time.Time      `json:"created_at"`
+	UpdatedAt                 *time.Time     `json:"updated_at"`
 }
 
 // UserRepository defines the database contract for the User Domain

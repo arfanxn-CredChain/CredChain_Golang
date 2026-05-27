@@ -11,11 +11,11 @@ import (
 
 	"CredChain_Golang/config"
 	"CredChain_Golang/domain"
+	"CredChain_Golang/feature/user"
+	"CredChain_Golang/infrastructure/chain"
 	cryptoInfra "CredChain_Golang/infrastructure/crypto"
 	gormInfra "CredChain_Golang/infrastructure/database/gorm"
-	"CredChain_Golang/feature/user"
 	infraLogger "CredChain_Golang/infrastructure/logger"
-	"CredChain_Golang/infrastructure/chain"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/spf13/cobra"
@@ -24,13 +24,13 @@ import (
 )
 
 var (
-	initSuperAdminName        string
-	initSuperAdminNumber      string
-	initSuperAdminPhone       string
-	initSuperAdminEmail       string
-	initSuperAdminPrivKey     string
-	initSuperAdminBirthDate   string
-	initSuperAdminMeta        string
+	initSuperAdminName      string
+	initSuperAdminNumber    string
+	initSuperAdminPhone     string
+	initSuperAdminEmail     string
+	initSuperAdminPrivKey   string
+	initSuperAdminBirthDate string
+	initSuperAdminMeta      string
 )
 
 func init() {
@@ -342,30 +342,30 @@ Examples:
 
   # Mix env and flags (flags take priority)
   INITIAL_SUPER_ADMIN_EMAIL=admin@example.com go run main.go init-super-admin --name "Custom Name" --private-key 0x...`,
-		Run: func(cmd *cobra.Command, args []string) {
-			app := fx.New(
-				infraLogger.Module,
-				fx.Provide(
-					NewConfigFromCmd(cmd),
-					gormInfra.NewGorm,
-					user.NewGormUserRepository,
-					chain.NewClient,
-					chain.NewAuthorityService,
-				),
-				fx.Invoke(func(shutdowner fx.Shutdowner, cfg *config.Config, userRepo domain.UserRepository, authorityService chain.AuthorityService, logger *zap.Logger) {
-					go func() {
-						if err := initSuperAdmin(cfg, userRepo, authorityService, logger); err != nil {
-							logger.Error("init-super-admin failed", zap.Error(err))
-						}
-						shutdowner.Shutdown()
-					}()
-				}),
-			)
+	Run: func(cmd *cobra.Command, args []string) {
+		app := fx.New(
+			infraLogger.Module,
+			fx.Provide(
+				NewConfigFromCmd(cmd),
+				gormInfra.NewGorm,
+				user.NewGormUserRepository,
+				chain.NewClient,
+				chain.NewAuthorityService,
+			),
+			fx.Invoke(func(shutdowner fx.Shutdowner, cfg *config.Config, userRepo domain.UserRepository, authorityService chain.AuthorityService, logger *zap.Logger) {
+				go func() {
+					if err := initSuperAdmin(cfg, userRepo, authorityService, logger); err != nil {
+						logger.Error("init-super-admin failed", zap.Error(err))
+					}
+					shutdowner.Shutdown()
+				}()
+			}),
+		)
 
-			if err := app.Start(context.Background()); err != nil {
-				log.Fatal(err)
-			}
+		if err := app.Start(context.Background()); err != nil {
+			log.Fatal(err)
+		}
 
-			<-app.Done()
-		},
+		<-app.Done()
+	},
 }

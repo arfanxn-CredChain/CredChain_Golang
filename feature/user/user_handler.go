@@ -6,8 +6,8 @@ import (
 	"CredChain_Golang/domain"
 	httpContext "CredChain_Golang/infrastructure/http/context"
 	queryRequest "CredChain_Golang/infrastructure/http/request/query"
-	"CredChain_Golang/infrastructure/http/response"
 	"CredChain_Golang/infrastructure/http/responder"
+	"CredChain_Golang/infrastructure/http/response"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"

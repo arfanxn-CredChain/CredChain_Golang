@@ -18,7 +18,7 @@ const (
 	CodeAuthInvalidToken      = 200141
 	CodeAuthForbidden         = 200142
 	CodeAuthRateLimitExceeded = 200143
-	CodeAuthJWTFailed              = 200150
+	CodeAuthJWTFailed         = 200150
 
 	// ── Auth Google Login (20) ───────────────────────────────────────────────
 	CodeAuthGoogleLoginSuccess      = 200200
@@ -27,12 +27,12 @@ const (
 	CodeAuthGoogleLoginJWTFailed    = 200250
 
 	// ── Auth Refresh (20) ──────────────────────────────────────────────
-	CodeAuthRefreshSuccess        = 200300
-	CodeAuthRefreshInvalidToken   = 200340
-	CodeAuthRefreshTokenExpired   = 200341
-	CodeAuthRefreshTokenRevoked   = 200342
-	CodeAuthRefreshUserNotFound   = 200343
-	CodeAuthRefreshJWTFailed      = 200350
+	CodeAuthRefreshSuccess      = 200300
+	CodeAuthRefreshInvalidToken = 200340
+	CodeAuthRefreshTokenExpired = 200341
+	CodeAuthRefreshTokenRevoked = 200342
+	CodeAuthRefreshUserNotFound = 200343
+	CodeAuthRefreshJWTFailed    = 200350
 
 	// ── Auth Logout (20) ───────────────────────────────────────────────
 	CodeAuthLogoutSuccess = 200400

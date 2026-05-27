@@ -5,7 +5,7 @@ import (
 	"go.uber.org/fx"
 )
 
-type CredentialService interface {}
+type CredentialService interface{}
 
 type credentialService struct {
 	repo domain.CredentialRepository

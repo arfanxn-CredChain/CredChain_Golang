@@ -157,9 +157,9 @@ func getGoogleIdToken(cfg *config.Config, logger *zap.Logger) error {
 	redirectURI := *cfg.GoogleRedirectURI
 
 	// Channels for communication between HTTP handler and main goroutine
-	codeCh := make(chan string, 1)   // Receives authorization code from callback
-	errCh := make(chan error, 1)     // Receives errors from callback
-	var once sync.Once               // Ensures only one result is sent
+	codeCh := make(chan string, 1) // Receives authorization code from callback
+	errCh := make(chan error, 1)   // Receives errors from callback
+	var once sync.Once             // Ensures only one result is sent
 
 	// Generate random state for CSRF protection
 	stateBytes := make([]byte, 16)

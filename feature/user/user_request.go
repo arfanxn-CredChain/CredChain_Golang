@@ -70,9 +70,9 @@ func (r UserStoreRequest) ToDomain() []domain.User {
 }
 
 type UserUpdateProfileRequest struct {
-	Name        *string       `json:"name"`
-	Number      *string       `json:"number"`
-	PhoneNumber *string       `json:"phone_number"`
+	Name        *string        `json:"name"`
+	Number      *string        `json:"number"`
+	PhoneNumber *string        `json:"phone_number"`
 	Meta        map[string]any `json:"meta"`
 }
 

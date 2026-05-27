@@ -11,13 +11,15 @@ import (
 
 type UserOption func(*domain.User)
 
-func WithID(id string) UserOption                  { return func(u *domain.User) { u.Id = id } }
-func WithEmail(e string) UserOption                { return func(u *domain.User) { u.Email = e } }
-func WithRole(r domain.Role) UserOption            { return func(u *domain.User) { u.Role = r } }
-func WithName(n string) UserOption                 { return func(u *domain.User) { u.Name = &n } }
-func WithMeta(m map[string]any) UserOption         { return func(u *domain.User) { u.Meta = m } }
-func WithWalletAddress(a string) UserOption        { return func(u *domain.User) { u.WalletAddress = a } }
-func WithEncryptedKey(k string) UserOption         { return func(u *domain.User) { u.EncryptedWalletPrivateKey = k } }
+func WithID(id string) UserOption           { return func(u *domain.User) { u.Id = id } }
+func WithEmail(e string) UserOption         { return func(u *domain.User) { u.Email = e } }
+func WithRole(r domain.Role) UserOption     { return func(u *domain.User) { u.Role = r } }
+func WithName(n string) UserOption          { return func(u *domain.User) { u.Name = &n } }
+func WithMeta(m map[string]any) UserOption  { return func(u *domain.User) { u.Meta = m } }
+func WithWalletAddress(a string) UserOption { return func(u *domain.User) { u.WalletAddress = a } }
+func WithEncryptedKey(k string) UserOption {
+	return func(u *domain.User) { u.EncryptedWalletPrivateKey = k }
+}
 
 // NewDomainUser returns a domain.User with sensible defaults: random ULID id,
 // RoleHolder, valid 0x-prefixed wallet address (zero address), current CreatedAt.

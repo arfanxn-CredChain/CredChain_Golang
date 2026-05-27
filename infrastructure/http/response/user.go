@@ -8,17 +8,17 @@ import (
 // User is the response DTO for user data.
 // Excludes sensitive fields like EncryptedWalletPrivateKey.
 type User struct {
-	ID            string        `json:"id"`
-	Name          *string       `json:"name"`
-	Number        *string       `json:"number"`
-	PhoneNumber   *string       `json:"phone_number"`
-	Email         string        `json:"email"`
-	BirthDate     *time.Time    `json:"birth_date"`
+	ID            string         `json:"id"`
+	Name          *string        `json:"name"`
+	Number        *string        `json:"number"`
+	PhoneNumber   *string        `json:"phone_number"`
+	Email         string         `json:"email"`
+	BirthDate     *time.Time     `json:"birth_date"`
 	Meta          map[string]any `json:"meta"`
-	Role          domain.Role   `json:"role"`
-	WalletAddress string        `json:"wallet_address"`
-	CreatedAt     time.Time     `json:"created_at"`
-	UpdatedAt     *time.Time    `json:"updated_at"`
+	Role          domain.Role    `json:"role"`
+	WalletAddress string         `json:"wallet_address"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     *time.Time     `json:"updated_at"`
 }
 
 // FromDomainUser converts a domain User entity to a response User DTO.

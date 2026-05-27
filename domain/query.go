@@ -2,13 +2,13 @@ package domain
 
 // Query defines standard query parameters for listing items
 type Query struct {
-	Page     int      `json:"page"`
-	Limit    int      `json:"limit"`
-	Search   string   `json:"search"`
-	Sorts    []string `json:"sorts"` // Example: ["created_at", "-name"]
-	Filters  map[string]string `json:"filters"` // Example: {"role": "issuer"}
-	Includes []string `json:"includes"` // For SQL Joins
-	Groups   []string `json:"groups"`  // For GROUP BY clauses
+	Page     int               `json:"page"`
+	Limit    int               `json:"limit"`
+	Search   string            `json:"search"`
+	Sorts    []string          `json:"sorts"`    // Example: ["created_at", "-name"]
+	Filters  map[string]string `json:"filters"`  // Example: {"role": "issuer"}
+	Includes []string          `json:"includes"` // For SQL Joins
+	Groups   []string          `json:"groups"`   // For GROUP BY clauses
 }
 
 // DefaultQuery returns a query with default sensible limits
