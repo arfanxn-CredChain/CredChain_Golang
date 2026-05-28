@@ -19,6 +19,7 @@ type User struct {
 	WalletAddress string         `json:"wallet_address"`
 	CreatedAt     time.Time      `json:"created_at"`
 	UpdatedAt     *time.Time     `json:"updated_at"`
+	DeletedAt     *time.Time     `json:"deleted_at"`
 }
 
 // FromDomainUser converts a domain User entity to a response User DTO.
@@ -35,6 +36,7 @@ func FromDomainUser(u domain.User) User {
 		WalletAddress: u.WalletAddress,
 		CreatedAt:     u.CreatedAt,
 		UpdatedAt:     u.UpdatedAt,
+		DeletedAt:     u.DeletedAt,
 	}
 }
 
@@ -52,5 +54,6 @@ func (u *User) ToDomain() domain.User {
 		WalletAddress: u.WalletAddress,
 		CreatedAt:     u.CreatedAt,
 		UpdatedAt:     u.UpdatedAt,
+		DeletedAt:     u.DeletedAt,
 	}
 }

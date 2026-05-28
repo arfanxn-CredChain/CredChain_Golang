@@ -141,3 +141,25 @@ func TestToDomain_NilOptionalFields(t *testing.T) {
 	assert.Equal(t, "0xdef", got.WalletAddress)
 	assert.Nil(t, got.UpdatedAt)
 }
+
+func TestFromDomainUser_PreservesDeletedAt(t *testing.T) {
+	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	d := domain.User{Id: "u1", Email: "x@x.com", DeletedAt: &now}
+	r := FromDomainUser(d)
+	assert.NotNil(t, r.DeletedAt)
+	assert.Equal(t, now, *r.DeletedAt)
+}
+
+func TestFromDomainUser_NilDeletedAt(t *testing.T) {
+	d := domain.User{Id: "u1", Email: "x@x.com"}
+	r := FromDomainUser(d)
+	assert.Nil(t, r.DeletedAt)
+}
+
+func TestUser_ToDomain_PreservesDeletedAt(t *testing.T) {
+	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	r := User{ID: "u1", Email: "x@x.com", DeletedAt: &now}
+	d := r.ToDomain()
+	assert.NotNil(t, d.DeletedAt)
+	assert.Equal(t, now, *d.DeletedAt)
+}
