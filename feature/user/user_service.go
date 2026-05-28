@@ -134,9 +134,6 @@ func (s *userService) storeGenerateWallets(users []domain.User) error {
 }
 
 func (s *userService) storeUsersAndSyncBlockchainRoles(ctx context.Context, users []domain.User) ([]domain.User, error) {
-	authUser := httpContext.MustGetUser(ctx)
-	wallet := domain.WalletFromUser(*authUser)
-
 	var created []domain.User
 	err := s.uow.Execute(ctx, func(uow domain.UnitOfWork) error {
 		var err error
@@ -144,15 +141,21 @@ func (s *userService) storeUsersAndSyncBlockchainRoles(ctx context.Context, user
 		if err != nil {
 			return err
 		}
-
-		err = s.authorityService.UpdateUserRole(ctx, wallet, users...)
-		if err != nil {
-			return domain.NewError(domain.CodeUserStoreBlockchainSyncFailed, domain.WithError(err))
-		}
-
-		return nil
+		return s.syncBlockchainRoles(ctx, users, domain.CodeUserStoreBlockchainSyncFailed)
 	})
 	return created, err
+}
+
+// syncBlockchainRoles posts users to the on-chain authority and translates
+// raw chain errors into the supplied domain code. Caller is responsible for
+// transactional context; chain failure rolls back the surrounding UoW.
+func (s *userService) syncBlockchainRoles(ctx context.Context, users []domain.User, errCode int) error {
+	authUser := httpContext.MustGetUser(ctx)
+	wallet := domain.WalletFromUser(*authUser)
+	if err := s.authorityService.UpdateUserRole(ctx, wallet, users...); err != nil {
+		return domain.NewError(errCode, domain.WithError(err))
+	}
+	return nil
 }
 
 func (s *userService) Paginate(ctx context.Context, query *domainQuery.Query) ([]domain.User, int, error) {
@@ -188,11 +191,78 @@ func (s *userService) Update(ctx context.Context, users ...domain.User) ([]domai
 		if len(targets) != len(users) {
 			return domain.NewError(domain.CodeUserUpdateNotFound)
 		}
-		if err := s.policy.UpdatePostFetch(ctx, targets); err != nil {
+		if err := s.policy.UpdatePostFetch(ctx, targets, users); err != nil {
 			return err
 		}
-		updated, err = uow.User().Update(ctx, users...)
-		return err
+
+		// Cross-user email conflict check
+		emailOwnerMap := make(map[string]string)
+		var emailsToCheck []string
+		for _, u := range users {
+			if u.Email != "" {
+				emailsToCheck = append(emailsToCheck, u.Email)
+				emailOwnerMap[u.Email] = u.Id
+			}
+		}
+		if len(emailsToCheck) > 0 {
+			existing, err := uow.User().FindByEmails(ctx, emailsToCheck...)
+			if err != nil {
+				return err
+			}
+			for _, e := range existing {
+				if ownerID := emailOwnerMap[e.Email]; e.Id != ownerID {
+					return domain.NewError(domain.CodeUserEmailConflict, domain.WithMetadata("email", e.Email))
+				}
+			}
+		}
+
+		// Build target map; apply same-role no-op filter; collect role-changed users
+		targetMap := make(map[string]domain.User, len(targets))
+		for _, t := range targets {
+			targetMap[t.Id] = t
+		}
+		filteredUsers := make([]domain.User, len(users))
+		copy(filteredUsers, users)
+		var roleChainUsers []domain.User
+		for i, u := range filteredUsers {
+			if u.Role == "" {
+				continue
+			}
+			target := targetMap[u.Id]
+			if u.Role == target.Role {
+				filteredUsers[i].Role = ""
+				continue
+			}
+			roleChainUsers = append(roleChainUsers, domain.User{
+				WalletAddress:             target.WalletAddress,
+				EncryptedWalletPrivateKey: target.EncryptedWalletPrivateKey,
+				Role:                      u.Role,
+			})
+		}
+
+		// DB update
+		updated, err = uow.User().Update(ctx, filteredUsers...)
+		if err != nil {
+			return err
+		}
+
+		// Chain sync for role changes
+		if len(roleChainUsers) > 0 {
+			if err := s.syncBlockchainRoles(ctx, roleChainUsers, domain.CodeUserUpdateBlockchainSyncFailed); err != nil {
+				return err
+			}
+		}
+
+		// Token revocation for email changes
+		for _, u := range filteredUsers {
+			if u.Email != "" {
+				if _, err := uow.UserToken().RevokeByUserIdAndType(ctx, u.Id, domain.UserTokenTypeRefresh); err != nil {
+					return err
+				}
+			}
+		}
+
+		return nil
 	})
 	return updated, err
 }
@@ -273,8 +343,6 @@ func (s *userService) updateRoleValidateAndPrepare(ctx context.Context, updates 
 }
 
 func (s *userService) updateRoleAndSyncBlockchainRoles(ctx context.Context, usersToUpdate []domain.User) ([]domain.User, int64, error) {
-	authUser := httpContext.MustGetUser(ctx)
-	wallet := domain.WalletFromUser(*authUser)
 	var updatedUsers []domain.User
 	var rowsAffected int64
 	err := s.uow.Execute(ctx, func(uow domain.UnitOfWork) error {
@@ -283,10 +351,7 @@ func (s *userService) updateRoleAndSyncBlockchainRoles(ctx context.Context, user
 		if err != nil {
 			return err
 		}
-		if err := s.authorityService.UpdateUserRole(ctx, wallet, usersToUpdate...); err != nil {
-			return domain.NewError(domain.CodeUserRoleBlockchainSyncFailed, domain.WithError(err))
-		}
-		return nil
+		return s.syncBlockchainRoles(ctx, usersToUpdate, domain.CodeUserRoleBlockchainSyncFailed)
 	})
 	return updatedUsers, rowsAffected, err
 }
@@ -307,20 +372,7 @@ func (s *userService) UpdateRole(ctx context.Context, updates ...domain.UserRole
 	return s.updateRoleAndSyncBlockchainRoles(ctx, usersToUpdate)
 }
 
-func (s *userService) deleteValidateAndPrepare(ctx context.Context, ids []string, uow domain.UnitOfWork) ([]domain.User, error) {
-	targetUsers, err := uow.User().FindByIds(ctx, ids...)
-	if err != nil {
-		return nil, err
-	}
-	if err := s.policy.DeletePostFetch(ctx, targetUsers); err != nil {
-		return nil, err
-	}
-	return targetUsers, nil
-}
-
 func (s *userService) deleteUserAndSyncBlockchain(ctx context.Context, ids []string, targetUsers []domain.User) (int64, error) {
-	authUser := httpContext.MustGetUser(ctx)
-	wallet := domain.WalletFromUser(*authUser)
 	var rowsAffected int64
 	err := s.uow.Execute(ctx, func(uow domain.UnitOfWork) error {
 		var err error
@@ -340,10 +392,7 @@ func (s *userService) deleteUserAndSyncBlockchain(ctx context.Context, ids []str
 		// and on-chain via CredentialRegistry.batchRevokeCredentialsWithSignature
 		// once the credential feature is implemented. Without this, deleted users'
 		// credentials remain active in the database and on-chain indefinitely.
-		if err := s.authorityService.UpdateUserRole(ctx, wallet, revocationUsers...); err != nil {
-			return domain.NewError(domain.CodeUserDeleteBlockchainSyncFailed, domain.WithError(err))
-		}
-		return nil
+		return s.syncBlockchainRoles(ctx, revocationUsers, domain.CodeUserDeleteBlockchainSyncFailed)
 	})
 	return rowsAffected, err
 }
@@ -355,8 +404,11 @@ func (s *userService) Delete(ctx context.Context, ids ...string) (int64, error) 
 	var targetUsers []domain.User
 	err := s.uow.Execute(ctx, func(uow domain.UnitOfWork) error {
 		var err error
-		targetUsers, err = s.deleteValidateAndPrepare(ctx, ids, uow)
-		return err
+		targetUsers, err = uow.User().FindByIds(ctx, ids...)
+		if err != nil {
+			return err
+		}
+		return s.policy.DeletePostFetch(ctx, targetUsers)
 	})
 	if err != nil {
 		return 0, err

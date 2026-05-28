@@ -10,7 +10,7 @@ import (
 type UserPolicy interface {
 	Store(ctx context.Context, users ...domain.User) error
 	UpdatePreFetch(ctx context.Context, users ...domain.User) error
-	UpdatePostFetch(ctx context.Context, targets []domain.User) error
+	UpdatePostFetch(ctx context.Context, targets []domain.User, updates []domain.User) error
 	UpdateRolePreFetch(ctx context.Context, updates ...domain.UserRoleUpdate) error
 	UpdateRolePostFetch(ctx context.Context, targets []domain.User, updates ...domain.UserRoleUpdate) error
 	DeletePreFetch(ctx context.Context, ids ...string) error
@@ -47,8 +47,12 @@ func (p *userPolicy) UpdatePreFetch(ctx context.Context, users ...domain.User) e
 	return nil
 }
 
-func (p *userPolicy) UpdatePostFetch(ctx context.Context, targets []domain.User) error {
+func (p *userPolicy) UpdatePostFetch(ctx context.Context, targets []domain.User, updates []domain.User) error {
 	authUser := httpContext.MustGetUser(ctx)
+	targetMap := make(map[string]domain.User, len(targets))
+	for _, t := range targets {
+		targetMap[t.Id] = t
+	}
 	for _, t := range targets {
 		if t.Role == domain.RoleSuperAdmin {
 			return domain.NewError(domain.CodeUserUpdateSuperAdminForbidden, domain.WithMetadata("user_id", t.Id))
@@ -57,6 +61,21 @@ func (p *userPolicy) UpdatePostFetch(ctx context.Context, targets []domain.User)
 			return domain.NewError(domain.CodeUserUpdatePeerAdminForbidden,
 				domain.WithMetadata("auth_user_id", authUser.Id),
 				domain.WithMetadata("target_user_id", t.Id))
+		}
+	}
+	for _, u := range updates {
+		if u.Role == "" {
+			continue
+		}
+		if u.Role == domain.RoleSuperAdmin {
+			return domain.NewError(domain.CodeUserRoleSuperAdminBatchForbidden,
+				domain.WithMetadata("user_id", u.Id),
+				domain.WithMetadata("attempted_role", "super_admin"))
+		}
+		if authUser.Role == domain.RoleAdmin && u.Role.Rank() >= domain.RoleAdmin.Rank() {
+			return domain.NewError(domain.CodeUserRoleSignerAdminRequiredForbidden,
+				domain.WithMetadata("auth_user_id", authUser.Id),
+				domain.WithMetadata("attempted_role", u.Role.String()))
 		}
 	}
 	return nil

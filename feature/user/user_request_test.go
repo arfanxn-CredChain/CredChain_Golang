@@ -363,3 +363,36 @@ func TestUserUpdateRequest_ToDomain(t *testing.T) {
 	assert.Len(t, users, 1)
 	assert.Equal(t, "u1", users[0].Id)
 }
+
+func TestUserUpdateInput_Validate_EmailValid(t *testing.T) {
+	email := "ok@x.com"
+	in := UserUpdateInput{Id: "u1", Email: &email}
+	assert.NoError(t, in.Validate())
+}
+
+func TestUserUpdateInput_Validate_EmailInvalid(t *testing.T) {
+	email := "not-an-email"
+	in := UserUpdateInput{Id: "u1", Email: &email}
+	assert.Error(t, in.Validate())
+}
+
+func TestUserUpdateInput_Validate_RoleValid(t *testing.T) {
+	role := domain.RoleIssuer
+	in := UserUpdateInput{Id: "u1", Role: &role}
+	assert.NoError(t, in.Validate())
+}
+
+func TestUserUpdateInput_Validate_RoleSuperAdminRejected(t *testing.T) {
+	role := domain.RoleSuperAdmin
+	in := UserUpdateInput{Id: "u1", Role: &role}
+	assert.Error(t, in.Validate())
+}
+
+func TestUserUpdateInput_ToDomain_PropagatesEmailAndRole(t *testing.T) {
+	email := "new@x.com"
+	role := domain.RoleIssuer
+	in := UserUpdateInput{Id: "u1", Email: &email, Role: &role}
+	u := in.ToDomain()
+	assert.Equal(t, "new@x.com", u.Email)
+	assert.Equal(t, domain.RoleIssuer, u.Role)
+}

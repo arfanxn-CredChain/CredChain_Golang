@@ -22,8 +22,8 @@ func (m *MockUserPolicy) UpdatePreFetch(ctx context.Context, users ...domain.Use
 	return args.Error(0)
 }
 
-func (m *MockUserPolicy) UpdatePostFetch(ctx context.Context, targets []domain.User) error {
-	args := m.Called(ctx, targets)
+func (m *MockUserPolicy) UpdatePostFetch(ctx context.Context, targets []domain.User, updates []domain.User) error {
+	args := m.Called(ctx, targets, updates)
 	return args.Error(0)
 }
 

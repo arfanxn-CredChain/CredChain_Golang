@@ -210,7 +210,7 @@ func TestUserPolicy_UpdatePostFetch_SuperAdmin(t *testing.T) {
 	p := NewUserPolicy()
 	auth := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleAdmin))
 	target := fixtures.NewDomainUser(fixtures.WithID("u1"), fixtures.WithRole(domain.RoleSuperAdmin))
-	err := p.UpdatePostFetch(ctxWithUser(&auth), []domain.User{target})
+	err := p.UpdatePostFetch(ctxWithUser(&auth), []domain.User{target}, []domain.User{{Id: "u1"}})
 	var de *domain.Error
 	assert.ErrorAs(t, err, &de)
 	assert.Equal(t, domain.CodeUserUpdateSuperAdminForbidden, de.Code)
@@ -220,7 +220,7 @@ func TestUserPolicy_UpdatePostFetch_AdminPeer(t *testing.T) {
 	p := NewUserPolicy()
 	auth := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleAdmin))
 	target := fixtures.NewDomainUser(fixtures.WithID("u1"), fixtures.WithRole(domain.RoleAdmin))
-	err := p.UpdatePostFetch(ctxWithUser(&auth), []domain.User{target})
+	err := p.UpdatePostFetch(ctxWithUser(&auth), []domain.User{target}, []domain.User{{Id: "u1"}})
 	var de *domain.Error
 	assert.ErrorAs(t, err, &de)
 	assert.Equal(t, domain.CodeUserUpdatePeerAdminForbidden, de.Code)
@@ -230,6 +230,37 @@ func TestUserPolicy_UpdatePostFetch_AllowsHolder(t *testing.T) {
 	p := NewUserPolicy()
 	auth := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleAdmin))
 	target := fixtures.NewDomainUser(fixtures.WithID("u1"), fixtures.WithRole(domain.RoleHolder))
-	err := p.UpdatePostFetch(ctxWithUser(&auth), []domain.User{target})
+	err := p.UpdatePostFetch(ctxWithUser(&auth), []domain.User{target}, []domain.User{{Id: "u1"}})
+	assert.NoError(t, err)
+}
+
+func TestUserPolicy_UpdatePostFetch_AdminPromotingToAdminForbidden(t *testing.T) {
+	p := NewUserPolicy()
+	auth := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleAdmin))
+	target := fixtures.NewDomainUser(fixtures.WithID("u1"), fixtures.WithRole(domain.RoleHolder))
+	err := p.UpdatePostFetch(ctxWithUser(&auth), []domain.User{target},
+		[]domain.User{{Id: "u1", Role: domain.RoleAdmin}})
+	var de *domain.Error
+	assert.ErrorAs(t, err, &de)
+	assert.Equal(t, domain.CodeUserRoleSignerAdminRequiredForbidden, de.Code)
+}
+
+func TestUserPolicy_UpdatePostFetch_AssigningSuperAdminForbidden(t *testing.T) {
+	p := NewUserPolicy()
+	auth := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleSuperAdmin))
+	target := fixtures.NewDomainUser(fixtures.WithID("u1"), fixtures.WithRole(domain.RoleHolder))
+	err := p.UpdatePostFetch(ctxWithUser(&auth), []domain.User{target},
+		[]domain.User{{Id: "u1", Role: domain.RoleSuperAdmin}})
+	var de *domain.Error
+	assert.ErrorAs(t, err, &de)
+	assert.Equal(t, domain.CodeUserRoleSuperAdminBatchForbidden, de.Code)
+}
+
+func TestUserPolicy_UpdatePostFetch_AdminPromotingToIssuerAllowed(t *testing.T) {
+	p := NewUserPolicy()
+	auth := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleAdmin))
+	target := fixtures.NewDomainUser(fixtures.WithID("u1"), fixtures.WithRole(domain.RoleHolder))
+	err := p.UpdatePostFetch(ctxWithUser(&auth), []domain.User{target},
+		[]domain.User{{Id: "u1", Role: domain.RoleIssuer}})
 	assert.NoError(t, err)
 }

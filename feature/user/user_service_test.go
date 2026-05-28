@@ -481,7 +481,7 @@ func TestUserService_UpdateBatch_Success(t *testing.T) {
 	n := "Renamed"
 
 	policy.On("UpdatePreFetch", mock.Anything, mock.Anything).Return(nil)
-	policy.On("UpdatePostFetch", mock.Anything, mock.Anything).Return(nil)
+	policy.On("UpdatePostFetch", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	uow.On("User").Return(repo)
 	repo.On("FindByIds", mock.Anything, mock.Anything).Return([]domain.User{target}, nil)
 	updated := target
@@ -498,4 +498,324 @@ func TestUserService_UpdateBatch_Success(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, out, 1)
 	assert.Equal(t, "Renamed", *out[0].Name)
+}
+
+func mkUpdateSvc(repo *mocks.MockUserRepository, uow domain.UnitOfWork, auth *mocks.MockAuthorityService, policy *mocks.MockUserPolicy) UserService {
+	return NewUserService(UserServiceParams{
+		UserRepo: repo, UoW: uow, Config: mkSvcCfg(),
+		AuthorityService: auth, Logger: zap.NewNop(), Policy: policy,
+		OAuthClient: &mocks.MockGoogleOAuthClient{},
+	})
+}
+
+func TestUserService_Update_OnlyProfile_NoChainSync_NoTokenRevoke(t *testing.T) {
+	repo := &mocks.MockUserRepository{}
+	uow := mocks.NewPropagatingUnitOfWork()
+	auth := &mocks.MockAuthorityService{}
+	policy := &mocks.MockUserPolicy{}
+	authUser := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleAdmin))
+	target := fixtures.NewDomainUser(fixtures.WithID("u1"), fixtures.WithRole(domain.RoleHolder))
+	name := "NewName"
+	policy.On("UpdatePreFetch", mock.Anything, mock.Anything).Return(nil)
+	policy.On("UpdatePostFetch", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	uow.On("User").Return(repo)
+	repo.On("FindByIds", mock.Anything, mock.Anything).Return([]domain.User{target}, nil)
+	repo.On("Update", mock.Anything, mock.Anything).Return([]domain.User{target}, nil)
+	svc := mkUpdateSvc(repo, uow, auth, policy)
+	out, err := svc.Update(ctxWithAuth(&authUser), domain.User{Id: "u1", Name: &name})
+	assert.NoError(t, err)
+	assert.Len(t, out, 1)
+	auth.AssertNotCalled(t, "UpdateUserRole")
+}
+
+func TestUserService_Update_OnlyEmail_TokenRevoked_NoChainSync(t *testing.T) {
+	repo := &mocks.MockUserRepository{}
+	tokenRepo := &mocks.MockUserTokenRepository{}
+	uow := mocks.NewPropagatingUnitOfWork()
+	auth := &mocks.MockAuthorityService{}
+	policy := &mocks.MockUserPolicy{}
+	authUser := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleAdmin))
+	target := fixtures.NewDomainUser(fixtures.WithID("u1"), fixtures.WithRole(domain.RoleHolder))
+	policy.On("UpdatePreFetch", mock.Anything, mock.Anything).Return(nil)
+	policy.On("UpdatePostFetch", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	uow.On("User").Return(repo)
+	uow.On("UserToken").Return(tokenRepo)
+	repo.On("FindByIds", mock.Anything, mock.Anything).Return([]domain.User{target}, nil)
+	repo.On("FindByEmails", mock.Anything, mock.Anything).Return([]domain.User{}, nil)
+	repo.On("Update", mock.Anything, mock.Anything).Return([]domain.User{target}, nil)
+	tokenRepo.On("RevokeByUserIdAndType", mock.Anything, "u1", domain.UserTokenTypeRefresh).Return(1, nil)
+	svc := mkUpdateSvc(repo, uow, auth, policy)
+	email := "new@x.com"
+	_, err := svc.Update(ctxWithAuth(&authUser), domain.User{Id: "u1", Email: email})
+	assert.NoError(t, err)
+	tokenRepo.AssertCalled(t, "RevokeByUserIdAndType", mock.Anything, "u1", domain.UserTokenTypeRefresh)
+	auth.AssertNotCalled(t, "UpdateUserRole")
+}
+
+func TestUserService_Update_OnlyRole_ChainSync_NoTokenRevoke(t *testing.T) {
+	repo := &mocks.MockUserRepository{}
+	uow := mocks.NewPropagatingUnitOfWork()
+	auth := &mocks.MockAuthorityService{}
+	policy := &mocks.MockUserPolicy{}
+	authUser := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleAdmin))
+	target := fixtures.NewDomainUser(fixtures.WithID("u1"), fixtures.WithRole(domain.RoleHolder))
+	policy.On("UpdatePreFetch", mock.Anything, mock.Anything).Return(nil)
+	policy.On("UpdatePostFetch", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	uow.On("User").Return(repo)
+	repo.On("FindByIds", mock.Anything, mock.Anything).Return([]domain.User{target}, nil)
+	repo.On("Update", mock.Anything, mock.Anything).Return([]domain.User{target}, nil)
+	auth.On("UpdateUserRole", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	svc := mkUpdateSvc(repo, uow, auth, policy)
+	_, err := svc.Update(ctxWithAuth(&authUser), domain.User{Id: "u1", Role: domain.RoleIssuer})
+	assert.NoError(t, err)
+	auth.AssertCalled(t, "UpdateUserRole", mock.Anything, mock.Anything, mock.Anything)
+}
+
+func TestUserService_Update_ProfileAndEmail_TokenRevoked(t *testing.T) {
+	repo := &mocks.MockUserRepository{}
+	tokenRepo := &mocks.MockUserTokenRepository{}
+	uow := mocks.NewPropagatingUnitOfWork()
+	auth := &mocks.MockAuthorityService{}
+	policy := &mocks.MockUserPolicy{}
+	authUser := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleAdmin))
+	target := fixtures.NewDomainUser(fixtures.WithID("u1"), fixtures.WithRole(domain.RoleHolder))
+	policy.On("UpdatePreFetch", mock.Anything, mock.Anything).Return(nil)
+	policy.On("UpdatePostFetch", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	uow.On("User").Return(repo)
+	uow.On("UserToken").Return(tokenRepo)
+	repo.On("FindByIds", mock.Anything, mock.Anything).Return([]domain.User{target}, nil)
+	repo.On("FindByEmails", mock.Anything, mock.Anything).Return([]domain.User{}, nil)
+	repo.On("Update", mock.Anything, mock.Anything).Return([]domain.User{target}, nil)
+	tokenRepo.On("RevokeByUserIdAndType", mock.Anything, "u1", domain.UserTokenTypeRefresh).Return(1, nil)
+	svc := mkUpdateSvc(repo, uow, auth, policy)
+	name := "NewName"
+	_, err := svc.Update(ctxWithAuth(&authUser), domain.User{Id: "u1", Name: &name, Email: "new@x.com"})
+	assert.NoError(t, err)
+	tokenRepo.AssertCalled(t, "RevokeByUserIdAndType", mock.Anything, "u1", domain.UserTokenTypeRefresh)
+	auth.AssertNotCalled(t, "UpdateUserRole")
+}
+
+func TestUserService_Update_ProfileAndRole_ChainSync(t *testing.T) {
+	repo := &mocks.MockUserRepository{}
+	uow := mocks.NewPropagatingUnitOfWork()
+	auth := &mocks.MockAuthorityService{}
+	policy := &mocks.MockUserPolicy{}
+	authUser := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleAdmin))
+	target := fixtures.NewDomainUser(fixtures.WithID("u1"), fixtures.WithRole(domain.RoleHolder))
+	policy.On("UpdatePreFetch", mock.Anything, mock.Anything).Return(nil)
+	policy.On("UpdatePostFetch", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	uow.On("User").Return(repo)
+	repo.On("FindByIds", mock.Anything, mock.Anything).Return([]domain.User{target}, nil)
+	repo.On("Update", mock.Anything, mock.Anything).Return([]domain.User{target}, nil)
+	auth.On("UpdateUserRole", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	svc := mkUpdateSvc(repo, uow, auth, policy)
+	name := "NewName"
+	_, err := svc.Update(ctxWithAuth(&authUser), domain.User{Id: "u1", Name: &name, Role: domain.RoleIssuer})
+	assert.NoError(t, err)
+	auth.AssertCalled(t, "UpdateUserRole", mock.Anything, mock.Anything, mock.Anything)
+}
+
+func TestUserService_Update_EmailAndRole_BothEffects(t *testing.T) {
+	repo := &mocks.MockUserRepository{}
+	tokenRepo := &mocks.MockUserTokenRepository{}
+	uow := mocks.NewPropagatingUnitOfWork()
+	auth := &mocks.MockAuthorityService{}
+	policy := &mocks.MockUserPolicy{}
+	authUser := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleAdmin))
+	target := fixtures.NewDomainUser(fixtures.WithID("u1"), fixtures.WithRole(domain.RoleHolder))
+	policy.On("UpdatePreFetch", mock.Anything, mock.Anything).Return(nil)
+	policy.On("UpdatePostFetch", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	uow.On("User").Return(repo)
+	uow.On("UserToken").Return(tokenRepo)
+	repo.On("FindByIds", mock.Anything, mock.Anything).Return([]domain.User{target}, nil)
+	repo.On("FindByEmails", mock.Anything, mock.Anything).Return([]domain.User{}, nil)
+	repo.On("Update", mock.Anything, mock.Anything).Return([]domain.User{target}, nil)
+	tokenRepo.On("RevokeByUserIdAndType", mock.Anything, "u1", domain.UserTokenTypeRefresh).Return(1, nil)
+	auth.On("UpdateUserRole", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	svc := mkUpdateSvc(repo, uow, auth, policy)
+	_, err := svc.Update(ctxWithAuth(&authUser), domain.User{Id: "u1", Email: "new@x.com", Role: domain.RoleIssuer})
+	assert.NoError(t, err)
+	tokenRepo.AssertCalled(t, "RevokeByUserIdAndType", mock.Anything, "u1", domain.UserTokenTypeRefresh)
+	auth.AssertCalled(t, "UpdateUserRole", mock.Anything, mock.Anything, mock.Anything)
+}
+
+func TestUserService_Update_AllThree_AllEffects(t *testing.T) {
+	repo := &mocks.MockUserRepository{}
+	tokenRepo := &mocks.MockUserTokenRepository{}
+	uow := mocks.NewPropagatingUnitOfWork()
+	auth := &mocks.MockAuthorityService{}
+	policy := &mocks.MockUserPolicy{}
+	authUser := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleAdmin))
+	target := fixtures.NewDomainUser(fixtures.WithID("u1"), fixtures.WithRole(domain.RoleHolder))
+	policy.On("UpdatePreFetch", mock.Anything, mock.Anything).Return(nil)
+	policy.On("UpdatePostFetch", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	uow.On("User").Return(repo)
+	uow.On("UserToken").Return(tokenRepo)
+	repo.On("FindByIds", mock.Anything, mock.Anything).Return([]domain.User{target}, nil)
+	repo.On("FindByEmails", mock.Anything, mock.Anything).Return([]domain.User{}, nil)
+	repo.On("Update", mock.Anything, mock.Anything).Return([]domain.User{target}, nil)
+	tokenRepo.On("RevokeByUserIdAndType", mock.Anything, "u1", domain.UserTokenTypeRefresh).Return(1, nil)
+	auth.On("UpdateUserRole", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	svc := mkUpdateSvc(repo, uow, auth, policy)
+	name := "NewName"
+	_, err := svc.Update(ctxWithAuth(&authUser), domain.User{Id: "u1", Name: &name, Email: "new@x.com", Role: domain.RoleIssuer})
+	assert.NoError(t, err)
+	tokenRepo.AssertCalled(t, "RevokeByUserIdAndType", mock.Anything, "u1", domain.UserTokenTypeRefresh)
+	auth.AssertCalled(t, "UpdateUserRole", mock.Anything, mock.Anything, mock.Anything)
+}
+
+func TestUserService_Update_SameRole_SilentlySkippedNoChainSync(t *testing.T) {
+	repo := &mocks.MockUserRepository{}
+	uow := mocks.NewPropagatingUnitOfWork()
+	auth := &mocks.MockAuthorityService{}
+	policy := &mocks.MockUserPolicy{}
+	authUser := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleAdmin))
+	target := fixtures.NewDomainUser(fixtures.WithID("u1"), fixtures.WithRole(domain.RoleHolder))
+	policy.On("UpdatePreFetch", mock.Anything, mock.Anything).Return(nil)
+	policy.On("UpdatePostFetch", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	uow.On("User").Return(repo)
+	repo.On("FindByIds", mock.Anything, mock.Anything).Return([]domain.User{target}, nil)
+	repo.On("Update", mock.Anything, mock.Anything).Return([]domain.User{target}, nil)
+	svc := mkUpdateSvc(repo, uow, auth, policy)
+	_, err := svc.Update(ctxWithAuth(&authUser), domain.User{Id: "u1", Role: domain.RoleHolder})
+	assert.NoError(t, err)
+	auth.AssertNotCalled(t, "UpdateUserRole")
+}
+
+func TestUserService_Update_EmailConflict_RollsBack(t *testing.T) {
+	repo := &mocks.MockUserRepository{}
+	uow := mocks.NewPropagatingUnitOfWork()
+	auth := &mocks.MockAuthorityService{}
+	policy := &mocks.MockUserPolicy{}
+	authUser := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleAdmin))
+	target := fixtures.NewDomainUser(fixtures.WithID("u1"), fixtures.WithRole(domain.RoleHolder))
+	conflicting := fixtures.NewDomainUser(fixtures.WithID("other"), fixtures.WithEmail("new@x.com"))
+	policy.On("UpdatePreFetch", mock.Anything, mock.Anything).Return(nil)
+	policy.On("UpdatePostFetch", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	uow.On("User").Return(repo)
+	repo.On("FindByIds", mock.Anything, mock.Anything).Return([]domain.User{target}, nil)
+	repo.On("FindByEmails", mock.Anything, mock.Anything).Return([]domain.User{conflicting}, nil)
+	svc := mkUpdateSvc(repo, uow, auth, policy)
+	_, err := svc.Update(ctxWithAuth(&authUser), domain.User{Id: "u1", Email: "new@x.com"})
+	var de *domain.Error
+	assert.ErrorAs(t, err, &de)
+	assert.Equal(t, domain.CodeUserEmailConflict, de.Code)
+	repo.AssertNotCalled(t, "Update")
+}
+
+func TestUserService_Update_BlockchainSyncFailure_RollsBack(t *testing.T) {
+	repo := &mocks.MockUserRepository{}
+	uow := mocks.NewPropagatingUnitOfWork()
+	auth := &mocks.MockAuthorityService{}
+	policy := &mocks.MockUserPolicy{}
+	authUser := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleAdmin))
+	target := fixtures.NewDomainUser(fixtures.WithID("u1"), fixtures.WithRole(domain.RoleHolder))
+	policy.On("UpdatePreFetch", mock.Anything, mock.Anything).Return(nil)
+	policy.On("UpdatePostFetch", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	uow.On("User").Return(repo)
+	repo.On("FindByIds", mock.Anything, mock.Anything).Return([]domain.User{target}, nil)
+	repo.On("Update", mock.Anything, mock.Anything).Return([]domain.User{target}, nil)
+	auth.On("UpdateUserRole", mock.Anything, mock.Anything, mock.Anything).Return(errors.New("chain error"))
+	svc := mkUpdateSvc(repo, uow, auth, policy)
+	_, err := svc.Update(ctxWithAuth(&authUser), domain.User{Id: "u1", Role: domain.RoleIssuer})
+	var de *domain.Error
+	assert.ErrorAs(t, err, &de)
+	assert.Equal(t, domain.CodeUserUpdateBlockchainSyncFailed, de.Code)
+}
+
+func TestUserService_Update_TokenRevokeFailure_RollsBack(t *testing.T) {
+	repo := &mocks.MockUserRepository{}
+	tokenRepo := &mocks.MockUserTokenRepository{}
+	uow := mocks.NewPropagatingUnitOfWork()
+	auth := &mocks.MockAuthorityService{}
+	policy := &mocks.MockUserPolicy{}
+	authUser := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleAdmin))
+	target := fixtures.NewDomainUser(fixtures.WithID("u1"), fixtures.WithRole(domain.RoleHolder))
+	policy.On("UpdatePreFetch", mock.Anything, mock.Anything).Return(nil)
+	policy.On("UpdatePostFetch", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	uow.On("User").Return(repo)
+	uow.On("UserToken").Return(tokenRepo)
+	repo.On("FindByIds", mock.Anything, mock.Anything).Return([]domain.User{target}, nil)
+	repo.On("FindByEmails", mock.Anything, mock.Anything).Return([]domain.User{}, nil)
+	repo.On("Update", mock.Anything, mock.Anything).Return([]domain.User{target}, nil)
+	tokenRepo.On("RevokeByUserIdAndType", mock.Anything, "u1", domain.UserTokenTypeRefresh).Return(0, errors.New("revoke error"))
+	svc := mkUpdateSvc(repo, uow, auth, policy)
+	_, err := svc.Update(ctxWithAuth(&authUser), domain.User{Id: "u1", Email: "new@x.com"})
+	assert.Error(t, err)
+}
+
+func TestUserService_Update_PolicyPostFetchFails_RollsBack(t *testing.T) {
+	repo := &mocks.MockUserRepository{}
+	uow := mocks.NewPropagatingUnitOfWork()
+	auth := &mocks.MockAuthorityService{}
+	policy := &mocks.MockUserPolicy{}
+	authUser := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleAdmin))
+	target := fixtures.NewDomainUser(fixtures.WithID("u1"), fixtures.WithRole(domain.RoleHolder))
+	policy.On("UpdatePreFetch", mock.Anything, mock.Anything).Return(nil)
+	policy.On("UpdatePostFetch", mock.Anything, mock.Anything, mock.Anything).Return(errors.New("denied"))
+	uow.On("User").Return(repo)
+	repo.On("FindByIds", mock.Anything, mock.Anything).Return([]domain.User{target}, nil)
+	svc := mkUpdateSvc(repo, uow, auth, policy)
+	name := "x"
+	_, err := svc.Update(ctxWithAuth(&authUser), domain.User{Id: "u1", Name: &name})
+	assert.Error(t, err)
+	repo.AssertNotCalled(t, "Update")
+}
+
+func TestUserService_Update_AdminPromotingToAdmin_Forbidden(t *testing.T) {
+	repo := &mocks.MockUserRepository{}
+	uow := mocks.NewPropagatingUnitOfWork()
+	auth := &mocks.MockAuthorityService{}
+	authUser := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleAdmin))
+	target := fixtures.NewDomainUser(fixtures.WithID("u1"), fixtures.WithRole(domain.RoleHolder))
+	uow.On("User").Return(repo)
+	repo.On("FindByIds", mock.Anything, mock.Anything).Return([]domain.User{target}, nil)
+	svc := NewUserService(UserServiceParams{
+		UserRepo: repo, UoW: uow, Config: mkSvcCfg(),
+		AuthorityService: auth, Logger: zap.NewNop(), Policy: NewUserPolicy(),
+		OAuthClient: &mocks.MockGoogleOAuthClient{},
+	})
+	_, err := svc.Update(ctxWithAuth(&authUser), domain.User{Id: "u1", Role: domain.RoleAdmin})
+	var de *domain.Error
+	assert.ErrorAs(t, err, &de)
+	assert.Equal(t, domain.CodeUserRoleSignerAdminRequiredForbidden, de.Code)
+}
+
+func TestUserService_Update_AdminUpdatingPeerAdmin_Forbidden(t *testing.T) {
+	repo := &mocks.MockUserRepository{}
+	uow := mocks.NewPropagatingUnitOfWork()
+	auth := &mocks.MockAuthorityService{}
+	authUser := fixtures.NewDomainUser(fixtures.WithID("a1"), fixtures.WithRole(domain.RoleAdmin))
+	target := fixtures.NewDomainUser(fixtures.WithID("u1"), fixtures.WithRole(domain.RoleAdmin))
+	uow.On("User").Return(repo)
+	repo.On("FindByIds", mock.Anything, mock.Anything).Return([]domain.User{target}, nil)
+	svc := NewUserService(UserServiceParams{
+		UserRepo: repo, UoW: uow, Config: mkSvcCfg(),
+		AuthorityService: auth, Logger: zap.NewNop(), Policy: NewUserPolicy(),
+		OAuthClient: &mocks.MockGoogleOAuthClient{},
+	})
+	name := "x"
+	_, err := svc.Update(ctxWithAuth(&authUser), domain.User{Id: "u1", Name: &name})
+	var de *domain.Error
+	assert.ErrorAs(t, err, &de)
+	assert.Equal(t, domain.CodeUserUpdatePeerAdminForbidden, de.Code)
+}
+
+func TestUserService_Update_AssigningSuperAdmin_Forbidden(t *testing.T) {
+	repo := &mocks.MockUserRepository{}
+	uow := mocks.NewPropagatingUnitOfWork()
+	auth := &mocks.MockAuthorityService{}
+	authUser := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleSuperAdmin))
+	target := fixtures.NewDomainUser(fixtures.WithID("u1"), fixtures.WithRole(domain.RoleHolder))
+	uow.On("User").Return(repo)
+	repo.On("FindByIds", mock.Anything, mock.Anything).Return([]domain.User{target}, nil)
+	svc := NewUserService(UserServiceParams{
+		UserRepo: repo, UoW: uow, Config: mkSvcCfg(),
+		AuthorityService: auth, Logger: zap.NewNop(), Policy: NewUserPolicy(),
+		OAuthClient: &mocks.MockGoogleOAuthClient{},
+	})
+	_, err := svc.Update(ctxWithAuth(&authUser), domain.User{Id: "u1", Role: domain.RoleSuperAdmin})
+	var de *domain.Error
+	assert.ErrorAs(t, err, &de)
+	assert.Equal(t, domain.CodeUserRoleSuperAdminBatchForbidden, de.Code)
 }

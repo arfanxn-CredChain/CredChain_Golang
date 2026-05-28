@@ -145,6 +145,8 @@ type UserUpdateInput struct {
 	PhoneNumber *string        `json:"phone_number"`
 	BirthDate   *string        `json:"birth_date"`
 	Meta        map[string]any `json:"meta"`
+	Email       *string        `json:"email"`
+	Role        *domain.Role   `json:"role"`
 }
 
 func (n UserUpdateInput) Validate() error {
@@ -154,6 +156,8 @@ func (n UserUpdateInput) Validate() error {
 		validation.Field(&n.Number, validation.Length(0, 256)),
 		validation.Field(&n.PhoneNumber, validation.Length(0, 18), is.E164),
 		validation.Field(&n.BirthDate, validation.Date("2006-01-02")),
+		validation.Field(&n.Email, is.Email, validation.Length(1, 256)),
+		validation.Field(&n.Role, validation.In(domain.RoleAdmin, domain.RoleIssuer, domain.RoleHolder)),
 	)
 }
 
@@ -164,7 +168,7 @@ func (n UserUpdateInput) ToDomain() domain.User {
 			birthDate = &t
 		}
 	}
-	return domain.User{
+	u := domain.User{
 		Id:          n.Id,
 		Name:        n.Name,
 		Number:      n.Number,
@@ -172,6 +176,13 @@ func (n UserUpdateInput) ToDomain() domain.User {
 		BirthDate:   birthDate,
 		Meta:        n.Meta,
 	}
+	if n.Email != nil {
+		u.Email = *n.Email
+	}
+	if n.Role != nil {
+		u.Role = *n.Role
+	}
+	return u
 }
 
 type UserUpdateRequest struct {
