@@ -13,12 +13,10 @@ const (
 	CodeSystemInternal   = 100050
 
 	// ── Auth (20) ────────────────────────────────────────────────────────────
-	CodeAuthSuccess           = 200000
 	CodeAuthUnauthorized      = 200140
 	CodeAuthInvalidToken      = 200141
 	CodeAuthForbidden         = 200142
 	CodeAuthRateLimitExceeded = 200143
-	CodeAuthJWTFailed         = 200150
 
 	// ── Auth Google Login (20) ───────────────────────────────────────────────
 	CodeAuthGoogleLoginSuccess      = 200200
@@ -48,20 +46,24 @@ const (
 	CodeUserStoreSuperAdminForbidden         = 300245
 	CodeUserStoreAdminCreateAdminForbidden   = 300246
 	CodeUserProfileSuccess                   = 300300
-	CodeUserProfileFailed                    = 300340
 	CodeUserEmailSuccess                     = 300400
 	CodeUserEmailConflict                    = 300440
+	CodeUserEmailMismatchedIdToken           = 300441
+	CodeUserEmailInvalidIdToken              = 300442
 	CodeUserRoleSuccess                      = 300500
-	CodeUserRoleFailed                       = 300540
 	CodeUserRoleAdminUpdatePeerForbidden     = 300541
 	CodeUserRoleSignerAdminRequiredForbidden = 300542
 	CodeUserRoleSameRoleUpdateForbidden      = 300543
 	CodeUserRoleSuperAdminBatchForbidden     = 300544
-	CodeUserCredentialsFetchSuccess          = 300600
-	CodeUserCredentialsFetchFailed           = 300640
+	CodeUserRoleBlockchainSyncFailed         = 300545
 	CodeUserBatchDeleteSuccess               = 300700
-	CodeUserBatchDeleteFailed                = 300740
 	CodeUserDeleteAdminForbidden             = 300741
+	CodeUserDeleteBlockchainSyncFailed       = 300742
+	CodeUserUpdateSuccess                    = 300800
+	CodeUserUpdateNotFound                   = 300841
+	CodeUserUpdatePeerAdminForbidden         = 300842
+	CodeUserUpdateSuperAdminForbidden        = 300843
+	CodeUserUpdateSelfForbidden              = 300844
 
 	// ── Credential (40) ──────────────────────────────────────────────────────
 	CodeCredentialFetchSuccess  = 400100
