@@ -7,6 +7,7 @@ import (
 	"CredChain_Golang/domain"
 
 	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
 )
 
 func TestUser_RoundTrip_AllFields(t *testing.T) {
@@ -61,4 +62,32 @@ func TestUser_RoleStringConversion(t *testing.T) {
 	assert.Equal(t, "super_admin", m.Role)
 	back := m.ToDomain()
 	assert.Equal(t, domain.RoleSuperAdmin, back.Role)
+}
+
+func TestUser_ToDomain_PreservesDeletedAt(t *testing.T) {
+	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	m := User{DeletedAt: gorm.DeletedAt{Time: now, Valid: true}}
+	d := m.ToDomain()
+	assert.NotNil(t, d.DeletedAt)
+	assert.Equal(t, now, *d.DeletedAt)
+}
+
+func TestUser_ToDomain_NilDeletedAt_WhenInvalid(t *testing.T) {
+	m := User{DeletedAt: gorm.DeletedAt{Valid: false}}
+	d := m.ToDomain()
+	assert.Nil(t, d.DeletedAt)
+}
+
+func TestUser_FromDomain_PreservesDeletedAt(t *testing.T) {
+	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	d := domain.User{DeletedAt: &now}
+	m := FromDomainUser(d)
+	assert.True(t, m.DeletedAt.Valid)
+	assert.Equal(t, now, m.DeletedAt.Time)
+}
+
+func TestUser_FromDomain_NilDeletedAt(t *testing.T) {
+	d := domain.User{}
+	m := FromDomainUser(d)
+	assert.False(t, m.DeletedAt.Valid)
 }

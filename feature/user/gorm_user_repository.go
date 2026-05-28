@@ -2,7 +2,10 @@ package user
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"sort"
+	"strings"
 
 	"CredChain_Golang/domain"
 	domainQuery "CredChain_Golang/domain/query"
@@ -132,17 +135,124 @@ func (r *gormUserRepository) FindByIds(ctx context.Context, ids ...string) ([]do
 	return domainUsers, nil
 }
 
-// Update updates a single user (accepts domain model)
-// Returns: (*User, error) - updated entity
-func (r *gormUserRepository) Update(ctx context.Context, user domain.User) (*domain.User, error) {
-	modelUser := model.FromDomainUser(user)
-
-	if err := r.db.WithContext(ctx).Model(&model.User{}).Where("id = ?", user.Id).Updates(modelUser).Error; err != nil {
+// Update updates one or more users (partial update via non-zero fields)
+// Returns: ([]User, error) - updated users, error
+func (r *gormUserRepository) Update(ctx context.Context, users ...domain.User) ([]domain.User, error) {
+	if len(users) == 0 {
+		return []domain.User{}, nil
+	}
+	if err := r.updateBatchCase(ctx, users); err != nil {
 		return nil, err
 	}
+	ids := make([]string, len(users))
+	for i, u := range users {
+		ids[i] = u.Id
+	}
+	return r.FindByIds(ctx, ids...)
+}
 
-	// Fetch updated user
-	return r.Find(ctx, user.Id)
+// updateBatchCase builds and executes a single UPDATE statement using CASE expressions
+// for each column that at least one user provides. Users that don't provide a column
+// fall through to ELSE column (preserving the existing value). Eliminates the N+1
+// per-user UPDATE pattern. Users sorted by Id for deterministic arg ordering.
+func (r *gormUserRepository) updateBatchCase(ctx context.Context, users []domain.User) error {
+	sort.Slice(users, func(i, j int) bool { return users[i].Id < users[j].Id })
+
+	var setClauses []string
+	var setArgs []interface{}
+
+	addCaseClause := func(col string, getValue func(domain.User) (interface{}, bool)) {
+		var caseArgs []interface{}
+		for _, u := range users {
+			if v, ok := getValue(u); ok {
+				caseArgs = append(caseArgs, u.Id, v)
+			}
+		}
+		if len(caseArgs) == 0 {
+			return
+		}
+		caseSQL := "CASE id"
+		for i := 0; i < len(caseArgs)/2; i++ {
+			caseSQL += " WHEN ? THEN ?"
+		}
+		caseSQL += " ELSE " + col + " END"
+		setClauses = append(setClauses, col+" = "+caseSQL)
+		setArgs = append(setArgs, caseArgs...)
+	}
+
+	addCaseClause("name", func(u domain.User) (interface{}, bool) {
+		if u.Name != nil {
+			return *u.Name, true
+		}
+		return nil, false
+	})
+	addCaseClause("number", func(u domain.User) (interface{}, bool) {
+		if u.Number != nil {
+			return *u.Number, true
+		}
+		return nil, false
+	})
+	addCaseClause("phone_number", func(u domain.User) (interface{}, bool) {
+		if u.PhoneNumber != nil {
+			return *u.PhoneNumber, true
+		}
+		return nil, false
+	})
+	addCaseClause("email", func(u domain.User) (interface{}, bool) {
+		if u.Email != "" {
+			return u.Email, true
+		}
+		return nil, false
+	})
+	addCaseClause("birth_date", func(u domain.User) (interface{}, bool) {
+		if u.BirthDate != nil {
+			return *u.BirthDate, true
+		}
+		return nil, false
+	})
+	addCaseClause("meta", func(u domain.User) (interface{}, bool) {
+		if u.Meta == nil {
+			return nil, false
+		}
+		b, err := json.Marshal(u.Meta)
+		if err != nil {
+			return nil, false
+		}
+		return string(b), true
+	})
+	addCaseClause("role", func(u domain.User) (interface{}, bool) {
+		if u.Role != "" {
+			return string(u.Role), true
+		}
+		return nil, false
+	})
+	addCaseClause("wallet_address", func(u domain.User) (interface{}, bool) {
+		if u.WalletAddress != "" {
+			return u.WalletAddress, true
+		}
+		return nil, false
+	})
+	addCaseClause("encrypted_wallet_private_key", func(u domain.User) (interface{}, bool) {
+		if u.EncryptedWalletPrivateKey != "" {
+			return u.EncryptedWalletPrivateKey, true
+		}
+		return nil, false
+	})
+
+	if len(setClauses) == 0 {
+		return nil
+	}
+
+	setClauses = append(setClauses, "updated_at = CURRENT_TIMESTAMP")
+
+	ids := make([]interface{}, len(users))
+	for i, u := range users {
+		ids[i] = u.Id
+	}
+
+	sql := "UPDATE users SET " + strings.Join(setClauses, ", ") + " WHERE id IN (?)"
+	finalArgs := append(setArgs, ids)
+	return r.db.WithContext(ctx).Exec(sql, finalArgs...).Error
 }
 
 // UpdateRole batch updates roles for multiple users using efficient CASE statement
@@ -218,9 +328,9 @@ func (r *gormUserRepository) Store(ctx context.Context, users ...domain.User) ([
 	return created, nil
 }
 
-// Destroy deletes multiple users by IDs (batch operation)
+// Delete deletes multiple users by IDs (batch operation)
 // Returns: (int64, error) - rows affected count, error
-func (r *gormUserRepository) Destroy(ctx context.Context, ids ...string) (int64, error) {
+func (r *gormUserRepository) Delete(ctx context.Context, ids ...string) (int64, error) {
 	if len(ids) == 0 {
 		return 0, nil
 	}

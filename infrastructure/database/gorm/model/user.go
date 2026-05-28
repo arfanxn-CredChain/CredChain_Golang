@@ -3,6 +3,8 @@ package model
 import (
 	"CredChain_Golang/domain"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type User struct {
@@ -18,9 +20,15 @@ type User struct {
 	EncryptedWalletPrivateKey string         `gorm:"type:varchar(255);column:encrypted_wallet_private_key" json:"-"`
 	CreatedAt                 time.Time      `gorm:"autoCreateTime;column:created_at" json:"created_at"`
 	UpdatedAt                 *time.Time     `gorm:"autoUpdateTime;column:updated_at" json:"updated_at"`
+	DeletedAt                 gorm.DeletedAt `gorm:"index;column:deleted_at" json:"-"`
 }
 
 func (m *User) ToDomain() domain.User {
+	var deletedAt *time.Time
+	if m.DeletedAt.Valid {
+		t := m.DeletedAt.Time
+		deletedAt = &t
+	}
 	return domain.User{
 		Id:                        m.Id,
 		Name:                      m.Name,
@@ -34,10 +42,15 @@ func (m *User) ToDomain() domain.User {
 		EncryptedWalletPrivateKey: m.EncryptedWalletPrivateKey,
 		CreatedAt:                 m.CreatedAt,
 		UpdatedAt:                 m.UpdatedAt,
+		DeletedAt:                 deletedAt,
 	}
 }
 
 func FromDomainUser(u domain.User) User {
+	var deletedAt gorm.DeletedAt
+	if u.DeletedAt != nil {
+		deletedAt = gorm.DeletedAt{Time: *u.DeletedAt, Valid: true}
+	}
 	return User{
 		Id:                        u.Id,
 		Name:                      u.Name,
@@ -51,5 +64,6 @@ func FromDomainUser(u domain.User) User {
 		EncryptedWalletPrivateKey: u.EncryptedWalletPrivateKey,
 		CreatedAt:                 u.CreatedAt,
 		UpdatedAt:                 u.UpdatedAt,
+		DeletedAt:                 deletedAt,
 	}
 }

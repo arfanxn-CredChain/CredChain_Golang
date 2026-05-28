@@ -42,4 +42,20 @@ func RunUnitOfWorkFn(m *MockUnitOfWork, innerUoW domain.UnitOfWork) {
 		})
 }
 
+// PropagatingUnitOfWork is a UnitOfWork that actually executes the function passed
+// to Execute and propagates its error. Use this for tests that need to assert on
+// errors returned from inside transactional code paths.
+type PropagatingUnitOfWork struct {
+	*MockUnitOfWork
+}
+
+func (p *PropagatingUnitOfWork) Execute(ctx context.Context, fn func(domain.UnitOfWork) error) error {
+	return fn(p)
+}
+
+func NewPropagatingUnitOfWork() *PropagatingUnitOfWork {
+	return &PropagatingUnitOfWork{MockUnitOfWork: &MockUnitOfWork{}}
+}
+
 var _ domain.UnitOfWork = (*MockUnitOfWork)(nil)
+var _ domain.UnitOfWork = (*PropagatingUnitOfWork)(nil)

@@ -3,6 +3,7 @@ package user
 import (
 	"context"
 	"testing"
+	"time"
 
 	"CredChain_Golang/domain"
 	domainQuery "CredChain_Golang/domain/query"
@@ -124,23 +125,24 @@ func TestGormUserRepository_Update(t *testing.T) {
 	u.Email = "new@x.com"
 	updated, err := repo.Update(context.Background(), u)
 	assert.NoError(t, err)
-	assert.Equal(t, "new@x.com", updated.Email)
+	assert.Len(t, updated, 1)
+	assert.Equal(t, "new@x.com", updated[0].Email)
 }
 
-func TestGormUserRepository_Destroy_Empty(t *testing.T) {
+func TestGormUserRepository_Delete_Empty(t *testing.T) {
 	repo := newRepo(t)
-	n, err := repo.Destroy(context.Background())
+	n, err := repo.Delete(context.Background())
 	assert.NoError(t, err)
 	assert.EqualValues(t, 0, n)
 }
 
-func TestGormUserRepository_Destroy(t *testing.T) {
+func TestGormUserRepository_Delete(t *testing.T) {
 	repo := newRepo(t)
 	u1 := fixtures.NewDomainUser(fixtures.WithID("d1"), fixtures.WithEmail("a@x.com"))
 	u2 := fixtures.NewDomainUser(fixtures.WithID("d2"), fixtures.WithEmail("b@x.com"))
 	_, _ = repo.Store(context.Background(), u1, u2)
 
-	n, err := repo.Destroy(context.Background(), "d1", "d2")
+	n, err := repo.Delete(context.Background(), "d1", "d2")
 	assert.NoError(t, err)
 	assert.EqualValues(t, 2, n)
 
@@ -240,4 +242,126 @@ func TestGormUserRepository_Get_SortByName(t *testing.T) {
 	assert.Equal(t, "Alice", *users[0].Name)
 	assert.Equal(t, "Bob", *users[1].Name)
 	assert.Equal(t, "Charlie", *users[2].Name)
+}
+
+func TestGormUserRepository_Delete_SoftDelete_HidesFromFind(t *testing.T) {
+	repo := newRepo(t)
+	u := fixtures.NewDomainUser(fixtures.WithID("sd1"), fixtures.WithEmail("sd1@x.com"))
+	_, _ = repo.Store(context.Background(), u)
+	_, err := repo.Delete(context.Background(), "sd1")
+	assert.NoError(t, err)
+	_, findErr := repo.Find(context.Background(), "sd1")
+	assert.Error(t, findErr, "soft-deleted user must not be returned by Find")
+}
+
+func TestGormUserRepository_Delete_SoftDelete_HidesFromGet(t *testing.T) {
+	repo := newRepo(t)
+	u1 := fixtures.NewDomainUser(fixtures.WithID("sd2"), fixtures.WithEmail("sd2@x.com"))
+	u2 := fixtures.NewDomainUser(fixtures.WithID("sd3"), fixtures.WithEmail("sd3@x.com"))
+	_, _ = repo.Store(context.Background(), u1, u2)
+	_, _ = repo.Delete(context.Background(), "sd2")
+	users, total, err := repo.Get(context.Background(), &domainQuery.Query{})
+	assert.NoError(t, err)
+	assert.Equal(t, 1, total)
+	assert.Len(t, users, 1)
+	assert.Equal(t, "sd3", users[0].Id)
+}
+
+func TestGormUserRepository_Delete_SoftDelete_HidesFromFindByIds(t *testing.T) {
+	repo := newRepo(t)
+	u := fixtures.NewDomainUser(fixtures.WithID("sd4"), fixtures.WithEmail("sd4@x.com"))
+	_, _ = repo.Store(context.Background(), u)
+	_, _ = repo.Delete(context.Background(), "sd4")
+	found, err := repo.FindByIds(context.Background(), "sd4")
+	assert.NoError(t, err)
+	assert.Empty(t, found)
+}
+
+func TestGormUserRepository_Delete_SoftDelete_HidesFromFindByEmails(t *testing.T) {
+	repo := newRepo(t)
+	u := fixtures.NewDomainUser(fixtures.WithID("sd5"), fixtures.WithEmail("sd5@x.com"))
+	_, _ = repo.Store(context.Background(), u)
+	_, _ = repo.Delete(context.Background(), "sd5")
+	found, err := repo.FindByEmails(context.Background(), "sd5@x.com")
+	assert.NoError(t, err)
+	assert.Empty(t, found)
+}
+
+func TestGormUserRepository_Delete_SoftDelete_HidesFromFindByRole(t *testing.T) {
+	repo := newRepo(t)
+	u := fixtures.NewDomainUser(fixtures.WithID("sd6"), fixtures.WithEmail("sd6@x.com"), fixtures.WithRole(domain.RoleHolder))
+	_, _ = repo.Store(context.Background(), u)
+	_, _ = repo.Delete(context.Background(), "sd6")
+	found, err := repo.FindByRole(context.Background(), domain.RoleHolder)
+	assert.NoError(t, err)
+	assert.Empty(t, found)
+}
+
+func TestGormUserRepository_Update_BirthDateSet_PersistsValue(t *testing.T) {
+	repo := newRepo(t)
+	u := fixtures.NewDomainUser(fixtures.WithID("bd1"), fixtures.WithEmail("bd1@x.com"))
+	_, _ = repo.Store(context.Background(), u)
+	bd := time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC)
+	_, err := repo.Update(context.Background(), domain.User{Id: "bd1", BirthDate: &bd})
+	assert.NoError(t, err)
+	got, _ := repo.Find(context.Background(), "bd1")
+	assert.NotNil(t, got.BirthDate)
+	assert.Equal(t, 1990, got.BirthDate.Year())
+}
+
+func TestGormUserRepository_Update_BirthDateNil_PreservesExisting(t *testing.T) {
+	repo := newRepo(t)
+	bd := time.Date(2000, 5, 15, 0, 0, 0, 0, time.UTC)
+	u := fixtures.NewDomainUser(fixtures.WithID("bd2"), fixtures.WithEmail("bd2@x.com"))
+	u.BirthDate = &bd
+	_, _ = repo.Store(context.Background(), u)
+	name := "Renamed"
+	_, err := repo.Update(context.Background(), domain.User{Id: "bd2", Name: &name})
+	assert.NoError(t, err)
+	got, _ := repo.Find(context.Background(), "bd2")
+	assert.NotNil(t, got.BirthDate, "nil pointer in update payload must not clear existing date")
+	assert.Equal(t, 2000, got.BirthDate.Year())
+}
+
+func TestGormUserRepository_Update_BirthDateExplicitClear_SetsNull(t *testing.T) {
+	t.Skip("explicit-clear-to-null is intentionally unsupported with struct-based Updates; revisit if product requires it")
+}
+
+func TestGormUserRepository_Update_BatchCASE_MixedColumns(t *testing.T) {
+	repo := newRepo(t)
+
+	u1 := fixtures.NewDomainUser(fixtures.WithID("bc1"), fixtures.WithEmail("bc1@x.com"))
+	u2 := fixtures.NewDomainUser(fixtures.WithID("bc2"), fixtures.WithEmail("bc2@x.com"))
+	u3 := fixtures.NewDomainUser(fixtures.WithID("bc3"), fixtures.WithEmail("bc3@x.com"))
+	_, _ = repo.Store(context.Background(), u1, u2, u3)
+
+	name1 := "Alice"
+	num2 := "99999"
+	phone3 := "+6281234567890"
+
+	updated, err := repo.Update(context.Background(),
+		domain.User{Id: "bc1", Name: &name1},
+		domain.User{Id: "bc2", Number: &num2},
+		domain.User{Id: "bc3", PhoneNumber: &phone3},
+	)
+	assert.NoError(t, err)
+	assert.Len(t, updated, 3)
+
+	byID := make(map[string]domain.User)
+	for _, u := range updated {
+		byID[u.Id] = u
+	}
+
+	assert.Equal(t, "Alice", *byID["bc1"].Name)
+	assert.Equal(t, "bc1@x.com", byID["bc1"].Email)
+
+	assert.Equal(t, "99999", *byID["bc2"].Number)
+	assert.Equal(t, "bc2@x.com", byID["bc2"].Email)
+
+	assert.Equal(t, "+6281234567890", *byID["bc3"].PhoneNumber)
+	assert.Equal(t, "bc3@x.com", byID["bc3"].Email)
+
+	assert.Nil(t, byID["bc1"].Number)
+	assert.Nil(t, byID["bc2"].Name)
+	assert.Nil(t, byID["bc3"].Name)
 }

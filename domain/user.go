@@ -11,6 +11,7 @@ import (
 type Role string
 
 const (
+	RoleNone       Role = "none"
 	RoleSuperAdmin Role = "super_admin"
 	RoleAdmin      Role = "admin"
 	RoleIssuer     Role = "issuer"
@@ -28,6 +29,8 @@ func (r Role) Rank() int {
 		return 2
 	case RoleHolder:
 		return 1
+	case RoleNone:
+		return 0
 	default:
 		return 0
 	}
@@ -49,6 +52,8 @@ func (r Role) ToUint8() uint8 {
 		return 3
 	case RoleSuperAdmin:
 		return 4
+	case RoleNone:
+		return 0
 	default:
 		return 0
 	}
@@ -65,8 +70,10 @@ func RoleFromUint8(v uint8) Role {
 		return RoleAdmin
 	case 4:
 		return RoleSuperAdmin
+	case 0:
+		return RoleNone
 	default:
-		return Role("")
+		return RoleNone
 	}
 }
 
@@ -90,6 +97,7 @@ type User struct {
 	EncryptedWalletPrivateKey string         `json:"-"`
 	CreatedAt                 time.Time      `json:"created_at"`
 	UpdatedAt                 *time.Time     `json:"updated_at"`
+	DeletedAt                 *time.Time     `json:"deleted_at"`
 }
 
 // UserRepository defines the database contract for the User Domain
@@ -108,9 +116,9 @@ type UserRepository interface {
 	FindByIds(ctx context.Context, ids ...string) ([]User, error)
 
 	// CRUD operations
-	Update(ctx context.Context, user User) (*User, error)
+	Update(ctx context.Context, users ...User) ([]User, error)
 	Store(ctx context.Context, users ...User) ([]User, error)
-	Destroy(ctx context.Context, ids ...string) (int64, error)
+	Delete(ctx context.Context, ids ...string) (int64, error)
 
 	// Specialized operations
 	UpdateRole(ctx context.Context, users ...User) ([]User, int64, error)
