@@ -77,6 +77,7 @@
   "error_users_update_peer_admin_forbidden": "Admin cannot update peer admin.",
   "error_users_update_super_admin_forbidden": "Cannot update a super admin.",
   "error_users_update_self_forbidden": "Cannot update yourself via this endpoint.",
+  "error_users_update_blockchain_sync_failed": "Failed to sync user update to blockchain.",
   "error_credential_not_found": "Credential not found.",
   "error_credential_issue_failed": "Failed to issue credential.",
   "error_credential_revoke_failed": "Failed to revoke credential.",

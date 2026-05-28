@@ -64,6 +64,7 @@ const (
 	CodeUserUpdatePeerAdminForbidden         = 300842
 	CodeUserUpdateSuperAdminForbidden        = 300843
 	CodeUserUpdateSelfForbidden              = 300844
+	CodeUserUpdateBlockchainSyncFailed       = 300845
 
 	// ── Credential (40) ──────────────────────────────────────────────────────
 	CodeCredentialFetchSuccess  = 400100

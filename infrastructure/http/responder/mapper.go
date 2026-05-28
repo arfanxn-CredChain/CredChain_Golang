@@ -64,6 +64,7 @@ var CodeToMessageKey = map[int]string{
 	domain.CodeUserUpdatePeerAdminForbidden:         "error_users_update_peer_admin_forbidden",
 	domain.CodeUserUpdateSuperAdminForbidden:        "error_users_update_super_admin_forbidden",
 	domain.CodeUserUpdateSelfForbidden:              "error_users_update_self_forbidden",
+	domain.CodeUserUpdateBlockchainSyncFailed:       "error_users_update_blockchain_sync_failed",
 
 	// Credential codes
 	domain.CodeCredentialFetchSuccess:  "success_credential_fetched",
@@ -129,6 +130,7 @@ var HttpCodes = map[int]int{
 	domain.CodeUserUpdatePeerAdminForbidden:         http.StatusForbidden,
 	domain.CodeUserUpdateSuperAdminForbidden:        http.StatusForbidden,
 	domain.CodeUserUpdateSelfForbidden:              http.StatusForbidden,
+	domain.CodeUserUpdateBlockchainSyncFailed:       http.StatusInternalServerError,
 
 	domain.CodeCredentialFetchSuccess:  http.StatusOK,
 	domain.CodeCredentialFetchNotFound: http.StatusNotFound,

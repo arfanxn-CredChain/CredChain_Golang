@@ -64,6 +64,7 @@ var allDomainCodes = []int{
 	domain.CodeUserUpdatePeerAdminForbidden,
 	domain.CodeUserUpdateSuperAdminForbidden,
 	domain.CodeUserUpdateSelfForbidden,
+	domain.CodeUserUpdateBlockchainSyncFailed,
 	// Credential
 	domain.CodeCredentialFetchSuccess,
 	domain.CodeCredentialFetchNotFound,
