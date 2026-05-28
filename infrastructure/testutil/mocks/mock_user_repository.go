@@ -53,10 +53,10 @@ func (m *MockUserRepository) FindByIds(ctx context.Context, ids ...string) ([]do
 	return nil, args.Error(1)
 }
 
-func (m *MockUserRepository) Update(ctx context.Context, user domain.User) (*domain.User, error) {
-	args := m.Called(ctx, user)
+func (m *MockUserRepository) Update(ctx context.Context, users ...domain.User) ([]domain.User, error) {
+	args := m.Called(ctx, users)
 	if v := args.Get(0); v != nil {
-		return v.(*domain.User), args.Error(1)
+		return v.([]domain.User), args.Error(1)
 	}
 	return nil, args.Error(1)
 }
@@ -69,7 +69,7 @@ func (m *MockUserRepository) Store(ctx context.Context, users ...domain.User) ([
 	return nil, args.Error(1)
 }
 
-func (m *MockUserRepository) Destroy(ctx context.Context, ids ...string) (int64, error) {
+func (m *MockUserRepository) Delete(ctx context.Context, ids ...string) (int64, error) {
 	args := m.Called(ctx, ids)
 	return int64(args.Int(0)), args.Error(1)
 }

@@ -74,13 +74,14 @@ func RegisterRoutes(p RouteParams) {
 			users := secure.Group("/users")
 			{
 				users.GET("", gin.HandlerFunc(p.AdminRoleMiddleware), p.UserHandler.Paginate)
-				users.GET("/self", p.UserHandler.Find)
-				users.GET("/self/credentials", p.UserHandler.GetSelfCredentials)
+				users.GET("/self", p.UserHandler.Self)
 				users.PUT("/self/profile", p.UserHandler.UpdateSelfProfile)
 				users.PUT("/self/email", p.UserHandler.UpdateSelfEmail)
-				users.GET("/:id", gin.HandlerFunc(p.AdminRoleMiddleware), p.UserHandler.FindByAdmin)
+				users.GET("/:id", gin.HandlerFunc(p.AdminRoleMiddleware), p.UserHandler.Find)
 				users.POST("/batch", gin.HandlerFunc(p.AdminRoleMiddleware), p.UserHandler.Store)
-				users.PUT("/batch/role", gin.HandlerFunc(p.AdminRoleMiddleware), p.UserHandler.BatchUpdateRole)
+				users.PUT("/batch", gin.HandlerFunc(p.AdminRoleMiddleware), p.UserHandler.Update)
+				users.PUT("/batch/role", gin.HandlerFunc(p.AdminRoleMiddleware), p.UserHandler.UpdateRole)
+				users.DELETE("/batch", gin.HandlerFunc(p.AdminRoleMiddleware), p.UserHandler.Delete)
 			}
 			creds := secure.Group("/credentials")
 			{

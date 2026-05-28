@@ -17,12 +17,32 @@ func (m *MockUserPolicy) Store(ctx context.Context, users ...domain.User) error 
 	return args.Error(0)
 }
 
-func (m *MockUserPolicy) UpdateRole(ctx context.Context, updates ...domain.UserRoleUpdate) error {
+func (m *MockUserPolicy) UpdatePreFetch(ctx context.Context, users ...domain.User) error {
+	args := m.Called(ctx, users)
+	return args.Error(0)
+}
+
+func (m *MockUserPolicy) UpdatePostFetch(ctx context.Context, targets []domain.User) error {
+	args := m.Called(ctx, targets)
+	return args.Error(0)
+}
+
+func (m *MockUserPolicy) UpdateRolePreFetch(ctx context.Context, updates ...domain.UserRoleUpdate) error {
 	args := m.Called(ctx, updates)
 	return args.Error(0)
 }
 
-func (m *MockUserPolicy) Delete(ctx context.Context, ids ...string) error {
+func (m *MockUserPolicy) UpdateRolePostFetch(ctx context.Context, targets []domain.User, updates ...domain.UserRoleUpdate) error {
+	args := m.Called(ctx, targets, updates)
+	return args.Error(0)
+}
+
+func (m *MockUserPolicy) DeletePreFetch(ctx context.Context, ids ...string) error {
 	args := m.Called(ctx, ids)
+	return args.Error(0)
+}
+
+func (m *MockUserPolicy) DeletePostFetch(ctx context.Context, targets []domain.User) error {
+	args := m.Called(ctx, targets)
 	return args.Error(0)
 }

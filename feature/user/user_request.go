@@ -20,9 +20,11 @@ type UserStoreInput struct {
 
 func (n UserStoreInput) Validate() error {
 	return validation.ValidateStruct(&n,
-		validation.Field(&n.Name, validation.Required),
-		validation.Field(&n.Email, validation.Required, is.Email),
+		validation.Field(&n.Name, validation.Required, validation.Length(1, 256)),
+		validation.Field(&n.Email, validation.Required, is.Email, validation.Length(1, 256)),
 		validation.Field(&n.Role, validation.Required, validation.In(domain.RoleAdmin, domain.RoleIssuer, domain.RoleHolder)),
+		validation.Field(&n.Number, validation.Length(0, 256)),
+		validation.Field(&n.PhoneNumber, validation.Length(0, 18), is.E164),
 		validation.Field(&n.BirthDate, validation.Date("2006-01-02")),
 	)
 }
@@ -69,49 +71,129 @@ func (r UserStoreRequest) ToDomain() []domain.User {
 	return users
 }
 
-type UserUpdateProfileRequest struct {
+type UserUpdateSelfProfileRequest struct {
 	Name        *string        `json:"name"`
 	Number      *string        `json:"number"`
 	PhoneNumber *string        `json:"phone_number"`
+	BirthDate   *string        `json:"birth_date"`
 	Meta        map[string]any `json:"meta"`
 }
 
-func (r UserUpdateProfileRequest) Validate() error { return nil }
-
-type UserUpdateEmailRequest struct {
-	Email string `json:"email"`
-}
-
-func (r UserUpdateEmailRequest) Validate() error {
+func (r UserUpdateSelfProfileRequest) Validate() error {
 	return validation.ValidateStruct(&r,
-		validation.Field(&r.Email, validation.Required, is.Email),
+		validation.Field(&r.Name, validation.Length(0, 256)),
+		validation.Field(&r.Number, validation.Length(0, 256)),
+		validation.Field(&r.PhoneNumber, validation.Length(0, 18), is.E164),
+		validation.Field(&r.BirthDate, validation.Date("2006-01-02")),
 	)
 }
 
-type UserRoleUpdateRequest struct {
+func (r UserUpdateSelfProfileRequest) ParsedBirthDate() *time.Time {
+	if r.BirthDate == nil || *r.BirthDate == "" {
+		return nil
+	}
+	if t, err := time.Parse("2006-01-02", *r.BirthDate); err == nil {
+		return &t
+	}
+	return nil
+}
+
+type UserUpdateSelfEmailRequest struct {
+	Email   string `json:"email"`
+	IdToken string `json:"id_token"`
+}
+
+func (r UserUpdateSelfEmailRequest) Validate() error {
+	return validation.ValidateStruct(&r,
+		validation.Field(&r.Email, validation.Required, is.Email, validation.Length(1, 256)),
+		validation.Field(&r.IdToken, validation.Required),
+	)
+}
+
+type UserRoleUpdateInput struct {
 	UserID string      `json:"user_id"`
 	Role   domain.Role `json:"role"`
 }
 
-func (r UserRoleUpdateRequest) Validate() error {
+func (r UserRoleUpdateInput) Validate() error {
 	return validation.ValidateStruct(&r,
 		validation.Field(&r.UserID, validation.Required),
 		validation.Field(&r.Role, validation.Required, validation.In(domain.RoleSuperAdmin, domain.RoleAdmin, domain.RoleIssuer, domain.RoleHolder)),
 	)
 }
 
-type UserBatchUpdateRoleRequest struct {
-	UserRoles []UserRoleUpdateRequest `json:"user_roles"`
+type UserUpdateRoleRequest struct {
+	UserRoles []UserRoleUpdateInput `json:"user_roles"`
 }
 
-func (r UserBatchUpdateRoleRequest) Validate() error {
+func (r UserUpdateRoleRequest) Validate() error {
 	return validation.ValidateStruct(&r, validation.Field(&r.UserRoles, validation.Required))
 }
 
-type UserBatchDeleteRequest struct {
-	UserIDs []string `json:"user_ids"`
+type UserDeleteRequest struct {
+	Ids []string `json:"ids"`
 }
 
-func (r UserBatchDeleteRequest) Validate() error {
-	return validation.ValidateStruct(&r, validation.Field(&r.UserIDs, validation.Required))
+func (r UserDeleteRequest) Validate() error {
+	return validation.ValidateStruct(&r, validation.Field(&r.Ids, validation.Required))
+}
+
+type UserUpdateInput struct {
+	Id          string         `json:"id"`
+	Name        *string        `json:"name"`
+	Number      *string        `json:"number"`
+	PhoneNumber *string        `json:"phone_number"`
+	BirthDate   *string        `json:"birth_date"`
+	Meta        map[string]any `json:"meta"`
+}
+
+func (n UserUpdateInput) Validate() error {
+	return validation.ValidateStruct(&n,
+		validation.Field(&n.Id, validation.Required),
+		validation.Field(&n.Name, validation.Length(0, 256)),
+		validation.Field(&n.Number, validation.Length(0, 256)),
+		validation.Field(&n.PhoneNumber, validation.Length(0, 18), is.E164),
+		validation.Field(&n.BirthDate, validation.Date("2006-01-02")),
+	)
+}
+
+func (n UserUpdateInput) ToDomain() domain.User {
+	var birthDate *time.Time
+	if n.BirthDate != nil && *n.BirthDate != "" {
+		if t, err := time.Parse("2006-01-02", *n.BirthDate); err == nil {
+			birthDate = &t
+		}
+	}
+	return domain.User{
+		Id:          n.Id,
+		Name:        n.Name,
+		Number:      n.Number,
+		PhoneNumber: n.PhoneNumber,
+		BirthDate:   birthDate,
+		Meta:        n.Meta,
+	}
+}
+
+type UserUpdateRequest struct {
+	Users []UserUpdateInput `json:"users"`
+}
+
+func (r UserUpdateRequest) Validate() error {
+	return validation.ValidateStruct(&r,
+		validation.Field(&r.Users, validation.Required, validation.Each(validation.By(func(value any) error {
+			u := value.(UserUpdateInput)
+			return u.Validate()
+		}))),
+	)
+}
+
+func (r UserUpdateRequest) ToDomain() []domain.User {
+	if r.Users == nil {
+		return []domain.User{}
+	}
+	users := make([]domain.User, len(r.Users))
+	for i, u := range r.Users {
+		users[i] = u.ToDomain()
+	}
+	return users
 }
