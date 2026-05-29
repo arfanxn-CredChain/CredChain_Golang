@@ -28,41 +28,41 @@ const (
 )
 
 // NewLoginRateLimitMiddleware creates an IP-based rate limiter for the login endpoint.
-// 10 requests per minute per IP, burst of 5.
+// 300 requests per minute per IP, burst of 50.
 func NewLoginRateLimitMiddleware() LoginRateLimitMiddleware {
 	return LoginRateLimitMiddleware(newRateLimitMiddleware(
-		rate.Every(time.Minute/10),
-		5,
+		rate.Every(time.Minute/300),
+		50,
 		keyIP,
 	))
 }
 
 // NewRefreshRateLimitMiddleware creates an IP-based rate limiter for the refresh endpoint.
-// 5 requests per minute per IP, burst of 3.
+// 200 requests per minute per IP, burst of 30.
 func NewRefreshRateLimitMiddleware() RefreshRateLimitMiddleware {
 	return RefreshRateLimitMiddleware(newRateLimitMiddleware(
-		rate.Every(time.Minute/5),
-		3,
+		rate.Every(time.Minute/200),
+		30,
 		keyIP,
 	))
 }
 
 // NewLogoutRateLimitMiddleware creates a user-based rate limiter for the logout endpoint.
-// 3 requests per minute per user ID, burst of 1.
+// 100 requests per minute per user ID, burst of 10.
 func NewLogoutRateLimitMiddleware() LogoutRateLimitMiddleware {
 	return LogoutRateLimitMiddleware(newRateLimitMiddleware(
-		rate.Every(time.Minute/3),
-		1,
+		rate.Every(time.Minute/100),
+		10,
 		keyUserIDOrIP,
 	))
 }
 
 // NewApiRateLimitMiddleware creates a general API rate limiter applied globally.
-// 60 requests per minute per user ID (if authenticated) or IP (fallback), burst of 10.
+// 1200 requests per minute per user ID (if authenticated) or IP (fallback), burst of 100.
 func NewApiRateLimitMiddleware() ApiRateLimitMiddleware {
 	return ApiRateLimitMiddleware(newRateLimitMiddleware(
-		rate.Every(time.Minute/60),
-		10,
+		rate.Every(time.Minute/1200),
+		100,
 		keyUserIDOrIP,
 	))
 }
