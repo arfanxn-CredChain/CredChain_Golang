@@ -1,8 +1,10 @@
 package responder
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -51,6 +53,17 @@ func SendError(c *gin.Context, err error) {
 		return
 	}
 
+	if isMalformedBodyError(err) {
+		msgKey := getMessageKey(domain.CodeSystemValidation)
+		message := localize(c, localizer, msgKey, nil)
+		c.JSON(HttpCodeFromCode(domain.CodeSystemValidation), response.Response[any]{
+			Code:    domain.CodeSystemValidation,
+			Message: message,
+		})
+		c.Abort()
+		return
+	}
+
 	msgKey := getMessageKey(domain.CodeSystemInternal)
 	message := localize(c, localizer, msgKey, nil)
 	c.JSON(http.StatusInternalServerError, response.Response[any]{
@@ -58,6 +71,25 @@ func SendError(c *gin.Context, err error) {
 		Message: message,
 	})
 	c.Abort()
+}
+
+// isMalformedBodyError reports whether err indicates a malformed/empty/wrong-type
+// request body that should produce 400 Bad Request rather than 500.
+// Covers: io.EOF (empty body), io.ErrUnexpectedEOF (truncated body),
+// *json.SyntaxError (non-JSON content), *json.UnmarshalTypeError (wrong field type).
+func isMalformedBodyError(err error) bool {
+	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+		return true
+	}
+	var syntaxErr *json.SyntaxError
+	if errors.As(err, &syntaxErr) {
+		return true
+	}
+	var typeErr *json.UnmarshalTypeError
+	if errors.As(err, &typeErr) {
+		return true
+	}
+	return false
 }
 
 // SendValidationError handles ozzo-validation.Errors specifically.
