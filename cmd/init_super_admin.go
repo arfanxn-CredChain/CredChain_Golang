@@ -114,10 +114,7 @@ func initSuperAdminParseWallet(privKeyHex string) (string, error) {
 //   - string: Encrypted private key for database storage
 //   - error: If encryption fails
 func initSuperAdminEncryptKey(privKey, encryptionKey string) (string, error) {
-	encryptionKeyBytes := make([]byte, 32)
-	copy(encryptionKeyBytes, []byte(encryptionKey))
-
-	encrypted, err := cryptoInfra.Encrypt([]byte(privKey), encryptionKeyBytes)
+	encrypted, err := cryptoInfra.Encrypt([]byte(privKey), []byte(encryptionKey))
 	if err != nil {
 		return "", fmt.Errorf("failed to encrypt private key: %w", err)
 	}

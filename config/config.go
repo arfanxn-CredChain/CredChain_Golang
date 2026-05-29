@@ -151,6 +151,10 @@ func NewConfig(envPath string) (*Config, error) {
 		return nil, fmt.Errorf("wallet_encryption_key is required")
 	}
 
+	if keyLen := len([]byte(*cfg.WalletEncryptionKey)); keyLen != 32 {
+		return nil, fmt.Errorf("wallet_encryption_key must be exactly 32 bytes (AES-256), got %d", keyLen)
+	}
+
 	return cfg, nil
 }
 

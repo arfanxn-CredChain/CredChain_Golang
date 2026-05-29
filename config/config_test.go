@@ -127,9 +127,25 @@ func TestNewConfig_MissingWalletKey_ReturnsError(t *testing.T) {
 
 func TestNewConfig_BothSet_ReturnsConfig(t *testing.T) {
 	t.Setenv("JWT_SECRET", "my-secret")
-	t.Setenv("WALLET_ENCRYPTION_KEY", "my-wallet-key")
+	t.Setenv("WALLET_ENCRYPTION_KEY", "my-wallet-key-exactly-32-chars-x")
 	cfg, err := NewConfig(".env.nonexistent")
 	assert.NoError(t, err)
 	assert.Equal(t, "my-secret", *cfg.JWTSecret)
-	assert.Equal(t, "my-wallet-key", *cfg.WalletEncryptionKey)
+	assert.Equal(t, "my-wallet-key-exactly-32-chars-x", *cfg.WalletEncryptionKey)
+}
+
+func TestNewConfig_WalletKeyTooShort_ReturnsError(t *testing.T) {
+	t.Setenv("JWT_SECRET", "my-secret")
+	t.Setenv("WALLET_ENCRYPTION_KEY", "too-short")
+	_, err := NewConfig(".env.nonexistent")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "32 bytes")
+}
+
+func TestNewConfig_WalletKeyTooLong_ReturnsError(t *testing.T) {
+	t.Setenv("JWT_SECRET", "my-secret")
+	t.Setenv("WALLET_ENCRYPTION_KEY", "this-is-a-64-char-hex-encoded-key-that-should-fail-validation-x")
+	_, err := NewConfig(".env.nonexistent")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "32 bytes")
 }
