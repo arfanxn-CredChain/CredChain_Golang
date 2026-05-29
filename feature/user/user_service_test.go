@@ -231,7 +231,7 @@ func TestUserService_Delete_SelfDeleteForbidden(t *testing.T) {
 	assert.Error(t, err)
 	var de *domain.Error
 	assert.ErrorAs(t, err, &de)
-	assert.Equal(t, domain.CodeAuthForbidden, de.Code)
+	assert.Equal(t, domain.CodeUserDeleteSelfTargetForbidden, de.Code)
 }
 
 func TestUserService_UpdateRole_BlockchainSyncFailure_RollsBack(t *testing.T) {

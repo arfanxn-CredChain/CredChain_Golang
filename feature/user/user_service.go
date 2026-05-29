@@ -3,6 +3,7 @@ package user
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"time"
 
 	"CredChain_Golang/config"
@@ -16,6 +17,7 @@ import (
 	ethCrypto "github.com/ethereum/go-ethereum/crypto"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 )
 
 type UserService interface {
@@ -163,7 +165,14 @@ func (s *userService) Paginate(ctx context.Context, query *domainQuery.Query) ([
 }
 
 func (s *userService) Find(ctx context.Context, id string) (*domain.User, error) {
-	return s.userRepo.Find(ctx, id)
+	user, err := s.userRepo.Find(ctx, id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, domain.NewError(domain.CodeUserFetchNotFound, domain.WithMetadata("user_id", id))
+		}
+		return nil, err
+	}
+	return user, nil
 }
 
 func (s *userService) FindByEmails(ctx context.Context, emails ...string) ([]domain.User, error) {
