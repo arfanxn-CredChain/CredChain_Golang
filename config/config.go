@@ -51,6 +51,11 @@ type Config struct {
 	LogLevel                     *string
 	LogOutput                    *string
 	I18nLocalesDir               *string
+	CookieDomain                 *string
+	CookieSecure                 *bool
+	CookieSameSite               *string
+	CookieAccessPath             *string
+	CookieRefreshPath            *string
 }
 
 func getIntEnv(key string, defaultVal *int) *int {
@@ -100,6 +105,10 @@ func NewConfig(envPath string) (*Config, error) {
 	defaultCORSHeaders := []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Requested-With"}
 	defaultCORSExposeHeaders := []string{"Content-Length"}
 	defaultGoogleRedirectURI := "http://localhost:3000/google/callback"
+	defaultCookieSecure := false
+	defaultCookieSameSite := "strict"
+	defaultCookieAccessPath := "/api"
+	defaultCookieRefreshPath := "/api/auth"
 
 	cfg := &Config{
 		GinPort:                      getEnv("GIN_PORT", ptr("8080")),
@@ -141,6 +150,11 @@ func NewConfig(envPath string) (*Config, error) {
 		LogLevel:                     getEnv("LOG_LEVEL", ptr("info")),
 		LogOutput:                    getEnv("LOG_OUTPUT", ptr("stdout")),
 		I18nLocalesDir:               getEnv("I18N_LOCALES_DIR", ptr("./locales")),
+		CookieDomain:                 getEnv("COOKIE_DOMAIN", ptr("")),
+		CookieSecure:                 getBoolEnv("COOKIE_SECURE", &defaultCookieSecure),
+		CookieSameSite:               getEnv("COOKIE_SAMESITE", &defaultCookieSameSite),
+		CookieAccessPath:             getEnv("COOKIE_ACCESS_PATH", &defaultCookieAccessPath),
+		CookieRefreshPath:            getEnv("COOKIE_REFRESH_PATH", &defaultCookieRefreshPath),
 	}
 
 	if cfg.JWTSecret == nil {
@@ -153,6 +167,16 @@ func NewConfig(envPath string) (*Config, error) {
 
 	if keyLen := len([]byte(*cfg.WalletEncryptionKey)); keyLen != 32 {
 		return nil, fmt.Errorf("wallet_encryption_key must be exactly 32 bytes (AES-256), got %d", keyLen)
+	}
+
+	if cfg.CookieSameSite != nil {
+		ss := strings.ToLower(*cfg.CookieSameSite)
+		if ss != "strict" && ss != "lax" && ss != "none" {
+			return nil, fmt.Errorf("cookie_samesite must be one of: strict, lax, none (got %q)", *cfg.CookieSameSite)
+		}
+		if ss == "none" && (cfg.CookieSecure == nil || !*cfg.CookieSecure) {
+			return nil, fmt.Errorf("cookie_samesite=none requires cookie_secure=true")
+		}
 	}
 
 	return cfg, nil

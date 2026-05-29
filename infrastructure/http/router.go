@@ -23,6 +23,16 @@ type RouterParams struct {
 }
 
 func NewGinRouter(p RouterParams) *gin.Engine {
+	// Browsers reject Access-Control-Allow-Origin: * when credentials are sent.
+	// Detect the misconfiguration early so cookie auth doesn't silently break.
+	if p.Config.GinCorsAllowCredentials != nil && *p.Config.GinCorsAllowCredentials {
+		for _, origin := range p.Config.GinCorsAllowOrigins {
+			if origin == "*" {
+				panic("GIN_CORS_ALLOW_ORIGINS cannot contain \"*\" when GIN_CORS_ALLOW_CREDENTIALS=true; specify explicit origins")
+			}
+		}
+	}
+
 	r := gin.Default()
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     p.Config.GinCorsAllowOrigins,

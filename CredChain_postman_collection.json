@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "1461e5b0-ec16-45a4-a6c7-59dc61135341",
     "name": "CredChain",
-    "description": "CredChain API collection. Health, Auth (Google OAuth), User (Self/Admin), Credential (stubs). Run 'make get-google-id-token' for ID_TOKEN.",
+    "description": "CredChain API collection. Health, Auth (Google OAuth), User (Self/Admin), Credential (stubs). Run 'make get-google-id-token' for ID_TOKEN. Auth uses httpOnly cookies (access_token Path=/api, refresh_token Path=/api/auth) set by the backend. Postman cookie jar handles cookies automatically. ACCESS_TOKEN/REFRESH_TOKEN vars are also captured from response body for backward-compat with Bearer header fallback.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "17284024",
     "_collection_link": "https://go.postman.co/collection/17284024-1461e5b0-ec16-45a4-a6c7-59dc61135341?source=collection_link"
@@ -352,7 +352,7 @@
                     "refresh"
                   ]
                 },
-                "description": "Rotate access and refresh tokens. Requires a valid refresh token from Google Login."
+                "description": "Rotate access and refresh tokens. Cookie preferred: backend reads refresh_token cookie automatically. Body fallback: send {\"refresh_token\": \"{{REFRESH_TOKEN}}\"} for CLI/Postman without cookie jar."
               },
               "response": [
                 {
@@ -605,7 +605,7 @@
                     "logout"
                   ]
                 },
-                "description": "Revoke all refresh tokens for the authenticated user. Requires a valid access token."
+                "description": "Revoke all refresh tokens for the authenticated user. Clears access_token and refresh_token httpOnly cookies. Requires a valid access token (cookie or Bearer header)."
               },
               "response": [
                 {
@@ -698,7 +698,7 @@
               ]
             }
           ],
-          "description": "Authentication endpoints for Google OAuth login, token refresh, and logout."
+          "description": "Authentication endpoints for Google OAuth login, token refresh, and logout. Backend sets httpOnly cookies (access_token Path=/api, refresh_token Path=/api/auth). Postman cookie jar sends cookies automatically. Tokens are also returned in response body for CLI/Postman Bearer header fallback."
         },
         {
           "name": "User",

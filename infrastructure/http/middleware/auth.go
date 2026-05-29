@@ -31,21 +31,32 @@ type AdminRoleMiddleware gin.HandlerFunc
 type IssuerRoleMiddleware gin.HandlerFunc
 type SuperAdminRoleMiddleware gin.HandlerFunc
 
-// NewAuthMiddleware validates JWT token and stores full user in context
+// NewAuthMiddleware validates JWT token and stores full user in context.
+// Reads token from access_token cookie first; falls back to Authorization: Bearer header.
 func NewAuthMiddleware(p AuthMiddlewareParams) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			c.Abort()
-			responder.SendError(c, domain.NewError(domain.CodeAuthUnauthorized))
-			return
+		var tokenString string
+
+		// Prefer cookie (frontend uses httpOnly cookies)
+		if cookie, err := c.Cookie("access_token"); err == nil && cookie != "" {
+			tokenString = cookie
 		}
 
-		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-		if tokenString == authHeader {
-			c.Abort()
-			responder.SendError(c, domain.NewError(domain.CodeAuthUnauthorized))
-			return
+		// Fall back to Authorization: Bearer (CLI tooling, Postman, init flows)
+		if tokenString == "" {
+			authHeader := c.GetHeader("Authorization")
+			if authHeader == "" {
+				c.Abort()
+				responder.SendError(c, domain.NewError(domain.CodeAuthUnauthorized))
+				return
+			}
+			trimmed := strings.TrimPrefix(authHeader, "Bearer ")
+			if trimmed == authHeader {
+				c.Abort()
+				responder.SendError(c, domain.NewError(domain.CodeAuthUnauthorized))
+				return
+			}
+			tokenString = trimmed
 		}
 
 		claims, err := security.ValiparseJWT(tokenString, []byte(*p.Config.JWTSecret))
