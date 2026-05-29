@@ -13,8 +13,11 @@ import (
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 )
+
+// waitMinedFn is overridable in tests; defaults to bind.WaitMined.
 
 // AuthorityService provides access to the CredentialAuthority blockchain contract.
 // It is the infrastructure layer's interface for role-based authorization operations.
@@ -81,7 +84,7 @@ type AuthorityService interface {
 	// UpdateUserRole performs a batch role update for multiple users in a single
 	// blockchain transaction. It handles the complete signature-based authentication flow:
 	//
-	//   1. Fetches the current nonce from CredentialRegistry for the signer
+	//   1. Fetches the current nonce from CredentialAuthority for the signer
 	//   2. Packs transaction data: signer || nonce || userRoles[]
 	//   3. Signs with the signer's encrypted private key
 	//   4. Executes BatchUpdateUserRoleWithSignature on CredentialAuthority
@@ -107,7 +110,7 @@ type AuthorityService interface {
 	UpdateUserRole(ctx context.Context, signer domain.Wallet, users ...domain.User) error
 
 	// FindNonce retrieves the deterministic nonce for the given wallet address from
-	// the CredentialRegistry contract.
+	// the CredentialAuthority contract.
 	//
 	// The nonce is used for replay protection in signature-based transactions.
 	// It increments with each successful transaction from the given address.
@@ -120,17 +123,24 @@ type AuthorityService interface {
 	//   - *big.Int: The current nonce value
 	//   - error: If the blockchain call fails
 	//
-	// Note: This method fetches from Registry.UserToNonce(), not Authority.
+	// Note: This method fetches from Authority.UserToNonce(), used for role-update
+	// signature verification. Registry has its own separate nonce mapping for
+	// credential issue/revoke flows.
 	FindNonce(ctx context.Context, addr string) (*big.Int, error)
 }
+
+// waitMinedFunc matches the signature of bind.WaitMined, allowing tests to
+// substitute a stub without touching package-level state.
+type waitMinedFunc func(ctx context.Context, b bind.DeployBackend, tx *types.Transaction) (*types.Receipt, error)
 
 // authorityService implements AuthorityService using the Client facade.
 //
 // This is the internal implementation. Use NewAuthorityService() to create instances.
 // The Client facade provides RPC connections, contract bindings, and relayer credentials.
 type authorityService struct {
-	client *Client
-	cfg    *config.Config
+	client    *Client
+	cfg       *config.Config
+	waitMined waitMinedFunc
 }
 
 // NewAuthorityService creates a new AuthorityService instance using the provided
@@ -149,8 +159,9 @@ type authorityService struct {
 //   - AuthorityService: A new service instance ready for use
 func NewAuthorityService(client *Client, cfg *config.Config) AuthorityService {
 	return &authorityService{
-		client: client,
-		cfg:    cfg,
+		client:    client,
+		cfg:       cfg,
+		waitMined: bind.WaitMined,
 	}
 }
 
@@ -172,11 +183,13 @@ func (s *authorityService) HasRoleOrAbove(ctx context.Context, addr string, minR
 	return role.Rank() >= minRole.Rank()
 }
 
-// FindNonce fetches the deterministic nonce from the Registry contract.
+// FindNonce fetches the deterministic nonce from the Authority contract.
+// Authority maintains its own nonce mapping for role-update signature verification.
+// Registry has a separate nonce used for credential issue/revoke flows.
 func (s *authorityService) FindNonce(ctx context.Context, addr string) (*big.Int, error) {
-	nonce, err := s.client.Registry.UserToNonce(&bind.CallOpts{Context: ctx}, mustHexToAddress(addr))
+	nonce, err := s.client.Authority.UserToNonce(&bind.CallOpts{Context: ctx}, mustHexToAddress(addr))
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch nonce from registry: %w", err)
+		return nil, fmt.Errorf("failed to fetch nonce from authority: %w", err)
 	}
 	return nonce, nil
 }
@@ -200,7 +213,7 @@ func (s *authorityService) UpdateUserRole(ctx context.Context, signer domain.Wal
 
 	signerAddr := mustHexToAddress(signer.Address)
 
-	// Fetch nonce from Registry for replay protection
+	// Fetch nonce from Authority for replay protection
 	nonce, err := s.FindNonce(ctx, signer.Address)
 	if err != nil {
 		return fmt.Errorf("failed to fetch nonce: %w", err)
@@ -250,6 +263,15 @@ func (s *authorityService) UpdateUserRole(ctx context.Context, signer domain.Wal
 		return fmt.Errorf("failed to execute batch update: %w", err)
 	}
 
-	_ = tx // Transaction broadcast successful
+	// Wait for transaction to be mined and verify success.
+	// Required to ensure on-chain nonce has incremented before subsequent calls.
+	receipt, err := s.waitMined(ctx, s.client.EthClient, tx)
+	if err != nil {
+		return fmt.Errorf("failed to wait for transaction to be mined: %w", err)
+	}
+	if receipt.Status == 0 {
+		return fmt.Errorf("transaction reverted on-chain: tx hash %s", tx.Hash().Hex())
+	}
+
 	return nil
 }

@@ -27,6 +27,14 @@ func (m *localAuthorityBinding) UserToRole(opts *bind.CallOpts, addr common.Addr
 	return uint8(args.Int(0)), args.Error(1)
 }
 
+func (m *localAuthorityBinding) UserToNonce(opts *bind.CallOpts, addr common.Address) (*big.Int, error) {
+	args := m.Called(opts, addr)
+	if v := args.Get(0); v != nil {
+		return v.(*big.Int), args.Error(1)
+	}
+	return nil, args.Error(1)
+}
+
 func (m *localAuthorityBinding) BatchUpdateUserRoleWithSignature(opts *bind.TransactOpts, params contracts.CredentialAuthorityBatchUpdateUserRoleWithSignatureParams) (*types.Transaction, error) {
 	args := m.Called(opts, params)
 	if v := args.Get(0); v != nil {
@@ -112,7 +120,7 @@ func TestAuthorityService_HasRoleOrAbove_FalseOnError(t *testing.T) {
 func TestAuthorityService_FindNonce(t *testing.T) {
 	authMock := &localAuthorityBinding{}
 	regMock := &localRegistryBinding{}
-	regMock.On("UserToNonce", mock.Anything, mock.Anything).Return(big.NewInt(42), nil)
+	authMock.On("UserToNonce", mock.Anything, mock.Anything).Return(big.NewInt(42), nil)
 
 	svc := NewAuthorityService(mkClient(authMock, regMock), mkConfig())
 	got, err := svc.FindNonce(context.Background(), "0x0000000000000000000000000000000000000000")
@@ -133,7 +141,7 @@ func TestAuthorityService_UpdateUserRole_EmptyIsNoOp(t *testing.T) {
 func TestAuthorityService_UpdateUserRole_NonceFetchFails(t *testing.T) {
 	authMock := &localAuthorityBinding{}
 	regMock := &localRegistryBinding{}
-	regMock.On("UserToNonce", mock.Anything, mock.Anything).Return(nil, errors.New("nonce err"))
+	authMock.On("UserToNonce", mock.Anything, mock.Anything).Return(nil, errors.New("nonce err"))
 
 	svc := NewAuthorityService(mkClient(authMock, regMock), mkConfig())
 	err := svc.UpdateUserRole(context.Background(), domain.Wallet{
@@ -146,7 +154,7 @@ func TestAuthorityService_UpdateUserRole_NonceFetchFails(t *testing.T) {
 func TestAuthorityService_UpdateUserRole_DecryptionFails(t *testing.T) {
 	authMock := &localAuthorityBinding{}
 	regMock := &localRegistryBinding{}
-	regMock.On("UserToNonce", mock.Anything, mock.Anything).Return(big.NewInt(0), nil)
+	authMock.On("UserToNonce", mock.Anything, mock.Anything).Return(big.NewInt(0), nil)
 
 	svc := NewAuthorityService(mkClient(authMock, regMock), mkConfig())
 	err := svc.UpdateUserRole(context.Background(), domain.Wallet{
@@ -169,15 +177,20 @@ func TestAuthorityService_UpdateUserRole_Success(t *testing.T) {
 	encrypted, err := cryptoInfra.Encrypt([]byte(privKeyHex), []byte(*cfg.WalletEncryptionKey))
 	assert.NoError(t, err)
 
-	regMock.On("UserToNonce", mock.Anything, mock.Anything).Return(big.NewInt(7), nil)
+	authMock.On("UserToNonce", mock.Anything, mock.Anything).Return(big.NewInt(7), nil)
 	authMock.On("BatchUpdateUserRoleWithSignature",
 		mock.Anything,
 		mock.MatchedBy(func(p contracts.CredentialAuthorityBatchUpdateUserRoleWithSignatureParams) bool {
 			return p.Nonce.Cmp(big.NewInt(7)) == 0 && len(p.UserRoles) == 1 && len(p.Signature) == 65
 		})).
-		Return(&types.Transaction{}, nil)
+		Return(types.NewTx(&types.LegacyTx{}), nil)
 
-	svc := NewAuthorityService(mkClient(authMock, regMock), cfg)
+	svc := NewAuthorityService(mkClient(authMock, regMock), cfg).(*authorityService)
+	// Stub waitMined on the instance to avoid real RPC dependency
+	svc.waitMined = func(ctx context.Context, b bind.DeployBackend, tx *types.Transaction) (*types.Receipt, error) {
+		return &types.Receipt{Status: 1}, nil
+	}
+
 	err = svc.UpdateUserRole(context.Background(), domain.Wallet{
 		Address:             signerAddr,
 		EncryptedPrivateKey: encrypted,

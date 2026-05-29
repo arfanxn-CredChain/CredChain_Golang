@@ -15,6 +15,7 @@ import (
 // The concrete *contracts.Authority satisfies this interface structurally.
 type AuthorityBinding interface {
 	UserToRole(opts *bind.CallOpts, addr common.Address) (uint8, error)
+	UserToNonce(opts *bind.CallOpts, addr common.Address) (*big.Int, error)
 	BatchUpdateUserRoleWithSignature(
 		opts *bind.TransactOpts,
 		params contracts.CredentialAuthorityBatchUpdateUserRoleWithSignatureParams,

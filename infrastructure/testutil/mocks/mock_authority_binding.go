@@ -1,6 +1,8 @@
 package mocks
 
 import (
+	"math/big"
+
 	"CredChain_Golang/infrastructure/chain/contracts"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -16,6 +18,14 @@ type MockAuthorityBinding struct {
 func (m *MockAuthorityBinding) UserToRole(opts *bind.CallOpts, addr common.Address) (uint8, error) {
 	args := m.Called(opts, addr)
 	return uint8(args.Int(0)), args.Error(1)
+}
+
+func (m *MockAuthorityBinding) UserToNonce(opts *bind.CallOpts, addr common.Address) (*big.Int, error) {
+	args := m.Called(opts, addr)
+	if v := args.Get(0); v != nil {
+		return v.(*big.Int), args.Error(1)
+	}
+	return nil, args.Error(1)
 }
 
 func (m *MockAuthorityBinding) BatchUpdateUserRoleWithSignature(opts *bind.TransactOpts, params contracts.CredentialAuthorityBatchUpdateUserRoleWithSignatureParams) (*types.Transaction, error) {
