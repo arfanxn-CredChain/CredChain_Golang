@@ -14,6 +14,7 @@
   "validation_min": "{{.field}} harus minimal {{.min}}",
   "validation_max": "{{.field}} harus maksimal {{.max}}",
   "validation_is_email": "{{.field}} harus berupa alamat email yang valid",
+  "validation_is_e164_number": "{{.field}} harus berupa nomor telepon E.164 yang valid (contoh: +628123456789)",
   "validation_in": "{{.field}} harus salah satu dari: {{.values}}",
   "validation_string_required": "{{.field}} harus berupa string",
   "validation_syntax_invalid": "{{.field}} memiliki sintaks yang tidak valid",

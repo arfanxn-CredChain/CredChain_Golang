@@ -14,6 +14,7 @@
   "validation_min": "{{.field}} must be at least {{.min}}",
   "validation_max": "{{.field}} must be no more than {{.max}}",
   "validation_is_email": "{{.field}} must be a valid email address",
+  "validation_is_e164_number": "{{.field}} must be a valid E.164 phone number (e.g. +628123456789)",
   "validation_in": "{{.field}} must be one of: {{.values}}",
   "validation_string_required": "{{.field}} must be a string",
   "validation_syntax_invalid": "{{.field}} has invalid syntax",

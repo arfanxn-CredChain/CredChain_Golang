@@ -276,6 +276,12 @@ func TestUserStoreInput_PhoneNotE164(t *testing.T) {
 	assert.Error(t, in.Validate())
 }
 
+func TestUserStoreInput_PhoneBareCountryCode(t *testing.T) {
+	bad := "+62"
+	in := UserStoreInput{Name: "n", Email: "ok@x.com", Role: domain.RoleHolder, PhoneNumber: &bad}
+	assert.Error(t, in.Validate(), "+62 (bare country code) must be rejected by strict E.164")
+}
+
 func TestUserStoreInput_PhoneValidE164(t *testing.T) {
 	ok := "+6281234567890"
 	in := UserStoreInput{Name: "n", Email: "ok@x.com", Role: domain.RoleHolder, PhoneNumber: &ok}

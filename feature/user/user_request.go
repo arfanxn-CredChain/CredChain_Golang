@@ -1,12 +1,19 @@
 package user
 
 import (
+	"regexp"
 	"time"
 
 	"CredChain_Golang/domain"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/go-ozzo/ozzo-validation/v4/is"
 )
+
+// strictE164Rule validates E.164 phone numbers strictly:
+// + sign, non-zero leading digit, total 7-15 digits.
+// Rejects bare country codes like "+62" that the looser is.E164 accepts.
+var strictE164Rule = validation.Match(regexp.MustCompile(`^\+[1-9]\d{6,14}$`)).
+	ErrorObject(validation.NewError("validation_is_e164_number", "must be a valid E.164 phone number"))
 
 type UserStoreInput struct {
 	Name        string         `json:"name"`
@@ -24,7 +31,7 @@ func (n UserStoreInput) Validate() error {
 		validation.Field(&n.Email, validation.Required, is.Email, validation.Length(1, 256)),
 		validation.Field(&n.Role, validation.Required, validation.In(domain.RoleAdmin, domain.RoleIssuer, domain.RoleHolder)),
 		validation.Field(&n.Number, validation.Length(0, 256)),
-		validation.Field(&n.PhoneNumber, validation.Length(0, 18), is.E164),
+		validation.Field(&n.PhoneNumber, validation.Length(0, 18), strictE164Rule),
 		validation.Field(&n.BirthDate, validation.Date("2006-01-02")),
 	)
 }
@@ -83,7 +90,7 @@ func (r UserUpdateSelfProfileRequest) Validate() error {
 	return validation.ValidateStruct(&r,
 		validation.Field(&r.Name, validation.Length(0, 256)),
 		validation.Field(&r.Number, validation.Length(0, 256)),
-		validation.Field(&r.PhoneNumber, validation.Length(0, 18), is.E164),
+		validation.Field(&r.PhoneNumber, validation.Length(0, 18), strictE164Rule),
 		validation.Field(&r.BirthDate, validation.Date("2006-01-02")),
 	)
 }
@@ -154,7 +161,7 @@ func (n UserUpdateInput) Validate() error {
 		validation.Field(&n.Id, validation.Required),
 		validation.Field(&n.Name, validation.Length(0, 256)),
 		validation.Field(&n.Number, validation.Length(0, 256)),
-		validation.Field(&n.PhoneNumber, validation.Length(0, 18), is.E164),
+		validation.Field(&n.PhoneNumber, validation.Length(0, 18), strictE164Rule),
 		validation.Field(&n.BirthDate, validation.Date("2006-01-02")),
 		validation.Field(&n.Email, is.Email, validation.Length(1, 256)),
 		validation.Field(&n.Role, validation.In(domain.RoleAdmin, domain.RoleIssuer, domain.RoleHolder)),
