@@ -3,6 +3,7 @@ package user
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"CredChain_Golang/domain"
 	domainQuery "CredChain_Golang/domain/query"
 	"CredChain_Golang/infrastructure/database/gorm/model"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/oklog/ulid/v2"
 	"gorm.io/gorm"
 )
@@ -272,7 +274,7 @@ func (r *gormUserRepository) UpdateRole(ctx context.Context, users ...domain.Use
 		caseStmt += "WHEN ? THEN ? "
 		args = append(args, user.Id, user.Role)
 	}
-	caseStmt += "END"
+	caseStmt += "ELSE role END"
 
 	ids := make([]interface{}, len(users))
 	for i, user := range users {
@@ -317,6 +319,21 @@ func (r *gormUserRepository) Store(ctx context.Context, users ...domain.User) ([
 	}
 
 	if err := r.db.WithContext(ctx).Create(&modelUsers).Error; err != nil {
+		// Translate Postgres unique violation (23505) to domain code.
+		// Catches concurrent batch creates with same email that raced past
+		// the pre-check in userService.storeValidateEmails.
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			emails := make([]string, len(users))
+			for i, u := range users {
+				emails[i] = u.Email
+			}
+			return nil, domain.NewError(
+				domain.CodeUserStoreEmailDuplicateInDatabase,
+				domain.WithMetadata("emails", emails),
+				domain.WithError(err),
+			)
+		}
 		return nil, err
 	}
 
