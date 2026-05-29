@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "1461e5b0-ec16-45a4-a6c7-59dc61135341",
     "name": "CredChain",
-    "description": "CredChain API collection for testing authentication endpoints.",
+    "description": "CredChain API collection. Health, Auth (Google OAuth), User (Self/Admin), Credential (stubs). Run 'make get-google-id-token' for ID_TOKEN.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "17284024",
     "_collection_link": "https://go.postman.co/collection/17284024-1461e5b0-ec16-45a4-a6c7-59dc61135341?source=collection_link"
@@ -11,6 +11,62 @@
     {
       "name": "API",
       "item": [
+        {
+          "name": "Health",
+          "item": [
+            {
+              "name": "Health Check",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const r = pm.response.json();",
+                      "pm.test('Health OK', () => { pm.response.to.have.status(200); pm.expect(r.code).to.eql(100000); });"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/health",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "api",
+                    "health"
+                  ]
+                },
+                "description": "Liveness probe. No auth required."
+              },
+              "response": [
+                {
+                  "name": "100000 OK",
+                  "originalRequest": {},
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n    \"code\": 100000,\n    \"message\": \"Berhasil.\",\n    \"data\": {\n        \"status\": \"ok\"\n    }\n}"
+                }
+              ]
+            }
+          ],
+          "description": "Liveness/readiness endpoint."
+        },
         {
           "name": "Auth",
           "item": [
@@ -73,7 +129,160 @@
                 },
                 "description": "Login with Google ID token. Run 'make get-google-id-token' first to obtain the ID token, then paste it into the ID_TOKEN collection variable."
               },
-              "response": []
+              "response": [
+                {
+                  "name": "200200 Login Berhasil",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"id_token\": \"{{ID_TOKEN}}\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{BASE_URL}}/api/auth/google",
+                      "host": [
+                        "{{BASE_URL}}"
+                      ],
+                      "path": [
+                        "api",
+                        "auth",
+                        "google"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n    \"code\": 200200,\n    \"message\": \"Login berhasil.\",\n    \"data\": {\n        \"id\": \"01KRJSS4XF1KJHP1326YMW81CN\",\n        \"name\": \"Arfan\",\n        \"number\": \"2173\",\n        \"phone_number\": \"6288899991111\",\n        \"email\": \"arfan2173@gmail.com\",\n        \"birth_date\": \"2003-07-21T00:00:00Z\",\n        \"meta\": null,\n        \"role\": \"super_admin\",\n        \"wallet_address\": \"0x70997970C51812dc3A010C7d01b50e0d17dc79C8\",\n        \"created_at\": \"2026-05-14T15:31:18.960366+07:00\",\n        \"updated_at\": \"2026-05-14T15:31:18.960366+07:00\",\n        \"deleted_at\": null,\n        \"access_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n        \"refresh_token\": \"79b785eec242173de28cded3e69d888e3fcd8fe7dc95edbaf2ef0330a9a8210f\",\n        \"access_token_expires_in\": 900,\n        \"refresh_token_expires_in\": 604800,\n        \"token_type\": \"Bearer\"\n    }\n}"
+                },
+                {
+                  "name": "200241 Invalid Google Token",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"id_token\": \"{{ID_TOKEN}}\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{BASE_URL}}/api/auth/google",
+                      "host": [
+                        "{{BASE_URL}}"
+                      ],
+                      "path": [
+                        "api",
+                        "auth",
+                        "google"
+                      ]
+                    }
+                  },
+                  "status": "Unauthorized",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n    \"code\": 200241,\n    \"message\": \"id_token Google tidak valid.\"\n}"
+                },
+                {
+                  "name": "200242 User Not Found",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"id_token\": \"{{ID_TOKEN}}\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{BASE_URL}}/api/auth/google",
+                      "host": [
+                        "{{BASE_URL}}"
+                      ],
+                      "path": [
+                        "api",
+                        "auth",
+                        "google"
+                      ]
+                    }
+                  },
+                  "status": "Forbidden",
+                  "code": 403,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n    \"code\": 200242,\n    \"message\": \"Email belum diizinkan. Silakan hubungi Administrator untuk membuat akun Anda terlebih dahulu.\"\n}"
+                },
+                {
+                  "name": "100040 Validation",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"id_token\": \"{{ID_TOKEN}}\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{BASE_URL}}/api/auth/google",
+                      "host": [
+                        "{{BASE_URL}}"
+                      ],
+                      "path": [
+                        "api",
+                        "auth",
+                        "google"
+                      ]
+                    }
+                  },
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n    \"code\": 100040,\n    \"message\": \"Data yang diberikan tidak valid.\",\n    \"errors\": {\n        \"id_token\": [\n            \"ID Token tidak boleh kosong\"\n        ]\n    }\n}"
+                }
+              ]
             },
             {
               "name": "Refresh Token",
@@ -145,7 +354,198 @@
                 },
                 "description": "Rotate access and refresh tokens. Requires a valid refresh token from Google Login."
               },
-              "response": []
+              "response": [
+                {
+                  "name": "200300 Login Berhasil",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"refresh_token\": \"{{REFRESH_TOKEN}}\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{BASE_URL}}/api/auth/refresh",
+                      "host": [
+                        "{{BASE_URL}}"
+                      ],
+                      "path": [
+                        "api",
+                        "auth",
+                        "refresh"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n    \"code\": 200300,\n    \"message\": \"Login berhasil.\",\n    \"data\": {\n        \"id\": \"01KRJSS4XF1KJHP1326YMW81CN\",\n        \"name\": \"Arfan\",\n        \"number\": \"2173\",\n        \"phone_number\": \"6288899991111\",\n        \"email\": \"arfan2173@gmail.com\",\n        \"birth_date\": \"2003-07-21T00:00:00Z\",\n        \"meta\": null,\n        \"role\": \"super_admin\",\n        \"wallet_address\": \"0x70997970C51812dc3A010C7d01b50e0d17dc79C8\",\n        \"created_at\": \"2026-05-14T15:31:18.960366+07:00\",\n        \"updated_at\": \"2026-05-14T15:31:18.960366+07:00\",\n        \"deleted_at\": null,\n        \"access_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.rotated...\",\n        \"refresh_token\": \"fb470c656edf8b09b66d4529afee8ed53456e0aac75d86400e163911d2b329c5\",\n        \"access_token_expires_in\": 900,\n        \"refresh_token_expires_in\": 604800,\n        \"token_type\": \"Bearer\"\n    }\n}"
+                },
+                {
+                  "name": "200340 Invalid Token",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"refresh_token\": \"{{REFRESH_TOKEN}}\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{BASE_URL}}/api/auth/refresh",
+                      "host": [
+                        "{{BASE_URL}}"
+                      ],
+                      "path": [
+                        "api",
+                        "auth",
+                        "refresh"
+                      ]
+                    }
+                  },
+                  "status": "Unauthorized",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n    \"code\": 200340,\n    \"message\": \"Akses ditolak: token tidak valid.\"\n}"
+                },
+                {
+                  "name": "200341 Token Expired",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"refresh_token\": \"{{REFRESH_TOKEN}}\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{BASE_URL}}/api/auth/refresh",
+                      "host": [
+                        "{{BASE_URL}}"
+                      ],
+                      "path": [
+                        "api",
+                        "auth",
+                        "refresh"
+                      ]
+                    }
+                  },
+                  "status": "Unauthorized",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n    \"code\": 200341,\n    \"message\": \"Sesi berakhir. Silakan login kembali.\"\n}"
+                },
+                {
+                  "name": "200342 Token Revoked",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"refresh_token\": \"{{REFRESH_TOKEN}}\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{BASE_URL}}/api/auth/refresh",
+                      "host": [
+                        "{{BASE_URL}}"
+                      ],
+                      "path": [
+                        "api",
+                        "auth",
+                        "refresh"
+                      ]
+                    }
+                  },
+                  "status": "Unauthorized",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n    \"code\": 200342,\n    \"message\": \"Sesi berakhir. Silakan login kembali.\"\n}"
+                },
+                {
+                  "name": "200343 User Not Found",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"refresh_token\": \"{{REFRESH_TOKEN}}\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{BASE_URL}}/api/auth/refresh",
+                      "host": [
+                        "{{BASE_URL}}"
+                      ],
+                      "path": [
+                        "api",
+                        "auth",
+                        "refresh"
+                      ]
+                    }
+                  },
+                  "status": "Not Found",
+                  "code": 404,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n    \"code\": 200343,\n    \"message\": \"Pengguna tidak ditemukan.\"\n}"
+                }
+              ]
             },
             {
               "name": "Logout",
@@ -207,10 +607,1399 @@
                 },
                 "description": "Revoke all refresh tokens for the authenticated user. Requires a valid access token."
               },
-              "response": []
+              "response": [
+                {
+                  "name": "200400 Logged Out",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [],
+                    "url": {
+                      "raw": "{{BASE_URL}}/api/auth/logout",
+                      "host": [
+                        "{{BASE_URL}}"
+                      ],
+                      "path": [
+                        "api",
+                        "auth",
+                        "logout"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n    \"code\": 200400,\n    \"message\": \"Berhasil keluar.\"\n}"
+                },
+                {
+                  "name": "200140 Unauthorized",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [],
+                    "url": {
+                      "raw": "{{BASE_URL}}/api/auth/logout",
+                      "host": [
+                        "{{BASE_URL}}"
+                      ],
+                      "path": [
+                        "api",
+                        "auth",
+                        "logout"
+                      ]
+                    }
+                  },
+                  "status": "Unauthorized",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n    \"code\": 200140,\n    \"message\": \"Akses ditolak: header Authorization tidak ada atau tidak valid.\"\n}"
+                },
+                {
+                  "name": "200141 Invalid Token",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [],
+                    "url": {
+                      "raw": "{{BASE_URL}}/api/auth/logout",
+                      "host": [
+                        "{{BASE_URL}}"
+                      ],
+                      "path": [
+                        "api",
+                        "auth",
+                        "logout"
+                      ]
+                    }
+                  },
+                  "status": "Unauthorized",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n    \"code\": 200141,\n    \"message\": \"Akses ditolak: token tidak valid.\"\n}"
+                }
+              ]
             }
           ],
           "description": "Authentication endpoints for Google OAuth login, token refresh, and logout."
+        },
+        {
+          "name": "User",
+          "item": [
+            {
+              "name": "Self",
+              "item": [
+                {
+                  "name": "Get Self",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "const r = pm.response.json();",
+                          "if (r.code === 300100 && r.data) {",
+                          "    pm.collectionVariables.set('AUTH_USER_ID', r.data.id);",
+                          "    pm.collectionVariables.set('AUTH_USER_EMAIL', r.data.email);",
+                          "    pm.collectionVariables.set('AUTH_USER_NAME', r.data.name || '');",
+                          "    pm.test('Self fetched', () => pm.expect(r.code).to.eql(300100));",
+                          "} else {",
+                          "    pm.test('Get self failed: ' + r.message, () => pm.expect(r.code).to.not.eql(300100));",
+                          "}"
+                        ],
+                        "type": "text/javascript"
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{BASE_URL}}/api/users/self",
+                      "host": [
+                        "{{BASE_URL}}"
+                      ],
+                      "path": [
+                        "api",
+                        "users",
+                        "self"
+                      ]
+                    },
+                    "description": "Returns the authenticated user's profile."
+                  },
+                  "response": [
+                    {
+                      "name": "300100 OK",
+                      "originalRequest": {},
+                      "status": "OK",
+                      "code": 200,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300100,\n    \"message\": \"Pengguna berhasil diambil.\",\n    \"data\": {\n        \"id\": \"01KRJSS4XF1KJHP1326YMW81CN\",\n        \"name\": \"Arfan\",\n        \"number\": \"2173\",\n        \"phone_number\": \"6288899991111\",\n        \"email\": \"arfan2173@gmail.com\",\n        \"birth_date\": \"2003-07-21T00:00:00Z\",\n        \"meta\": null,\n        \"role\": \"super_admin\",\n        \"wallet_address\": \"0x70997970C51812dc3A010C7d01b50e0d17dc79C8\",\n        \"created_at\": \"2026-05-14T15:31:18.960366+07:00\",\n        \"updated_at\": \"2026-05-14T15:31:18.960366+07:00\",\n        \"deleted_at\": null\n    }\n}"
+                    },
+                    {
+                      "name": "200140 Unauthorized",
+                      "originalRequest": {},
+                      "status": "Unauthorized",
+                      "code": 401,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 200140,\n    \"message\": \"Akses ditolak: header Authorization tidak ada atau tidak valid.\"\n}"
+                    },
+                    {
+                      "name": "200141 Invalid Token",
+                      "originalRequest": {},
+                      "status": "Unauthorized",
+                      "code": 401,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 200141,\n    \"message\": \"Akses ditolak: token tidak valid.\"\n}"
+                    }
+                  ]
+                },
+                {
+                  "name": "Update Self Profile",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "const r = pm.response.json();",
+                          "if (r.code === 300300) pm.test('Profile updated', () => pm.expect(r.code).to.eql(300300));",
+                          "else pm.test('Update failed: ' + r.message, () => pm.expect(r.code).to.not.eql(300300));"
+                        ],
+                        "type": "text/javascript"
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "PUT",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"name\": \"{{TEST_NAME}}\",\n  \"number\": \"2173-X\",\n  \"phone_number\": \"{{TEST_PHONE}}\",\n  \"birth_date\": \"{{TEST_BIRTH_DATE}}\",\n  \"meta\": {\n    \"updated_via\": \"postman\"\n  }\n}"
+                    },
+                    "url": {
+                      "raw": "{{BASE_URL}}/api/users/self/profile",
+                      "host": [
+                        "{{BASE_URL}}"
+                      ],
+                      "path": [
+                        "api",
+                        "users",
+                        "self",
+                        "profile"
+                      ]
+                    },
+                    "description": "Update authenticated user profile. All fields optional. phone_number must be E.164 (+[1-9]\\d{6,14})."
+                  },
+                  "response": [
+                    {
+                      "name": "300300 OK",
+                      "originalRequest": {},
+                      "status": "OK",
+                      "code": 200,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300300,\n    \"message\": \"Profil berhasil diperbarui.\",\n    \"data\": {\n        \"id\": \"01KRJSS4XF1KJHP1326YMW81CN\",\n        \"name\": \"Updated\",\n        \"number\": \"2173\",\n        \"phone_number\": \"6288899991111\",\n        \"email\": \"arfan2173@gmail.com\",\n        \"birth_date\": \"2003-07-21T00:00:00Z\",\n        \"meta\": {\n            \"updated_via\": \"postman\"\n        },\n        \"role\": \"super_admin\",\n        \"wallet_address\": \"0x70997970C51812dc3A010C7d01b50e0d17dc79C8\",\n        \"created_at\": \"2026-05-14T15:31:18.960366+07:00\",\n        \"updated_at\": \"2026-05-14T15:31:18.960366+07:00\",\n        \"deleted_at\": null\n    }\n}"
+                    },
+                    {
+                      "name": "100040 Validation",
+                      "originalRequest": {},
+                      "status": "Bad Request",
+                      "code": 400,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 100040,\n    \"message\": \"Data yang diberikan tidak valid.\",\n    \"errors\": {\n        \"phone_number\": [\n            \"Nomor Telepon harus berupa nomor telepon E.164 yang valid (contoh: +628123456789)\"\n        ]\n    }\n}"
+                    }
+                  ]
+                },
+                {
+                  "name": "Update Self Email",
+                  "event": [
+                    {
+                      "listen": "prerequest",
+                      "script": {
+                        "exec": [
+                          "if (!pm.collectionVariables.get('ID_TOKEN')) {",
+                          "    pm.test.fail('ID_TOKEN not set. Run make get-google-id-token for the new email.');",
+                          "}"
+                        ],
+                        "type": "text/javascript"
+                      }
+                    },
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "const r = pm.response.json();",
+                          "if (r.code === 300400) {",
+                          "    pm.collectionVariables.set('AUTH_USER_EMAIL', r.data.email);",
+                          "    pm.collectionVariables.set('ACCESS_TOKEN', '');",
+                          "    pm.collectionVariables.set('REFRESH_TOKEN', '');",
+                          "    pm.test('Email updated; refresh tokens revoked', () => pm.expect(r.code).to.eql(300400));",
+                          "} else {",
+                          "    pm.test('Update email failed: ' + r.message, () => pm.expect(r.code).to.not.eql(300400));",
+                          "}"
+                        ],
+                        "type": "text/javascript"
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "PUT",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"email\": \"{{TEST_EMAIL}}\",\n  \"id_token\": \"{{ID_TOKEN}}\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{BASE_URL}}/api/users/self/email",
+                      "host": [
+                        "{{BASE_URL}}"
+                      ],
+                      "path": [
+                        "api",
+                        "users",
+                        "self",
+                        "email"
+                      ]
+                    },
+                    "description": "Update email. Requires fresh Google ID token whose email claim matches the requested email. All refresh tokens revoked on success."
+                  },
+                  "response": [
+                    {
+                      "name": "300400 OK",
+                      "originalRequest": {},
+                      "status": "OK",
+                      "code": 200,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300400,\n    \"message\": \"Email berhasil diperbarui.\",\n    \"data\": {\n        \"email\": \"new@example.com\"\n    }\n}"
+                    },
+                    {
+                      "name": "300441 Mismatched ID Token",
+                      "originalRequest": {},
+                      "status": "Unprocessable Entity",
+                      "code": 422,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300441,\n    \"message\": \"Email pada ID token tidak sesuai dengan email yang diminta.\"\n}"
+                    },
+                    {
+                      "name": "300442 Invalid ID Token",
+                      "originalRequest": {},
+                      "status": "Unauthorized",
+                      "code": 401,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300442,\n    \"message\": \"Google ID token yang diberikan tidak valid.\"\n}"
+                    },
+                    {
+                      "name": "300440 Email Conflict",
+                      "originalRequest": {},
+                      "status": "Conflict",
+                      "code": 409,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300440,\n    \"message\": \"Gagal memperbarui email.\"\n}"
+                    }
+                  ]
+                }
+              ],
+              "description": "Endpoints scoped to the authenticated user's own data."
+            },
+            {
+              "name": "Admin",
+              "item": [
+                {
+                  "name": "List Users",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "const r = pm.response.json();",
+                          "pm.test('Users listed', () => pm.expect(r.code).to.eql(300100));",
+                          "if (r.data?.items?.length > 0) pm.collectionVariables.set('TARGET_USER_ID', r.data.items[0].id);"
+                        ],
+                        "type": "text/javascript"
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{BASE_URL}}/api/users?page=1&limit=10&search=",
+                      "host": [
+                        "{{BASE_URL}}"
+                      ],
+                      "path": [
+                        "api",
+                        "users"
+                      ],
+                      "query": [
+                        {
+                          "key": "page",
+                          "value": "1"
+                        },
+                        {
+                          "key": "limit",
+                          "value": "10"
+                        },
+                        {
+                          "key": "search",
+                          "value": ""
+                        }
+                      ]
+                    },
+                    "description": "Paginated user list. Admin+ only."
+                  },
+                  "response": [
+                    {
+                      "name": "300100 OK",
+                      "originalRequest": {},
+                      "status": "OK",
+                      "code": 200,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300100,\n    \"message\": \"Pengguna berhasil diambil.\",\n    \"data\": {\n        \"items\": [\n            {\n                \"id\": \"01KRJSS4XF1KJHP1326YMW81CN\",\n                \"name\": \"Arfan\",\n                \"number\": \"2173\",\n                \"phone_number\": \"6288899991111\",\n                \"email\": \"arfan2173@gmail.com\",\n                \"birth_date\": \"2003-07-21T00:00:00Z\",\n                \"meta\": null,\n                \"role\": \"super_admin\",\n                \"wallet_address\": \"0x70997970C51812dc3A010C7d01b50e0d17dc79C8\",\n                \"created_at\": \"2026-05-14T15:31:18.960366+07:00\",\n                \"updated_at\": \"2026-05-14T15:31:18.960366+07:00\",\n                \"deleted_at\": null\n            }\n        ],\n        \"total\": 1,\n        \"page\": 1,\n        \"limit\": 10,\n        \"last_page\": 1\n    }\n}"
+                    },
+                    {
+                      "name": "200142 Forbidden",
+                      "originalRequest": {},
+                      "status": "Forbidden",
+                      "code": 403,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 200142,\n    \"message\": \"Email belum diizinkan. Silakan hubungi Administrator untuk membuat akun Anda terlebih dahulu.\"\n}"
+                    },
+                    {
+                      "name": "200143 Rate Limit",
+                      "originalRequest": {},
+                      "status": "Too Many Requests",
+                      "code": 429,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 200143,\n    \"message\": \"Terlalu banyak permintaan. Silakan coba lagi nanti.\"\n}"
+                    }
+                  ]
+                },
+                {
+                  "name": "Find User by ID",
+                  "event": [
+                    {
+                      "listen": "prerequest",
+                      "script": {
+                        "exec": [
+                          "if (!pm.collectionVariables.get('TARGET_USER_ID')) pm.test.fail('TARGET_USER_ID not set.');"
+                        ],
+                        "type": "text/javascript"
+                      }
+                    },
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "const r = pm.response.json();",
+                          "pm.test('User found', () => pm.expect(r.code).to.eql(300100));"
+                        ],
+                        "type": "text/javascript"
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{BASE_URL}}/api/users/{{TARGET_USER_ID}}",
+                      "host": [
+                        "{{BASE_URL}}"
+                      ],
+                      "path": [
+                        "api",
+                        "users",
+                        "{{TARGET_USER_ID}}"
+                      ]
+                    },
+                    "description": "Find a single user by ID. Admin+."
+                  },
+                  "response": [
+                    {
+                      "name": "300100 OK",
+                      "originalRequest": {},
+                      "status": "OK",
+                      "code": 200,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300100,\n    \"message\": \"Pengguna berhasil diambil.\",\n    \"data\": {\n        \"id\": \"01KRJSS4XF1KJHP1326YMW81CN\",\n        \"name\": \"Arfan\",\n        \"number\": \"2173\",\n        \"phone_number\": \"6288899991111\",\n        \"email\": \"arfan2173@gmail.com\",\n        \"birth_date\": \"2003-07-21T00:00:00Z\",\n        \"meta\": null,\n        \"role\": \"super_admin\",\n        \"wallet_address\": \"0x70997970C51812dc3A010C7d01b50e0d17dc79C8\",\n        \"created_at\": \"2026-05-14T15:31:18.960366+07:00\",\n        \"updated_at\": \"2026-05-14T15:31:18.960366+07:00\",\n        \"deleted_at\": null\n    }\n}"
+                    },
+                    {
+                      "name": "300140 Not Found",
+                      "originalRequest": {},
+                      "status": "Not Found",
+                      "code": 404,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300140,\n    \"message\": \"Pengguna tidak ditemukan.\"\n}"
+                    },
+                    {
+                      "name": "200142 Forbidden",
+                      "originalRequest": {},
+                      "status": "Forbidden",
+                      "code": 403,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 200142,\n    \"message\": \"Email belum diizinkan. Silakan hubungi Administrator untuk membuat akun Anda terlebih dahulu.\"\n}"
+                    }
+                  ]
+                },
+                {
+                  "name": "Batch Create Users",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "const r = pm.response.json();",
+                          "if (r.code === 300200 && r.data?.length > 0) {",
+                          "    pm.collectionVariables.set('TARGET_USER_ID', r.data[0].id);",
+                          "    pm.test('Users created', () => pm.expect(r.code).to.eql(300200));",
+                          "} else pm.test('Create failed: ' + r.message, () => pm.expect(r.code).to.not.eql(300200));"
+                        ],
+                        "type": "text/javascript"
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"users\": [\n    {\n      \"name\": \"Test Holder\",\n      \"email\": \"{{TEST_EMAIL}}\",\n      \"role\": \"holder\",\n      \"phone_number\": \"{{TEST_PHONE}}\",\n      \"birth_date\": \"{{TEST_BIRTH_DATE}}\"\n    }\n  ]\n}"
+                    },
+                    "url": {
+                      "raw": "{{BASE_URL}}/api/users/batch",
+                      "host": [
+                        "{{BASE_URL}}"
+                      ],
+                      "path": [
+                        "api",
+                        "users",
+                        "batch"
+                      ]
+                    },
+                    "description": "Batch create users. Admin+. Required: name, email, role (admin|issuer|holder). Optional: number, phone_number (E.164), birth_date (YYYY-MM-DD), meta. Wallets auto-generated and roles synced on-chain."
+                  },
+                  "response": [
+                    {
+                      "name": "300200 Created",
+                      "originalRequest": {},
+                      "status": "Created",
+                      "code": 201,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300200,\n    \"message\": \"Pengguna berhasil dibuat.\",\n    \"data\": [\n        {\n            \"id\": \"01KSRC6GRXGE5X0568CM6347GJ\",\n            \"name\": \"Test User\",\n            \"number\": null,\n            \"phone_number\": null,\n            \"email\": \"test@example.com\",\n            \"birth_date\": null,\n            \"meta\": null,\n            \"role\": \"holder\",\n            \"wallet_address\": \"0xB782b356aDbFE02F4af8263672418DDEfe448421\",\n            \"created_at\": \"2026-05-29T05:37:50+07:00\",\n            \"updated_at\": \"2026-05-29T05:37:50+07:00\",\n            \"deleted_at\": null\n        }\n    ]\n}"
+                    },
+                    {
+                      "name": "300241 Email Duplicate in Batch",
+                      "originalRequest": {},
+                      "status": "Bad Request",
+                      "code": 400,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300241,\n    \"message\": \"Ditemukan email duplikat dalam batch: d@x.com\"\n}"
+                    },
+                    {
+                      "name": "300242 Email Duplicate in DB",
+                      "originalRequest": {},
+                      "status": "Bad Request",
+                      "code": 400,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300242,\n    \"message\": \"Email sudah ada di database: existing@x.com\"\n}"
+                    },
+                    {
+                      "name": "300243 Wallet Generation Failed",
+                      "originalRequest": {},
+                      "status": "Internal Server Error",
+                      "code": 500,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300243,\n    \"message\": \"Gagal membuat wallet\"\n}"
+                    },
+                    {
+                      "name": "300244 Blockchain Sync Failed",
+                      "originalRequest": {},
+                      "status": "Internal Server Error",
+                      "code": 500,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300244,\n    \"message\": \"Gagal menyinkronkan peran pengguna ke blockchain\"\n}"
+                    },
+                    {
+                      "name": "300245 SuperAdmin Forbidden",
+                      "originalRequest": {},
+                      "status": "Forbidden",
+                      "code": 403,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300245,\n    \"message\": \"Tidak dapat membuat pengguna SuperAdmin melalui batch\"\n}"
+                    },
+                    {
+                      "name": "300246 Admin Creates Admin Forbidden",
+                      "originalRequest": {},
+                      "status": "Forbidden",
+                      "code": 403,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300246,\n    \"message\": \"Admin tidak dapat membuat pengguna Admin atau SuperAdmin\"\n}"
+                    },
+                    {
+                      "name": "100040 Validation",
+                      "originalRequest": {},
+                      "status": "Bad Request",
+                      "code": 400,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 100040,\n    \"message\": \"Data yang diberikan tidak valid.\",\n    \"errors\": {\n        \"users\": [\n            \"0: (email: must be a valid email address.).\"\n        ]\n    }\n}"
+                    }
+                  ]
+                },
+                {
+                  "name": "Batch Update Users",
+                  "event": [
+                    {
+                      "listen": "prerequest",
+                      "script": {
+                        "exec": [
+                          "if (!pm.collectionVariables.get('TARGET_USER_ID')) pm.test.fail('TARGET_USER_ID not set.');"
+                        ],
+                        "type": "text/javascript"
+                      }
+                    },
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "const r = pm.response.json();",
+                          "pm.test('Users updated', () => pm.expect(r.code).to.eql(300800));"
+                        ],
+                        "type": "text/javascript"
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "PUT",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"users\": [\n    {\n      \"id\": \"{{TARGET_USER_ID}}\",\n      \"name\": \"Updated Name\"\n    }\n  ]\n}"
+                    },
+                    "url": {
+                      "raw": "{{BASE_URL}}/api/users/batch",
+                      "host": [
+                        "{{BASE_URL}}"
+                      ],
+                      "path": [
+                        "api",
+                        "users",
+                        "batch"
+                      ]
+                    },
+                    "description": "Batch update users by ID. Admin+. Profile fields + optional email and role. Same-role updates silently skipped. Email changes revoke target's refresh tokens. Role changes sync to blockchain."
+                  },
+                  "response": [
+                    {
+                      "name": "300800 OK",
+                      "originalRequest": {},
+                      "status": "OK",
+                      "code": 200,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300800,\n    \"message\": \"Pengguna berhasil diperbarui.\",\n    \"data\": [\n        {\n            \"id\": \"01KSRC6GRXGE5X0568CM6347GJ\",\n            \"name\": \"Updated Name\",\n            \"number\": null,\n            \"phone_number\": null,\n            \"email\": \"test@example.com\",\n            \"birth_date\": null,\n            \"meta\": null,\n            \"role\": \"holder\",\n            \"wallet_address\": \"0xB782b356aDbFE02F4af8263672418DDEfe448421\",\n            \"created_at\": \"2026-05-29T05:37:50+07:00\",\n            \"updated_at\": \"2026-05-29T05:37:50+07:00\",\n            \"deleted_at\": null\n        }\n    ]\n}"
+                    },
+                    {
+                      "name": "300841 Not Found",
+                      "originalRequest": {},
+                      "status": "Not Found",
+                      "code": 404,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300841,\n    \"message\": \"Satu atau lebih pengguna target tidak ditemukan.\"\n}"
+                    },
+                    {
+                      "name": "300842 Peer Admin Forbidden",
+                      "originalRequest": {},
+                      "status": "Forbidden",
+                      "code": 403,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300842,\n    \"message\": \"Admin tidak dapat memperbarui admin lain.\"\n}"
+                    },
+                    {
+                      "name": "300843 SuperAdmin Update Forbidden",
+                      "originalRequest": {},
+                      "status": "Forbidden",
+                      "code": 403,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300843,\n    \"message\": \"Tidak dapat memperbarui super admin.\"\n}"
+                    },
+                    {
+                      "name": "300844 Self Update Forbidden",
+                      "originalRequest": {},
+                      "status": "Forbidden",
+                      "code": 403,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300844,\n    \"message\": \"Tidak dapat memperbarui diri sendiri melalui endpoint ini.\"\n}"
+                    },
+                    {
+                      "name": "300845 Blockchain Sync Failed",
+                      "originalRequest": {},
+                      "status": "Internal Server Error",
+                      "code": 500,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300845,\n    \"message\": \"Gagal menyinkronkan pembaruan pengguna ke blockchain.\"\n}"
+                    }
+                  ]
+                },
+                {
+                  "name": "Batch Update Roles",
+                  "event": [
+                    {
+                      "listen": "prerequest",
+                      "script": {
+                        "exec": [
+                          "if (!pm.collectionVariables.get('TARGET_USER_ID')) pm.test.fail('TARGET_USER_ID not set.');"
+                        ],
+                        "type": "text/javascript"
+                      }
+                    },
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "const r = pm.response.json();",
+                          "pm.test('Roles updated', () => pm.expect(r.code).to.eql(300500));"
+                        ],
+                        "type": "text/javascript"
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "PUT",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"user_roles\": [\n    {\n      \"user_id\": \"{{TARGET_USER_ID}}\",\n      \"role\": \"issuer\"\n    }\n  ]\n}"
+                    },
+                    "url": {
+                      "raw": "{{BASE_URL}}/api/users/batch/role",
+                      "host": [
+                        "{{BASE_URL}}"
+                      ],
+                      "path": [
+                        "api",
+                        "users",
+                        "batch",
+                        "role"
+                      ]
+                    },
+                    "description": "Batch role update. Admin+. Syncs DB and on-chain via AuthorityService. Same-role updates rejected with 300543."
+                  },
+                  "response": [
+                    {
+                      "name": "300500 OK",
+                      "originalRequest": {},
+                      "status": "OK",
+                      "code": 200,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300500,\n    \"message\": \"Peran berhasil diperbarui.\",\n    \"data\": [\n        {\n            \"id\": \"01KSRC6GRXGE5X0568CM6347GJ\",\n            \"name\": \"Test User\",\n            \"number\": null,\n            \"phone_number\": null,\n            \"email\": \"test@example.com\",\n            \"birth_date\": null,\n            \"meta\": null,\n            \"role\": \"issuer\",\n            \"wallet_address\": \"0xB782b356aDbFE02F4af8263672418DDEfe448421\",\n            \"created_at\": \"2026-05-29T05:37:50+07:00\",\n            \"updated_at\": \"2026-05-29T05:37:50+07:00\",\n            \"deleted_at\": null\n        }\n    ]\n}"
+                    },
+                    {
+                      "name": "300541 Admin Updates Peer Admin",
+                      "originalRequest": {},
+                      "status": "Forbidden",
+                      "code": 403,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300541,\n    \"message\": \"Admin tidak dapat mengubah peran Admin atau SuperAdmin lain.\"\n}"
+                    },
+                    {
+                      "name": "300542 Signer Admin Required",
+                      "originalRequest": {},
+                      "status": "Forbidden",
+                      "code": 403,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300542,\n    \"message\": \"Admin tidak memiliki izin untuk memberikan peran Admin atau SuperAdmin.\"\n}"
+                    },
+                    {
+                      "name": "300543 Same Role Update",
+                      "originalRequest": {},
+                      "status": "Forbidden",
+                      "code": 403,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300543,\n    \"message\": \"Tidak dapat mengubah pengguna dengan peran yang sama.\"\n}"
+                    },
+                    {
+                      "name": "300544 SuperAdmin Batch Forbidden",
+                      "originalRequest": {},
+                      "status": "Forbidden",
+                      "code": 403,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300544,\n    \"message\": \"Tidak dapat memberikan peran SuperAdmin dalam operasi batch.\"\n}"
+                    },
+                    {
+                      "name": "300545 Blockchain Sync Failed",
+                      "originalRequest": {},
+                      "status": "Internal Server Error",
+                      "code": 500,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300545,\n    \"message\": \"Gagal menyinkronkan pembaruan peran ke blockchain.\"\n}"
+                    },
+                    {
+                      "name": "300546 Self Target Forbidden",
+                      "originalRequest": {},
+                      "status": "Forbidden",
+                      "code": 403,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300546,\n    \"message\": \"Tidak dapat mengubah peran sendiri melalui endpoint ini.\"\n}"
+                    }
+                  ]
+                },
+                {
+                  "name": "Batch Delete Users",
+                  "event": [
+                    {
+                      "listen": "prerequest",
+                      "script": {
+                        "exec": [
+                          "if (!pm.collectionVariables.get('TARGET_USER_ID')) pm.test.fail('TARGET_USER_ID not set.');"
+                        ],
+                        "type": "text/javascript"
+                      }
+                    },
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "const r = pm.response.json();",
+                          "if (r.code === 300700) {",
+                          "    pm.collectionVariables.set('TARGET_USER_ID', '');",
+                          "    pm.test('Users deleted', () => pm.expect(r.code).to.eql(300700));",
+                          "} else pm.test('Delete failed: ' + r.message, () => pm.expect(r.code).to.not.eql(300700));"
+                        ],
+                        "type": "text/javascript"
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "DELETE",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"ids\": [\n    \"{{TARGET_USER_ID}}\"\n  ]\n}"
+                    },
+                    "url": {
+                      "raw": "{{BASE_URL}}/api/users/batch",
+                      "host": [
+                        "{{BASE_URL}}"
+                      ],
+                      "path": [
+                        "api",
+                        "users",
+                        "batch"
+                      ]
+                    },
+                    "description": "Soft delete users by ID. Admin+. On-chain role revoked to RoleNone. Soft-deleted rows are scoped out of subsequent queries."
+                  },
+                  "response": [
+                    {
+                      "name": "300700 OK",
+                      "originalRequest": {},
+                      "status": "OK",
+                      "code": 200,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300700,\n    \"message\": \"Kredensial berhasil dihapus.\",\n    \"data\": {\n        \"deleted_count\": 1\n    }\n}"
+                    },
+                    {
+                      "name": "300741 Delete Admin Forbidden",
+                      "originalRequest": {},
+                      "status": "Forbidden",
+                      "code": 403,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300741,\n    \"message\": \"Admin tidak dapat menghapus pengguna Admin atau SuperAdmin.\"\n}"
+                    },
+                    {
+                      "name": "300742 Blockchain Sync Failed",
+                      "originalRequest": {},
+                      "status": "Internal Server Error",
+                      "code": 500,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300742,\n    \"message\": \"Gagal mencabut peran pengguna di blockchain saat penghapusan.\"\n}"
+                    },
+                    {
+                      "name": "300743 Self Delete Forbidden",
+                      "originalRequest": {},
+                      "status": "Forbidden",
+                      "code": 403,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300743,\n    \"message\": \"Tidak dapat menghapus akun sendiri melalui endpoint ini.\"\n}"
+                    }
+                  ]
+                }
+              ],
+              "description": "Admin-only user management endpoints."
+            }
+          ],
+          "description": "User profile and management endpoints."
+        },
+        {
+          "name": "Credential",
+          "item": [
+            {
+              "name": "List Credentials",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const r = pm.response.json();",
+                      "pm.test('List Credentials', () => pm.expect(r.code).to.eql(400100));"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/credentials",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "api",
+                    "credentials"
+                  ]
+                },
+                "description": "List Credentials. Currently a stub."
+              },
+              "response": [
+                {
+                  "name": "400100 OK (stub)",
+                  "originalRequest": {},
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n    \"code\": 400100,\n    \"message\": \"stub\",\n    \"data\": {\n        \"status\": \"stub\"\n    }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Get Credential by ID",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const r = pm.response.json();",
+                      "pm.test('Get Credential by ID', () => pm.expect(r.code).to.eql(400100));"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/credentials/{{TARGET_CREDENTIAL_ID}}",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "api",
+                    "credentials",
+                    "{{TARGET_CREDENTIAL_ID}}"
+                  ]
+                },
+                "description": "Get Credential by ID. Currently a stub."
+              },
+              "response": [
+                {
+                  "name": "400100 OK (stub)",
+                  "originalRequest": {},
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n    \"code\": 400100,\n    \"message\": \"stub\",\n    \"data\": {\n        \"status\": \"stub\"\n    }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Batch Issue Credentials",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const r = pm.response.json();",
+                      "pm.test('Batch Issue Credentials', () => pm.expect(r.code).to.eql(400200));"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/credentials/batch/issue",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "api",
+                    "credentials",
+                    "batch",
+                    "issue"
+                  ]
+                },
+                "description": "Batch Issue Credentials. Currently a stub."
+              },
+              "response": [
+                {
+                  "name": "400200 OK (stub)",
+                  "originalRequest": {},
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n    \"code\": 400200,\n    \"message\": \"stub\",\n    \"data\": {\n        \"status\": \"stub\"\n    }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Batch Revoke Credentials",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const r = pm.response.json();",
+                      "pm.test('Batch Revoke Credentials', () => pm.expect(r.code).to.eql(400300));"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/credentials/batch/revoke",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "api",
+                    "credentials",
+                    "batch",
+                    "revoke"
+                  ]
+                },
+                "description": "Batch Revoke Credentials. Currently a stub."
+              },
+              "response": [
+                {
+                  "name": "400300 OK (stub)",
+                  "originalRequest": {},
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n    \"code\": 400300,\n    \"message\": \"stub\",\n    \"data\": {\n        \"status\": \"stub\"\n    }\n}"
+                }
+              ]
+            },
+            {
+              "name": "Verify Hash",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const r = pm.response.json();",
+                      "pm.test('Verify Hash', () => pm.expect(r.code).to.eql(400400));"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/credentials/verify",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "api",
+                    "credentials",
+                    "verify"
+                  ]
+                },
+                "description": "Verify Hash. Currently a stub."
+              },
+              "response": [
+                {
+                  "name": "400400 OK (stub)",
+                  "originalRequest": {},
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n    \"code\": 400400,\n    \"message\": \"stub\",\n    \"data\": {\n        \"status\": \"stub\"\n    }\n}"
+                }
+              ]
+            }
+          ],
+          "description": "Credential management endpoints. Issuer+ for issue/revoke/verify, Admin+ for list/get. All currently stubs."
         }
       ],
       "description": "CredChain API endpoints.",
@@ -268,12 +2057,44 @@
       "value": ""
     },
     {
-      "key": "USER_ID",
+      "key": "AUTH_USER_ID",
       "value": ""
     },
     {
-      "key": "USER_EMAIL",
+      "key": "AUTH_USER_EMAIL",
       "value": ""
+    },
+    {
+      "key": "AUTH_USER_NAME",
+      "value": ""
+    },
+    {
+      "key": "TARGET_USER_ID",
+      "value": ""
+    },
+    {
+      "key": "TARGET_ADMIN_ID",
+      "value": ""
+    },
+    {
+      "key": "TARGET_CREDENTIAL_ID",
+      "value": ""
+    },
+    {
+      "key": "TEST_EMAIL",
+      "value": "test-holder@example.com"
+    },
+    {
+      "key": "TEST_NAME",
+      "value": "Test User"
+    },
+    {
+      "key": "TEST_PHONE",
+      "value": "+628123456789"
+    },
+    {
+      "key": "TEST_BIRTH_DATE",
+      "value": "2000-01-01"
     }
   ]
 }
