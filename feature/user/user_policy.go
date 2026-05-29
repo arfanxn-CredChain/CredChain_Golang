@@ -93,7 +93,7 @@ func (p *userPolicy) UpdateRolePreFetch(ctx context.Context, updates ...domain.U
 				domain.WithMetadata("attempted_role", "super_admin"))
 		}
 		if u.UserID == authUser.Id {
-			return domain.NewError(domain.CodeAuthForbidden,
+			return domain.NewError(domain.CodeUserRoleSelfTargetForbidden,
 				domain.WithMetadata("user_id", authUser.Id))
 		}
 	}
@@ -139,7 +139,7 @@ func (p *userPolicy) DeletePreFetch(ctx context.Context, ids ...string) error {
 	}
 	for _, id := range ids {
 		if id == authUser.Id {
-			return domain.NewError(domain.CodeAuthForbidden, domain.WithMetadata("user_id", authUser.Id))
+			return domain.NewError(domain.CodeUserDeleteSelfTargetForbidden, domain.WithMetadata("user_id", authUser.Id))
 		}
 	}
 	return nil

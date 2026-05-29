@@ -56,9 +56,11 @@ const (
 	CodeUserRoleSameRoleUpdateForbidden      = 300543
 	CodeUserRoleSuperAdminBatchForbidden     = 300544
 	CodeUserRoleBlockchainSyncFailed         = 300545
+	CodeUserRoleSelfTargetForbidden          = 300546
 	CodeUserBatchDeleteSuccess               = 300700
 	CodeUserDeleteAdminForbidden             = 300741
 	CodeUserDeleteBlockchainSyncFailed       = 300742
+	CodeUserDeleteSelfTargetForbidden        = 300743
 	CodeUserUpdateSuccess                    = 300800
 	CodeUserUpdateNotFound                   = 300841
 	CodeUserUpdatePeerAdminForbidden         = 300842

@@ -73,7 +73,7 @@ func TestUserPolicy_DeletePreFetch_RejectsSelf(t *testing.T) {
 	assert.Error(t, err)
 	var de *domain.Error
 	assert.ErrorAs(t, err, &de)
-	assert.Equal(t, domain.CodeAuthForbidden, de.Code)
+	assert.Equal(t, domain.CodeUserDeleteSelfTargetForbidden, de.Code)
 }
 
 func TestUserPolicy_DeletePreFetch_AllowsOthers(t *testing.T) {
@@ -153,7 +153,7 @@ func TestUserPolicy_UpdateRolePreFetch_RejectsSelf(t *testing.T) {
 	err := p.UpdateRolePreFetch(ctxWithUser(&auth), domain.UserRoleUpdate{UserID: "self", Role: domain.RoleIssuer})
 	var de *domain.Error
 	assert.ErrorAs(t, err, &de)
-	assert.Equal(t, domain.CodeAuthForbidden, de.Code)
+	assert.Equal(t, domain.CodeUserRoleSelfTargetForbidden, de.Code)
 }
 
 func TestUserPolicy_UpdateRolePostFetch_AdminPeerBlocked(t *testing.T) {
