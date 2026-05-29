@@ -55,11 +55,19 @@ func NewAuthMiddleware(p AuthMiddlewareParams) gin.HandlerFunc {
 			return
 		}
 
-		// Fetch full user from DB
+		// Fetch full user from DB (unscoped — returns trashed users too)
 		user, err := p.UserRepo.Find(c.Request.Context(), claims.UserId)
 		if err != nil {
 			c.Abort()
 			responder.SendError(c, domain.NewError(domain.CodeUserFetchNotFound))
+			return
+		}
+
+		// Reject soft-deleted users: their refresh tokens are already revoked at
+		// delete-time, but a valid access token may still exist until natural expiry.
+		if user.DeletedAt != nil {
+			c.Abort()
+			responder.SendError(c, domain.NewError(domain.CodeAuthUnauthorized))
 			return
 		}
 

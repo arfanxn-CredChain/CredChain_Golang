@@ -57,6 +57,7 @@ var allDomainCodes = []int{
 	domain.CodeUserRoleSuperAdminBatchForbidden,
 	domain.CodeUserRoleBlockchainSyncFailed,
 	domain.CodeUserRoleSelfTargetForbidden,
+	domain.CodeUserRoleTrashedForbidden,
 	domain.CodeUserBatchDeleteSuccess,
 	domain.CodeUserDeleteAdminForbidden,
 	domain.CodeUserDeleteBlockchainSyncFailed,
@@ -67,6 +68,7 @@ var allDomainCodes = []int{
 	domain.CodeUserUpdateSuperAdminForbidden,
 	domain.CodeUserUpdateSelfForbidden,
 	domain.CodeUserUpdateBlockchainSyncFailed,
+	domain.CodeUserUpdateTrashedForbidden,
 	// Credential
 	domain.CodeCredentialFetchSuccess,
 	domain.CodeCredentialFetchNotFound,

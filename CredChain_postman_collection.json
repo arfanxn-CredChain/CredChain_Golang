@@ -1022,23 +1022,68 @@
                       "query": [
                         {
                           "key": "page",
-                          "value": "1"
+                          "value": "1",
+                          "description": "Page number (1-indexed). Defaults to 1."
                         },
                         {
                           "key": "limit",
-                          "value": "10"
+                          "value": "10",
+                          "description": "Items per page (1-100). Defaults to 10."
                         },
                         {
                           "key": "search",
-                          "value": ""
+                          "value": "",
+                          "description": "Case-insensitive substring match against name OR email."
+                        },
+                        {
+                          "key": "filters",
+                          "value": "role=holder",
+                          "description": "Filter syntax: <column><operator><value>. Operators: =, !=, >, <, >=, <=, ~ (LIKE), ~* (ILIKE), !~, !~*, $ (IN, comma-separated), !$ (NOT IN), .. (BETWEEN, 'a and b'), !.. (NOT BETWEEN), _ (IS NULL), !_ (IS NOT NULL). Allowed columns: id, name, email, role, number, phone_number, birth_date, created_at, updated_at, deleted_at. Repeat the param for multiple filters (AND-ed). Note: referencing deleted_at auto-unscopes the soft-delete filter and exposes trashed users.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "filters",
+                          "value": "name~ali",
+                          "description": "Example: case-insensitive LIKE match on name.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "filters",
+                          "value": "created_at..2026-01-01 and 2026-12-31",
+                          "description": "Example: BETWEEN range on created_at. Use 'a and b' or 'a,b'.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "filters",
+                          "value": "deleted_at!_",
+                          "description": "Example: only trashed (soft-deleted) users. Auto-unscopes the soft-delete filter.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "filters",
+                          "value": "deleted_at..2026-01-01 and 2026-12-31",
+                          "description": "Example: users trashed in date range. Auto-unscopes the soft-delete filter.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "sorts",
+                          "value": "-created_at",
+                          "description": "Sort syntax: <column> (asc) or -<column> (desc) or +<column> (asc). Allowed columns: id, name, email, role, created_at, updated_at, deleted_at. Repeat the param for multi-column sort (applied left-to-right). Note: sort by deleted_at auto-unscopes and includes trashed users.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "sorts",
+                          "value": "name",
+                          "description": "Example: secondary sort by name ASC.",
+                          "disabled": true
                         }
                       ]
                     },
-                    "description": "Paginated user list. Admin+ only."
+                    "description": "Paginated user list. Admin+ only.\n\n## Pagination\n- `page` (>=1, default 1) and `limit` (1-100, default 10).\n- Response envelope includes `from`, `to`, `total`, `last_page`, plus `first_page_url`, `prev_page_url`, `next_page_url`, `last_page_url` (URLs preserve all active query params).\n\n## Search\n- `search=<text>` does case-insensitive substring match on name OR email.\n\n## Filters\n- `filters=<col><op><val>`. Repeat for multiple (AND-ed).\n- Allowed columns: id, name, email, role, number, phone_number, birth_date, created_at, updated_at, deleted_at. Filters on other columns are silently dropped.\n- Referencing `deleted_at` in any filter or sort **bypasses the soft-delete scope** and exposes trashed users. Use `filters=deleted_at!_` for only trashed, `filters=deleted_at_` for only live.\n- Operators: see query param descriptions.\n\n## Sorts\n- `sorts=<col>` (asc), `sorts=-<col>` (desc). Repeat for multi-column.\n- Allowed columns: id, name, email, role, created_at, updated_at, deleted_at. Default sort: `created_at DESC`.\n- Disallowed columns are silently dropped. Sort by `deleted_at` auto-unscopes.\n\n## Errors\n- 422 (100040) on invalid filter/sort syntax, page<1, limit<1 or limit>100.\n- 403 (200142) when caller is below Admin role."
                   },
                   "response": [
                     {
-                      "name": "300100 OK",
+                      "name": "300100 OK — default (page=1, limit=10)",
                       "originalRequest": {},
                       "status": "OK",
                       "code": 200,
@@ -1050,7 +1095,127 @@
                         }
                       ],
                       "cookie": [],
-                      "body": "{\n    \"code\": 300100,\n    \"message\": \"Pengguna berhasil diambil.\",\n    \"data\": {\n        \"items\": [\n            {\n                \"id\": \"01KRJSS4XF1KJHP1326YMW81CN\",\n                \"name\": \"Arfan\",\n                \"number\": \"2173\",\n                \"phone_number\": \"6288899991111\",\n                \"email\": \"arfan2173@gmail.com\",\n                \"birth_date\": \"2003-07-21T00:00:00Z\",\n                \"meta\": null,\n                \"role\": \"super_admin\",\n                \"wallet_address\": \"0x70997970C51812dc3A010C7d01b50e0d17dc79C8\",\n                \"created_at\": \"2026-05-14T15:31:18.960366+07:00\",\n                \"updated_at\": \"2026-05-14T15:31:18.960366+07:00\",\n                \"deleted_at\": null\n            }\n        ],\n        \"total\": 1,\n        \"page\": 1,\n        \"limit\": 10,\n        \"last_page\": 1\n    }\n}"
+                      "body": "{\n    \"code\": 300100,\n    \"message\": \"Pengguna berhasil diambil.\",\n    \"data\": {\n        \"first_page_url\": \"http://localhost:8080/api/users?limit=10&page=1\",\n        \"from\": 1,\n        \"items\": [\n            {\n                \"id\": \"01KRJSS4XF1KJHP1326YMW81CN\",\n                \"name\": \"Arfan\",\n                \"number\": \"2173\",\n                \"phone_number\": \"+6288899991111\",\n                \"email\": \"arfan2173@gmail.com\",\n                \"birth_date\": \"2003-07-21T00:00:00Z\",\n                \"meta\": null,\n                \"role\": \"super_admin\",\n                \"wallet_address\": \"0x70997970C51812dc3A010C7d01b50e0d17dc79C8\",\n                \"created_at\": \"2026-05-14T15:31:18.960366+07:00\",\n                \"updated_at\": \"2026-05-14T15:31:18.960366+07:00\",\n                \"deleted_at\": null\n            }\n        ],\n        \"last_page\": 1,\n        \"last_page_url\": \"http://localhost:8080/api/users?limit=10&page=1\",\n        \"limit\": 10,\n        \"next_page_url\": null,\n        \"page\": 1,\n        \"prev_page_url\": null,\n        \"to\": 1,\n        \"total\": 1\n    }\n}"
+                    },
+                    {
+                      "name": "300100 OK — page=2, limit=5 (multi-page)",
+                      "originalRequest": {},
+                      "status": "OK",
+                      "code": 200,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300100,\n    \"message\": \"Pengguna berhasil diambil.\",\n    \"data\": {\n        \"first_page_url\": \"http://localhost:8080/api/users?limit=5&page=1\",\n        \"from\": 6,\n        \"items\": [\n            {\n                \"id\": \"01KRJSS4XF1KJHP1326YMW81C6\",\n                \"name\": \"Bob\",\n                \"number\": null,\n                \"phone_number\": null,\n                \"email\": \"bob@example.com\",\n                \"birth_date\": null,\n                \"meta\": null,\n                \"role\": \"holder\",\n                \"wallet_address\": \"0xABCDEF1234567890ABCDEF1234567890ABCDEF12\",\n                \"created_at\": \"2026-05-20T10:00:00Z\",\n                \"updated_at\": \"2026-05-20T10:00:00Z\",\n                \"deleted_at\": null\n            }\n        ],\n        \"last_page\": 3,\n        \"last_page_url\": \"http://localhost:8080/api/users?limit=5&page=3\",\n        \"limit\": 5,\n        \"next_page_url\": \"http://localhost:8080/api/users?limit=5&page=3\",\n        \"page\": 2,\n        \"prev_page_url\": \"http://localhost:8080/api/users?limit=5&page=1\",\n        \"to\": 10,\n        \"total\": 13\n    }\n}"
+                    },
+                    {
+                      "name": "300100 OK — filter role=holder",
+                      "originalRequest": {},
+                      "status": "OK",
+                      "code": 200,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300100,\n    \"message\": \"Pengguna berhasil diambil.\",\n    \"data\": {\n        \"first_page_url\": \"http://localhost:8080/api/users?filters=role%3Dholder&limit=10&page=1\",\n        \"from\": 1,\n        \"items\": [\n            {\n                \"id\": \"01KRJSS4XF1KJHP1326YMW81C7\",\n                \"name\": \"Alice\",\n                \"number\": null,\n                \"phone_number\": null,\n                \"email\": \"alice@example.com\",\n                \"birth_date\": null,\n                \"meta\": null,\n                \"role\": \"holder\",\n                \"wallet_address\": \"0x1111111111111111111111111111111111111111\",\n                \"created_at\": \"2026-05-21T08:00:00Z\",\n                \"updated_at\": \"2026-05-21T08:00:00Z\",\n                \"deleted_at\": null\n            }\n        ],\n        \"last_page\": 1,\n        \"last_page_url\": \"http://localhost:8080/api/users?filters=role%3Dholder&limit=10&page=1\",\n        \"limit\": 10,\n        \"next_page_url\": null,\n        \"page\": 1,\n        \"prev_page_url\": null,\n        \"to\": 1,\n        \"total\": 1\n    }\n}"
+                    },
+                    {
+                      "name": "300100 OK — filter name~ali + sort -created_at",
+                      "originalRequest": {},
+                      "status": "OK",
+                      "code": 200,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300100,\n    \"message\": \"Pengguna berhasil diambil.\",\n    \"data\": {\n        \"first_page_url\": \"http://localhost:8080/api/users?filters=name%7Eali&limit=10&page=1&sorts=-created_at\",\n        \"from\": 1,\n        \"items\": [\n            {\n                \"id\": \"01KRJSS4XF1KJHP1326YMW81C8\",\n                \"name\": \"Alice\",\n                \"number\": null,\n                \"phone_number\": null,\n                \"email\": \"alice@example.com\",\n                \"birth_date\": null,\n                \"meta\": null,\n                \"role\": \"holder\",\n                \"wallet_address\": \"0x2222222222222222222222222222222222222222\",\n                \"created_at\": \"2026-05-28T12:00:00Z\",\n                \"updated_at\": \"2026-05-28T12:00:00Z\",\n                \"deleted_at\": null\n            }\n        ],\n        \"last_page\": 1,\n        \"last_page_url\": \"http://localhost:8080/api/users?filters=name%7Eali&limit=10&page=1&sorts=-created_at\",\n        \"limit\": 10,\n        \"next_page_url\": null,\n        \"page\": 1,\n        \"prev_page_url\": null,\n        \"to\": 1,\n        \"total\": 1\n    }\n}"
+                    },
+                    {
+                      "name": "300100 OK — empty results (no match)",
+                      "originalRequest": {},
+                      "status": "OK",
+                      "code": 200,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300100,\n    \"message\": \"Pengguna berhasil diambil.\",\n    \"data\": {\n        \"first_page_url\": \"http://localhost:8080/api/users?limit=10&page=1&search=zzznomatch\",\n        \"from\": 0,\n        \"items\": [],\n        \"last_page\": 1,\n        \"last_page_url\": \"http://localhost:8080/api/users?limit=10&page=1&search=zzznomatch\",\n        \"limit\": 10,\n        \"next_page_url\": null,\n        \"page\": 1,\n        \"prev_page_url\": null,\n        \"to\": 0,\n        \"total\": 0\n    }\n}"
+                    },
+                    {
+                      "name": "300100 OK — only trashed (filter deleted_at!_)",
+                      "originalRequest": {},
+                      "status": "OK",
+                      "code": 200,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300100,\n    \"message\": \"Pengguna berhasil diambil.\",\n    \"data\": {\n        \"first_page_url\": \"http://localhost:8080/api/users?filters=deleted_at%21_&limit=10&page=1\",\n        \"from\": 1,\n        \"items\": [\n            {\n                \"id\": \"01KRJSS4XF1KJHP1326YMW81DA\",\n                \"name\": \"Trashed Holder\",\n                \"number\": null,\n                \"phone_number\": null,\n                \"email\": \"trashed-holder@example.com\",\n                \"birth_date\": null,\n                \"meta\": null,\n                \"role\": \"holder\",\n                \"wallet_address\": \"0x3333333333333333333333333333333333333333\",\n                \"created_at\": \"2026-05-10T08:00:00Z\",\n                \"updated_at\": \"2026-05-10T08:00:00Z\",\n                \"deleted_at\": \"2026-05-25T09:30:00Z\"\n            }\n        ],\n        \"last_page\": 1,\n        \"last_page_url\": \"http://localhost:8080/api/users?filters=deleted_at%21_&limit=10&page=1\",\n        \"limit\": 10,\n        \"next_page_url\": null,\n        \"page\": 1,\n        \"prev_page_url\": null,\n        \"to\": 1,\n        \"total\": 1\n    }\n}"
+                    },
+                    {
+                      "name": "100040 Validation — invalid filter syntax",
+                      "originalRequest": {},
+                      "status": "Unprocessable Entity",
+                      "code": 422,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 100040,\n    \"message\": \"Validasi gagal.\",\n    \"data\": {\n        \"filters\": \"has invalid syntax\"\n    }\n}"
+                    },
+                    {
+                      "name": "100040 Validation — limit > 100",
+                      "originalRequest": {},
+                      "status": "Unprocessable Entity",
+                      "code": 422,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 100040,\n    \"message\": \"Validasi gagal.\",\n    \"data\": {\n        \"limit\": \"must be no greater than 100\"\n    }\n}"
+                    },
+                    {
+                      "name": "100040 Validation — page < 1",
+                      "originalRequest": {},
+                      "status": "Unprocessable Entity",
+                      "code": 422,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 100040,\n    \"message\": \"Validasi gagal.\",\n    \"data\": {\n        \"page\": \"must be no less than 1\"\n    }\n}"
                     },
                     {
                       "name": "200142 Forbidden",
@@ -1121,7 +1286,7 @@
                         "{{TARGET_USER_ID}}"
                       ]
                     },
-                    "description": "Find a single user by ID. Admin+."
+                    "description": "Find a single user by ID. Admin+. Returns the user even if soft-deleted; `deleted_at` will be a populated ISO timestamp for trashed users."
                   },
                   "response": [
                     {
@@ -1138,6 +1303,21 @@
                       ],
                       "cookie": [],
                       "body": "{\n    \"code\": 300100,\n    \"message\": \"Pengguna berhasil diambil.\",\n    \"data\": {\n        \"id\": \"01KRJSS4XF1KJHP1326YMW81CN\",\n        \"name\": \"Arfan\",\n        \"number\": \"2173\",\n        \"phone_number\": \"6288899991111\",\n        \"email\": \"arfan2173@gmail.com\",\n        \"birth_date\": \"2003-07-21T00:00:00Z\",\n        \"meta\": null,\n        \"role\": \"super_admin\",\n        \"wallet_address\": \"0x70997970C51812dc3A010C7d01b50e0d17dc79C8\",\n        \"created_at\": \"2026-05-14T15:31:18.960366+07:00\",\n        \"updated_at\": \"2026-05-14T15:31:18.960366+07:00\",\n        \"deleted_at\": null\n    }\n}"
+                    },
+                    {
+                      "name": "300100 OK — trashed user",
+                      "originalRequest": {},
+                      "status": "OK",
+                      "code": 200,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300100,\n    \"message\": \"Pengguna berhasil diambil.\",\n    \"data\": {\n        \"id\": \"01KRJSS4XF1KJHP1326YMW81DA\",\n        \"name\": \"Trashed Holder\",\n        \"number\": null,\n        \"phone_number\": null,\n        \"email\": \"trashed-holder@example.com\",\n        \"birth_date\": null,\n        \"meta\": null,\n        \"role\": \"holder\",\n        \"wallet_address\": \"0x3333333333333333333333333333333333333333\",\n        \"created_at\": \"2026-05-10T08:00:00Z\",\n        \"updated_at\": \"2026-05-10T08:00:00Z\",\n        \"deleted_at\": \"2026-05-25T09:30:00Z\"\n    }\n}"
                     },
                     {
                       "name": "300140 Not Found",
@@ -1474,6 +1654,21 @@
                       ],
                       "cookie": [],
                       "body": "{\n    \"code\": 300845,\n    \"message\": \"Gagal menyinkronkan pembaruan pengguna ke blockchain.\"\n}"
+                    },
+                    {
+                      "name": "300846 Trashed Forbidden",
+                      "originalRequest": {},
+                      "status": "Forbidden",
+                      "code": 403,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300846,\n    \"message\": \"Tidak dapat memperbarui pengguna yang telah dihapus (id=01KRJSS4XF1KJHP1326YMW81DA).\"\n}"
                     }
                   ]
                 },
@@ -1631,6 +1826,21 @@
                       ],
                       "cookie": [],
                       "body": "{\n    \"code\": 300546,\n    \"message\": \"Tidak dapat mengubah peran sendiri melalui endpoint ini.\"\n}"
+                    },
+                    {
+                      "name": "300547 Trashed Forbidden",
+                      "originalRequest": {},
+                      "status": "Forbidden",
+                      "code": 403,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300547,\n    \"message\": \"Tidak dapat mengubah peran pengguna yang telah dihapus (id=01KRJSS4XF1KJHP1326YMW81DA).\"\n}"
                     }
                   ]
                 },
@@ -1683,7 +1893,7 @@
                         "batch"
                       ]
                     },
-                    "description": "Soft delete users by ID. Admin+. On-chain role revoked to RoleNone. Soft-deleted rows are scoped out of subsequent queries."
+                    "description": "Soft delete users by ID. Admin+. On-chain role revoked to RoleNone for live targets. Idempotent: deleting an already-trashed user is a no-op (DB unchanged, chain sync skipped); `deleted_count` reflects only newly-soft-deleted rows. Soft-deleted rows are still visible via Find/Get with `deleted_at` filter, but cannot authenticate and cannot be updated."
                   },
                   "response": [
                     {

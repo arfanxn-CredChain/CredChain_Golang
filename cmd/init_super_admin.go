@@ -254,13 +254,22 @@ func initSuperAdmin(cfg *config.Config, userRepo domain.UserRepository, authorit
 		return err
 	}
 
-	// Check if any super admin already exists in the database
+	// Check if any super admin already exists in the database.
+	// FindByRole is unscoped (returns trashed users too), so filter to live rows
+	// only — a system whose previous SuperAdmin was soft-deleted must be able to
+	// re-initialize.
 	existingSuperAdmins, err := userRepo.FindByRole(context.Background(), domain.RoleSuperAdmin)
 	if err != nil {
 		return err
 	}
+	liveSuperAdmins := 0
+	for _, u := range existingSuperAdmins {
+		if u.DeletedAt == nil {
+			liveSuperAdmins++
+		}
+	}
 
-	if len(existingSuperAdmins) > 0 {
+	if liveSuperAdmins > 0 {
 		msg := "super admin already exists in database"
 		logger.Error(msg)
 		return fmt.Errorf("%s", msg)

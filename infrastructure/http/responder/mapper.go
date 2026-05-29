@@ -57,6 +57,7 @@ var CodeToMessageKey = map[int]string{
 	domain.CodeUserRoleSuperAdminBatchForbidden:     "error_super_admin_batch_forbidden",
 	domain.CodeUserRoleBlockchainSyncFailed:         "error_role_blockchain_sync_failed",
 	domain.CodeUserRoleSelfTargetForbidden:          "error_role_self_target_forbidden",
+	domain.CodeUserRoleTrashedForbidden:             "error_role_trashed_forbidden",
 	domain.CodeUserBatchDeleteSuccess:               "success_credentials_deleted",
 	domain.CodeUserDeleteAdminForbidden:             "error_user_delete_admin_forbidden",
 	domain.CodeUserDeleteBlockchainSyncFailed:       "error_delete_blockchain_sync_failed",
@@ -67,6 +68,7 @@ var CodeToMessageKey = map[int]string{
 	domain.CodeUserUpdateSuperAdminForbidden:        "error_users_update_super_admin_forbidden",
 	domain.CodeUserUpdateSelfForbidden:              "error_users_update_self_forbidden",
 	domain.CodeUserUpdateBlockchainSyncFailed:       "error_users_update_blockchain_sync_failed",
+	domain.CodeUserUpdateTrashedForbidden:           "error_users_update_trashed_forbidden",
 
 	// Credential codes
 	domain.CodeCredentialFetchSuccess:  "success_credential_fetched",
@@ -125,6 +127,7 @@ var HttpCodes = map[int]int{
 	domain.CodeUserRoleSuperAdminBatchForbidden:     http.StatusForbidden,
 	domain.CodeUserRoleBlockchainSyncFailed:         http.StatusInternalServerError,
 	domain.CodeUserRoleSelfTargetForbidden:          http.StatusForbidden,
+	domain.CodeUserRoleTrashedForbidden:             http.StatusForbidden,
 	domain.CodeUserBatchDeleteSuccess:               http.StatusOK,
 	domain.CodeUserDeleteAdminForbidden:             http.StatusForbidden,
 	domain.CodeUserDeleteBlockchainSyncFailed:       http.StatusInternalServerError,
@@ -135,6 +138,7 @@ var HttpCodes = map[int]int{
 	domain.CodeUserUpdateSuperAdminForbidden:        http.StatusForbidden,
 	domain.CodeUserUpdateSelfForbidden:              http.StatusForbidden,
 	domain.CodeUserUpdateBlockchainSyncFailed:       http.StatusInternalServerError,
+	domain.CodeUserUpdateTrashedForbidden:           http.StatusForbidden,
 
 	domain.CodeCredentialFetchSuccess:  http.StatusOK,
 	domain.CodeCredentialFetchNotFound: http.StatusNotFound,

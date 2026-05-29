@@ -146,8 +146,10 @@ func TestGormUserRepository_Delete(t *testing.T) {
 	assert.NoError(t, err)
 	assert.EqualValues(t, 2, n)
 
-	_, findErr := repo.Find(context.Background(), "d1")
-	assert.Error(t, findErr)
+	got, findErr := repo.Find(context.Background(), "d1")
+	assert.NoError(t, findErr, "Find is unscoped: trashed users must still be returned post-delete")
+	assert.NotNil(t, got)
+	assert.NotNil(t, got.DeletedAt, "trashed user must carry DeletedAt timestamp")
 }
 
 func TestGormUserRepository_UpdateRole_BatchCASE(t *testing.T) {
@@ -244,14 +246,16 @@ func TestGormUserRepository_Get_SortByName(t *testing.T) {
 	assert.Equal(t, "Charlie", *users[2].Name)
 }
 
-func TestGormUserRepository_Delete_SoftDelete_HidesFromFind(t *testing.T) {
+func TestGormUserRepository_Delete_SoftDelete_FindReturnsTrashed(t *testing.T) {
 	repo := newRepo(t)
 	u := fixtures.NewDomainUser(fixtures.WithID("sd1"), fixtures.WithEmail("sd1@x.com"))
 	_, _ = repo.Store(context.Background(), u)
 	_, err := repo.Delete(context.Background(), "sd1")
 	assert.NoError(t, err)
-	_, findErr := repo.Find(context.Background(), "sd1")
-	assert.Error(t, findErr, "soft-deleted user must not be returned by Find")
+	got, findErr := repo.Find(context.Background(), "sd1")
+	assert.NoError(t, findErr, "Find is unscoped: trashed users must be returned")
+	assert.NotNil(t, got)
+	assert.NotNil(t, got.DeletedAt, "trashed user must carry DeletedAt timestamp")
 }
 
 func TestGormUserRepository_Delete_SoftDelete_HidesFromGet(t *testing.T) {
@@ -267,34 +271,37 @@ func TestGormUserRepository_Delete_SoftDelete_HidesFromGet(t *testing.T) {
 	assert.Equal(t, "sd3", users[0].Id)
 }
 
-func TestGormUserRepository_Delete_SoftDelete_HidesFromFindByIds(t *testing.T) {
+func TestGormUserRepository_Delete_SoftDelete_FindByIdsReturnsTrashed(t *testing.T) {
 	repo := newRepo(t)
 	u := fixtures.NewDomainUser(fixtures.WithID("sd4"), fixtures.WithEmail("sd4@x.com"))
 	_, _ = repo.Store(context.Background(), u)
 	_, _ = repo.Delete(context.Background(), "sd4")
 	found, err := repo.FindByIds(context.Background(), "sd4")
 	assert.NoError(t, err)
-	assert.Empty(t, found)
+	assert.Len(t, found, 1, "FindByIds is unscoped: trashed users must be returned")
+	assert.NotNil(t, found[0].DeletedAt)
 }
 
-func TestGormUserRepository_Delete_SoftDelete_HidesFromFindByEmails(t *testing.T) {
+func TestGormUserRepository_Delete_SoftDelete_FindByEmailsReturnsTrashed(t *testing.T) {
 	repo := newRepo(t)
 	u := fixtures.NewDomainUser(fixtures.WithID("sd5"), fixtures.WithEmail("sd5@x.com"))
 	_, _ = repo.Store(context.Background(), u)
 	_, _ = repo.Delete(context.Background(), "sd5")
 	found, err := repo.FindByEmails(context.Background(), "sd5@x.com")
 	assert.NoError(t, err)
-	assert.Empty(t, found)
+	assert.Len(t, found, 1, "FindByEmails is unscoped: trashed users must be returned")
+	assert.NotNil(t, found[0].DeletedAt)
 }
 
-func TestGormUserRepository_Delete_SoftDelete_HidesFromFindByRole(t *testing.T) {
+func TestGormUserRepository_Delete_SoftDelete_FindByRoleReturnsTrashed(t *testing.T) {
 	repo := newRepo(t)
 	u := fixtures.NewDomainUser(fixtures.WithID("sd6"), fixtures.WithEmail("sd6@x.com"), fixtures.WithRole(domain.RoleHolder))
 	_, _ = repo.Store(context.Background(), u)
 	_, _ = repo.Delete(context.Background(), "sd6")
 	found, err := repo.FindByRole(context.Background(), domain.RoleHolder)
 	assert.NoError(t, err)
-	assert.Empty(t, found)
+	assert.Len(t, found, 1, "FindByRole is unscoped: trashed users must be returned")
+	assert.NotNil(t, found[0].DeletedAt)
 }
 
 func TestGormUserRepository_Update_BirthDateSet_PersistsValue(t *testing.T) {
@@ -364,4 +371,348 @@ func TestGormUserRepository_Update_BatchCASE_MixedColumns(t *testing.T) {
 	assert.Nil(t, byID["bc1"].Number)
 	assert.Nil(t, byID["bc2"].Name)
 	assert.Nil(t, byID["bc3"].Name)
+}
+
+func seedUsersForFilter(t *testing.T) domain.UserRepository {
+	t.Helper()
+	repo := newRepo(t)
+	_, _ = repo.Store(context.Background(),
+		fixtures.NewDomainUser(fixtures.WithID("f1"), fixtures.WithName("Alice"), fixtures.WithEmail("alice@example.com"), fixtures.WithRole(domain.RoleAdmin)),
+		fixtures.NewDomainUser(fixtures.WithID("f2"), fixtures.WithName("Bob"), fixtures.WithEmail("bob@example.com"), fixtures.WithRole(domain.RoleIssuer)),
+		fixtures.NewDomainUser(fixtures.WithID("f3"), fixtures.WithName("Charlie"), fixtures.WithEmail("charlie@example.com"), fixtures.WithRole(domain.RoleHolder)),
+		fixtures.NewDomainUser(fixtures.WithID("f4"), fixtures.WithName("Dave"), fixtures.WithEmail("dave@example.com"), fixtures.WithRole(domain.RoleHolder)),
+	)
+	return repo
+}
+
+func TestGormUserRepository_Get_FilterEqualByRole(t *testing.T) {
+	repo := seedUsersForFilter(t)
+	q := &domainQuery.Query{
+		Page: 1, Limit: 10,
+		Filters: []domainQuery.Filter{domainQuery.NewFilter("role", domainQuery.OperatorEqual, "holder")},
+	}
+	users, total, err := repo.Get(context.Background(), q)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, total)
+	assert.Len(t, users, 2)
+	for _, u := range users {
+		assert.Equal(t, domain.RoleHolder, u.Role)
+	}
+}
+
+func TestGormUserRepository_Get_FilterNotEqualByRole(t *testing.T) {
+	repo := seedUsersForFilter(t)
+	q := &domainQuery.Query{
+		Page: 1, Limit: 10,
+		Filters: []domainQuery.Filter{domainQuery.NewFilter("role", domainQuery.OperatorNotEqual, "holder")},
+	}
+	users, total, err := repo.Get(context.Background(), q)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, total)
+	for _, u := range users {
+		assert.NotEqual(t, domain.RoleHolder, u.Role)
+	}
+}
+
+func TestGormUserRepository_Get_FilterLikeByName(t *testing.T) {
+	repo := seedUsersForFilter(t)
+	q := &domainQuery.Query{
+		Page: 1, Limit: 10,
+		Filters: []domainQuery.Filter{domainQuery.NewFilter("name", domainQuery.OperatorLike, "ali")},
+	}
+	users, total, err := repo.Get(context.Background(), q)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, total)
+	assert.Equal(t, "Alice", *users[0].Name)
+}
+
+func TestGormUserRepository_Get_FilterILikeIsCaseInsensitive(t *testing.T) {
+	repo := seedUsersForFilter(t)
+	q := &domainQuery.Query{
+		Page: 1, Limit: 10,
+		Filters: []domainQuery.Filter{domainQuery.NewFilter("name", domainQuery.OperatorILike, "ALI")},
+	}
+	users, total, err := repo.Get(context.Background(), q)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, total)
+	assert.Equal(t, "Alice", *users[0].Name)
+}
+
+func TestGormUserRepository_Get_FilterInByID(t *testing.T) {
+	repo := seedUsersForFilter(t)
+	q := &domainQuery.Query{
+		Page: 1, Limit: 10,
+		Filters: []domainQuery.Filter{domainQuery.NewFilter("id", domainQuery.OperatorIn, "f1", "f3")},
+	}
+	users, total, err := repo.Get(context.Background(), q)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, total)
+	got := map[string]bool{}
+	for _, u := range users {
+		got[u.Id] = true
+	}
+	assert.True(t, got["f1"])
+	assert.True(t, got["f3"])
+}
+
+func TestGormUserRepository_Get_FilterNotInByID(t *testing.T) {
+	repo := seedUsersForFilter(t)
+	q := &domainQuery.Query{
+		Page: 1, Limit: 10,
+		Filters: []domainQuery.Filter{domainQuery.NewFilter("id", domainQuery.OperatorNotIn, "f1", "f3")},
+	}
+	users, total, err := repo.Get(context.Background(), q)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, total)
+	for _, u := range users {
+		assert.NotEqual(t, "f1", u.Id)
+		assert.NotEqual(t, "f3", u.Id)
+	}
+}
+
+func TestGormUserRepository_Get_FilterMultipleAreAnded(t *testing.T) {
+	repo := seedUsersForFilter(t)
+	q := &domainQuery.Query{
+		Page: 1, Limit: 10,
+		Filters: []domainQuery.Filter{
+			domainQuery.NewFilter("role", domainQuery.OperatorEqual, "holder"),
+			domainQuery.NewFilter("name", domainQuery.OperatorLike, "char"),
+		},
+	}
+	users, total, err := repo.Get(context.Background(), q)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, total)
+	assert.Equal(t, "Charlie", *users[0].Name)
+}
+
+func TestGormUserRepository_Get_FilterDisallowedColumnIsIgnored(t *testing.T) {
+	repo := seedUsersForFilter(t)
+	q := &domainQuery.Query{
+		Page: 1, Limit: 10,
+		Filters: []domainQuery.Filter{domainQuery.NewFilter("wallet_address", domainQuery.OperatorEqual, "0xdead")},
+	}
+	users, total, err := repo.Get(context.Background(), q)
+	assert.NoError(t, err)
+	assert.Equal(t, 4, total, "filter on non-allowlisted column must be silently dropped")
+	assert.Len(t, users, 4)
+}
+
+func TestGormUserRepository_Get_FilterBetweenCreatedAt(t *testing.T) {
+	repo := newRepo(t)
+	now := time.Now()
+	u := fixtures.NewDomainUser(fixtures.WithID("recent"), fixtures.WithEmail("recent@x.com"))
+	u.CreatedAt = now
+	_, _ = repo.Store(context.Background(), u)
+	yesterday := now.Add(-24 * time.Hour).Format("2006-01-02 15:04:05")
+	tomorrow := now.Add(24 * time.Hour).Format("2006-01-02 15:04:05")
+	q := &domainQuery.Query{
+		Page: 1, Limit: 10,
+		Filters: []domainQuery.Filter{domainQuery.NewFilter("created_at", domainQuery.OperatorBetween, yesterday, tomorrow)},
+	}
+	_, total, err := repo.Get(context.Background(), q)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, total)
+}
+
+func TestGormUserRepository_Get_FilterCombinedWithSearch(t *testing.T) {
+	repo := seedUsersForFilter(t)
+	q := &domainQuery.Query{
+		Page: 1, Limit: 10,
+		Search:  "example.com",
+		Filters: []domainQuery.Filter{domainQuery.NewFilter("role", domainQuery.OperatorEqual, "issuer")},
+	}
+	users, total, err := repo.Get(context.Background(), q)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, total)
+	assert.Equal(t, "Bob", *users[0].Name)
+}
+
+func TestGormUserRepository_Get_SortByEmailDesc(t *testing.T) {
+	repo := seedUsersForFilter(t)
+	q := &domainQuery.Query{
+		Page: 1, Limit: 10,
+		Sorts: []domainQuery.Sort{{Column: "email", Order: domainQuery.SortDesc}},
+	}
+	users, _, err := repo.Get(context.Background(), q)
+	assert.NoError(t, err)
+	assert.Len(t, users, 4)
+	assert.Equal(t, "dave@example.com", users[0].Email)
+	assert.Equal(t, "alice@example.com", users[3].Email)
+}
+
+func TestGormUserRepository_Get_SortByRole(t *testing.T) {
+	repo := seedUsersForFilter(t)
+	q := &domainQuery.Query{
+		Page: 1, Limit: 10,
+		Sorts: []domainQuery.Sort{{Column: "role", Order: domainQuery.SortAsc}},
+	}
+	users, _, err := repo.Get(context.Background(), q)
+	assert.NoError(t, err)
+	assert.Len(t, users, 4)
+}
+
+func TestGormUserRepository_Get_SortDisallowedColumnIsIgnored(t *testing.T) {
+	repo := seedUsersForFilter(t)
+	q := &domainQuery.Query{
+		Page: 1, Limit: 10,
+		Sorts: []domainQuery.Sort{{Column: "wallet_address", Order: domainQuery.SortAsc}},
+	}
+	users, total, err := repo.Get(context.Background(), q)
+	assert.NoError(t, err, "disallowed sort column must be silently dropped, not crash")
+	assert.Equal(t, 4, total)
+	assert.Len(t, users, 4)
+}
+
+func TestGormUserRepository_Get_FilterPaginationCountIsConsistent(t *testing.T) {
+	repo := seedUsersForFilter(t)
+	q := &domainQuery.Query{
+		Page: 1, Limit: 1,
+		Filters: []domainQuery.Filter{domainQuery.NewFilter("role", domainQuery.OperatorEqual, "holder")},
+	}
+	users, total, err := repo.Get(context.Background(), q)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, total, "total must reflect filtered count, not page slice")
+	assert.Len(t, users, 1, "items respect page limit")
+}
+
+// seedUsersForTrashed seeds 2 live users + 1 trashed user (soft-deleted).
+// Returns repo plus the IDs in the order they were inserted.
+func seedUsersForTrashed(t *testing.T) domain.UserRepository {
+	t.Helper()
+	repo := newRepo(t)
+	_, _ = repo.Store(context.Background(),
+		fixtures.NewDomainUser(fixtures.WithID("live-a"), fixtures.WithName("LiveA"), fixtures.WithEmail("livea@x.com"), fixtures.WithRole(domain.RoleHolder)),
+		fixtures.NewDomainUser(fixtures.WithID("live-b"), fixtures.WithName("LiveB"), fixtures.WithEmail("liveb@x.com"), fixtures.WithRole(domain.RoleHolder)),
+		fixtures.NewDomainUser(fixtures.WithID("trashed-c"), fixtures.WithName("TrashedC"), fixtures.WithEmail("trashedc@x.com"), fixtures.WithRole(domain.RoleHolder)),
+	)
+	_, _ = repo.Delete(context.Background(), "trashed-c")
+	return repo
+}
+
+func TestGormUserRepository_Get_FilterDeletedAtNotNull_ReturnsOnlyTrashed(t *testing.T) {
+	repo := seedUsersForTrashed(t)
+	q := &domainQuery.Query{
+		Page: 1, Limit: 10,
+		Filters: []domainQuery.Filter{domainQuery.NewFilter("deleted_at", domainQuery.OperatorNotNull)},
+	}
+	users, total, err := repo.Get(context.Background(), q)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, total)
+	assert.Len(t, users, 1)
+	assert.Equal(t, "trashed-c", users[0].Id)
+	assert.NotNil(t, users[0].DeletedAt)
+}
+
+func TestGormUserRepository_Get_FilterDeletedAtNull_ReturnsOnlyLive(t *testing.T) {
+	repo := seedUsersForTrashed(t)
+	q := &domainQuery.Query{
+		Page: 1, Limit: 10,
+		Filters: []domainQuery.Filter{domainQuery.NewFilter("deleted_at", domainQuery.OperatorNull)},
+	}
+	users, total, err := repo.Get(context.Background(), q)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, total)
+	for _, u := range users {
+		assert.Nil(t, u.DeletedAt)
+	}
+}
+
+func TestGormUserRepository_Get_NoDeletedAtReference_DefaultScopePreserved(t *testing.T) {
+	repo := seedUsersForTrashed(t)
+	q := &domainQuery.Query{Page: 1, Limit: 10}
+	users, total, err := repo.Get(context.Background(), q)
+	assert.NoError(t, err, "default Get must remain scoped (regression guard)")
+	assert.Equal(t, 2, total)
+	for _, u := range users {
+		assert.Nil(t, u.DeletedAt)
+		assert.NotEqual(t, "trashed-c", u.Id)
+	}
+}
+
+func TestGormUserRepository_Get_FilterDeletedAtBetween_RangeFilterWorks(t *testing.T) {
+	repo := newRepo(t)
+	_, _ = repo.Store(context.Background(),
+		fixtures.NewDomainUser(fixtures.WithID("recent-trash"), fixtures.WithEmail("rt@x.com")),
+		fixtures.NewDomainUser(fixtures.WithID("live-d"), fixtures.WithEmail("liveD@x.com")),
+	)
+	_, _ = repo.Delete(context.Background(), "recent-trash")
+	now := time.Now()
+	yesterday := now.Add(-24 * time.Hour).Format("2006-01-02 15:04:05")
+	tomorrow := now.Add(24 * time.Hour).Format("2006-01-02 15:04:05")
+	q := &domainQuery.Query{
+		Page: 1, Limit: 10,
+		Filters: []domainQuery.Filter{domainQuery.NewFilter("deleted_at", domainQuery.OperatorBetween, yesterday, tomorrow)},
+	}
+	users, total, err := repo.Get(context.Background(), q)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, total)
+	assert.Equal(t, "recent-trash", users[0].Id)
+}
+
+func TestGormUserRepository_Get_SortByDeletedAtDesc_IncludesTrashedAndLive(t *testing.T) {
+	repo := newRepo(t)
+	_, _ = repo.Store(context.Background(),
+		fixtures.NewDomainUser(fixtures.WithID("trash-old"), fixtures.WithEmail("to@x.com")),
+		fixtures.NewDomainUser(fixtures.WithID("trash-new"), fixtures.WithEmail("tn@x.com")),
+		fixtures.NewDomainUser(fixtures.WithID("live"), fixtures.WithEmail("live@x.com")),
+	)
+	_, _ = repo.Delete(context.Background(), "trash-old")
+	time.Sleep(10 * time.Millisecond) // ensure trash-new has a strictly later deleted_at
+	_, _ = repo.Delete(context.Background(), "trash-new")
+	q := &domainQuery.Query{
+		Page: 1, Limit: 10,
+		Sorts: []domainQuery.Sort{{Column: "deleted_at", Order: domainQuery.SortDesc}},
+	}
+	users, total, err := repo.Get(context.Background(), q)
+	assert.NoError(t, err, "sort by deleted_at must auto-unscope")
+	assert.Equal(t, 3, total, "all 3 users (2 trashed + 1 live) must be present")
+	assert.Len(t, users, 3)
+
+	// Assert relative order of the two trashed rows (NULL position varies between
+	// Postgres and SQLite; we only assert the non-null ordering).
+	idIndex := map[string]int{}
+	for i, u := range users {
+		idIndex[u.Id] = i
+	}
+	assert.Less(t, idIndex["trash-new"], idIndex["trash-old"], "DESC sort: newer trash before older trash")
+}
+
+func TestGormUserRepository_Get_FilterRoleAndDeletedAtNotNull_AndedCorrectly(t *testing.T) {
+	repo := newRepo(t)
+	_, _ = repo.Store(context.Background(),
+		fixtures.NewDomainUser(fixtures.WithID("trash-holder"), fixtures.WithEmail("th@x.com"), fixtures.WithRole(domain.RoleHolder)),
+		fixtures.NewDomainUser(fixtures.WithID("trash-issuer"), fixtures.WithEmail("ti@x.com"), fixtures.WithRole(domain.RoleIssuer)),
+		fixtures.NewDomainUser(fixtures.WithID("live-holder"), fixtures.WithEmail("lh@x.com"), fixtures.WithRole(domain.RoleHolder)),
+	)
+	_, _ = repo.Delete(context.Background(), "trash-holder")
+	_, _ = repo.Delete(context.Background(), "trash-issuer")
+	q := &domainQuery.Query{
+		Page: 1, Limit: 10,
+		Filters: []domainQuery.Filter{
+			domainQuery.NewFilter("role", domainQuery.OperatorEqual, "holder"),
+			domainQuery.NewFilter("deleted_at", domainQuery.OperatorNotNull),
+		},
+	}
+	users, total, err := repo.Get(context.Background(), q)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, total)
+	assert.Equal(t, "trash-holder", users[0].Id)
+}
+
+func TestGormUserRepository_Get_FilterDeletedAtNotNull_PaginationCountConsistent(t *testing.T) {
+	repo := newRepo(t)
+	_, _ = repo.Store(context.Background(),
+		fixtures.NewDomainUser(fixtures.WithID("t1"), fixtures.WithEmail("t1@x.com")),
+		fixtures.NewDomainUser(fixtures.WithID("t2"), fixtures.WithEmail("t2@x.com")),
+		fixtures.NewDomainUser(fixtures.WithID("t3"), fixtures.WithEmail("t3@x.com")),
+	)
+	_, _ = repo.Delete(context.Background(), "t1", "t2", "t3")
+	q := &domainQuery.Query{
+		Page: 1, Limit: 1,
+		Filters: []domainQuery.Filter{domainQuery.NewFilter("deleted_at", domainQuery.OperatorNotNull)},
+	}
+	users, total, err := repo.Get(context.Background(), q)
+	assert.NoError(t, err)
+	assert.Equal(t, 3, total, "total reflects all trashed, not the page slice")
+	assert.Len(t, users, 1)
 }

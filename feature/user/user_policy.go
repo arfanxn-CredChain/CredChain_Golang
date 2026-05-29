@@ -54,6 +54,10 @@ func (p *userPolicy) UpdatePostFetch(ctx context.Context, targets []domain.User,
 		targetMap[t.Id] = t
 	}
 	for _, t := range targets {
+		if t.DeletedAt != nil {
+			return domain.NewError(domain.CodeUserUpdateTrashedForbidden,
+				domain.WithMetadata("user_id", t.Id))
+		}
 		if t.Role == domain.RoleSuperAdmin {
 			return domain.NewError(domain.CodeUserUpdateSuperAdminForbidden, domain.WithMetadata("user_id", t.Id))
 		}
@@ -110,6 +114,10 @@ func (p *userPolicy) UpdateRolePostFetch(ctx context.Context, targets []domain.U
 		target, ok := targetMap[u.UserID]
 		if !ok {
 			return domain.NewError(domain.CodeUserFetchNotFound, domain.WithMetadata("user_id", u.UserID))
+		}
+		if target.DeletedAt != nil {
+			return domain.NewError(domain.CodeUserRoleTrashedForbidden,
+				domain.WithMetadata("user_id", u.UserID))
 		}
 		if target.Role == u.Role {
 			return domain.NewError(domain.CodeUserRoleSameRoleUpdateForbidden,

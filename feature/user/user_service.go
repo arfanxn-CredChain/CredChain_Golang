@@ -389,8 +389,22 @@ func (s *userService) deleteUserAndSyncBlockchain(ctx context.Context, ids []str
 		if err != nil {
 			return err
 		}
-		revocationUsers := make([]domain.User, len(targetUsers))
-		for i, t := range targetUsers {
+		// Idempotency: skip on-chain RoleNone sync for already-trashed users.
+		// FindByIds is unscoped (3a), so targetUsers may include soft-deleted rows.
+		// GORM's soft Delete is a no-op on already-trashed rows (rowsAffected reflects
+		// only freshly-deleted rows), so we mirror that on the chain side: build the
+		// revocation set from live targets only.
+		liveTargets := make([]domain.User, 0, len(targetUsers))
+		for _, t := range targetUsers {
+			if t.DeletedAt == nil {
+				liveTargets = append(liveTargets, t)
+			}
+		}
+		if len(liveTargets) == 0 {
+			return nil
+		}
+		revocationUsers := make([]domain.User, len(liveTargets))
+		for i, t := range liveTargets {
 			revocationUsers[i] = domain.User{
 				WalletAddress:             t.WalletAddress,
 				EncryptedWalletPrivateKey: t.EncryptedWalletPrivateKey,

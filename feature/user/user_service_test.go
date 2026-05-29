@@ -348,6 +348,66 @@ func TestUserService_Delete_Success_CallsAuthorityServiceWithRoleNone(t *testing
 	auth.AssertCalled(t, "UpdateUserRole", mock.Anything, mock.Anything, mock.Anything)
 }
 
+func TestUserService_Delete_AlreadyTrashed_SkipsChainSync(t *testing.T) {
+	repo := &mocks.MockUserRepository{}
+	uow := mocks.NewPropagatingUnitOfWork()
+	auth := &mocks.MockAuthorityService{}
+	policy := &mocks.MockUserPolicy{}
+
+	authUser := fixtures.NewDomainUser(fixtures.WithID("admin1"), fixtures.WithRole(domain.RoleAdmin))
+	deletedAt := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	trashed := fixtures.NewDomainUser(fixtures.WithID("u1"), fixtures.WithRole(domain.RoleHolder))
+	trashed.DeletedAt = &deletedAt
+
+	policy.On("DeletePreFetch", mock.Anything, mock.Anything).Return(nil)
+	policy.On("DeletePostFetch", mock.Anything, mock.Anything).Return(nil)
+	uow.On("User").Return(repo)
+	repo.On("FindByIds", mock.Anything, mock.Anything).Return([]domain.User{trashed}, nil)
+	repo.On("Delete", mock.Anything, mock.Anything).Return(0, nil)
+
+	svc := NewUserService(UserServiceParams{
+		UserRepo: repo, UoW: uow, Config: mkSvcCfg(),
+		AuthorityService: auth, Logger: zap.NewNop(), Policy: policy,
+	})
+
+	count, err := svc.Delete(ctxWithAuth(&authUser), "u1")
+	assert.NoError(t, err)
+	assert.EqualValues(t, 0, count, "rowsAffected reflects only newly-deleted rows; already-trashed contributes nothing")
+	auth.AssertNotCalled(t, "UpdateUserRole", mock.Anything, mock.Anything, mock.Anything)
+}
+
+func TestUserService_Delete_MixedLiveAndTrashed_OnlyLiveSyncsToChain(t *testing.T) {
+	repo := &mocks.MockUserRepository{}
+	uow := mocks.NewPropagatingUnitOfWork()
+	auth := &mocks.MockAuthorityService{}
+	policy := &mocks.MockUserPolicy{}
+
+	authUser := fixtures.NewDomainUser(fixtures.WithID("admin1"), fixtures.WithRole(domain.RoleAdmin))
+	deletedAt := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	trashed := fixtures.NewDomainUser(fixtures.WithID("u1"), fixtures.WithRole(domain.RoleHolder), fixtures.WithWalletAddress("0xAAA"))
+	trashed.DeletedAt = &deletedAt
+	live := fixtures.NewDomainUser(fixtures.WithID("u2"), fixtures.WithRole(domain.RoleHolder), fixtures.WithWalletAddress("0xBBB"))
+
+	policy.On("DeletePreFetch", mock.Anything, mock.Anything).Return(nil)
+	policy.On("DeletePostFetch", mock.Anything, mock.Anything).Return(nil)
+	uow.On("User").Return(repo)
+	repo.On("FindByIds", mock.Anything, mock.Anything).Return([]domain.User{trashed, live}, nil)
+	repo.On("Delete", mock.Anything, mock.Anything).Return(1, nil)
+	auth.On("UpdateUserRole", mock.Anything, mock.Anything, mock.MatchedBy(func(users []domain.User) bool {
+		return len(users) == 1 && users[0].WalletAddress == "0xBBB" && users[0].Role == domain.RoleNone
+	})).Return(nil)
+
+	svc := NewUserService(UserServiceParams{
+		UserRepo: repo, UoW: uow, Config: mkSvcCfg(),
+		AuthorityService: auth, Logger: zap.NewNop(), Policy: policy,
+	})
+
+	count, err := svc.Delete(ctxWithAuth(&authUser), "u1", "u2")
+	assert.NoError(t, err)
+	assert.EqualValues(t, 1, count)
+	auth.AssertNumberOfCalls(t, "UpdateUserRole", 1)
+}
+
 func newEmailSvc(oauthClient oauth.GoogleOAuthClient, repo domain.UserRepository, uow domain.UnitOfWork) UserService {
 	if repo == nil {
 		repo = &mocks.MockUserRepository{}

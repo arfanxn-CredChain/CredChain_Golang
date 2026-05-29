@@ -57,6 +57,7 @@ const (
 	CodeUserRoleSuperAdminBatchForbidden     = 300544
 	CodeUserRoleBlockchainSyncFailed         = 300545
 	CodeUserRoleSelfTargetForbidden          = 300546
+	CodeUserRoleTrashedForbidden             = 300547
 	CodeUserBatchDeleteSuccess               = 300700
 	CodeUserDeleteAdminForbidden             = 300741
 	CodeUserDeleteBlockchainSyncFailed       = 300742
@@ -67,6 +68,7 @@ const (
 	CodeUserUpdateSuperAdminForbidden        = 300843
 	CodeUserUpdateSelfForbidden              = 300844
 	CodeUserUpdateBlockchainSyncFailed       = 300845
+	CodeUserUpdateTrashedForbidden           = 300846
 
 	// ── Credential (40) ──────────────────────────────────────────────────────
 	CodeCredentialFetchSuccess  = 400100

@@ -98,6 +98,25 @@ func TestAuthMiddleware_Success_SetsUserInContext(t *testing.T) {
 	assert.Equal(t, "u1", got.Id)
 }
 
+func TestAuthMiddleware_TrashedUser_401(t *testing.T) {
+	deletedAt := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	user := fixtures.NewDomainUser(fixtures.WithID("u1"))
+	user.DeletedAt = &deletedAt
+	repo := &mocks.MockUserRepository{}
+	repo.On("Find", mock.Anything, "u1").Return(&user, nil)
+
+	mw := NewAuthMiddleware(AuthMiddlewareParams{Config: mkAuthCfg(), UserRepo: repo})
+
+	tok, _ := security.GenerateJWT("u1", []byte(*mkAuthCfg().JWTSecret), time.Hour)
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("GET", "/", nil)
+	c.Request.Header.Set("Authorization", "Bearer "+tok)
+	mw(c)
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code, "trashed users must not authenticate even with a valid JWT")
+}
+
 func TestAdminRoleMiddleware_NoUser_401(t *testing.T) {
 	auth := &mocks.MockAuthorityService{}
 	mw := gin.HandlerFunc(NewAdminRoleMiddleware(RoleMiddlewareParams{AuthorityService: auth}))

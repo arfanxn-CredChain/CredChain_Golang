@@ -3,6 +3,7 @@ package user
 import (
 	"context"
 	"testing"
+	"time"
 
 	"CredChain_Golang/domain"
 	httpContext "CredChain_Golang/infrastructure/http/context"
@@ -263,4 +264,35 @@ func TestUserPolicy_UpdatePostFetch_AdminPromotingToIssuerAllowed(t *testing.T) 
 	err := p.UpdatePostFetch(ctxWithUser(&auth), []domain.User{target},
 		[]domain.User{{Id: "u1", Role: domain.RoleIssuer}})
 	assert.NoError(t, err)
+}
+
+func TestUserPolicy_UpdatePostFetch_TrashedTargetForbidden(t *testing.T) {
+	p := NewUserPolicy()
+	auth := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleAdmin))
+	deletedAt := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	target := fixtures.NewDomainUser(fixtures.WithID("trashed"), fixtures.WithRole(domain.RoleHolder))
+	target.DeletedAt = &deletedAt
+	newName := "Renamed"
+	err := p.UpdatePostFetch(ctxWithUser(&auth), []domain.User{target},
+		[]domain.User{{Id: "trashed", Name: &newName}})
+	assert.Error(t, err)
+	var de *domain.Error
+	assert.ErrorAs(t, err, &de)
+	assert.Equal(t, domain.CodeUserUpdateTrashedForbidden, de.Code)
+	assert.Equal(t, "trashed", de.Metadata["user_id"])
+}
+
+func TestUserPolicy_UpdateRolePostFetch_TrashedTargetForbidden(t *testing.T) {
+	p := NewUserPolicy()
+	auth := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleAdmin))
+	deletedAt := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	target := fixtures.NewDomainUser(fixtures.WithID("trashed"), fixtures.WithRole(domain.RoleHolder))
+	target.DeletedAt = &deletedAt
+	err := p.UpdateRolePostFetch(ctxWithUser(&auth), []domain.User{target},
+		domain.UserRoleUpdate{UserID: "trashed", Role: domain.RoleIssuer})
+	assert.Error(t, err)
+	var de *domain.Error
+	assert.ErrorAs(t, err, &de)
+	assert.Equal(t, domain.CodeUserRoleTrashedForbidden, de.Code)
+	assert.Equal(t, "trashed", de.Metadata["user_id"])
 }
