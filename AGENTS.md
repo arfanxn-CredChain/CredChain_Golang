@@ -1,0 +1,562 @@
+# CredChain Golang - Agent Instructions
+
+Backend API for the CredChain decentralized credential platform. Cobra CLI + Gin HTTP server using Domain-Driven Design (DDD). Persists to PostgreSQL (GORM) and MongoDB. Manages on-chain roles and credentials via go-ethereum bindings. Wired with Uber FX dependency injection. Internationalized responses via go-i18n. Handles Google OAuth authentication via httpOnly cookies.
+
+This file is the authoritative reference for AI assistants and engineers working in `CredChain_Golang/`.
+
+## Repo Position
+
+Sibling to `CredChain_Solidity/` (smart contracts), `CredChain_React/` (frontend), and `CredChain_Python/` (AI service).
+
+- **`CredChain_Solidity/`:** abigen-generated contract bindings live at `infrastructure/chain/contracts/{authority.go,registry.go}`. These are artifacts — **never hand-edit**. Go-side `chain.AuthorityBinding` / `chain.RegistryBinding` interfaces are satisfied structurally by the abigen output.
+- **`CredChain_React/`:** sole HTTP consumer of this API. All routes live under `/api`. Frontend communicates via httpOnly cookies set by `/api/auth/google` and `/api/auth/refresh`.
+- **`CredChain_Python/`:** AI service called over HTTP for OCR, extraction, similarity. The Go backend serializes requests to it (single-worker on the Python side).
+
+## Critical Commands
+
+```bash
+cd CredChain_Golang
+
+make serve                          # Start server (requires PostgreSQL + MongoDB)
+make dev                            # Hot reload via Air (requires `go install github.com/cosmtrek/air@latest`)
+make serve ENV=.env.docker          # Start with Docker env overrides
+make migrate-up                     # Run DB migrations
+make migrate-down                   # Rollback ONE migration step (not all)
+make init-super-admin               # Create super admin (CLI only, not via API)
+make get-google-id-token            # Obtain Google ID token via OAuth (for Postman)
+make build                          # Build binary to bin/credchain
+make docker-up-build                # Start all services in Docker
+make docker-fresh                   # Full reset: down → clean → up → migrate
+
+go test ./...                       # Run all tests
+go test ./domain/... -v             # Run single package tests
+go test ./feature/user/... -v       # Run feature package tests
+go test -race ./...                 # Race detector
+go test -cover ./...                # Coverage summary
+go test -cover -coverprofile=coverage.out ./...
+go tool cover -html=coverage.out    # Coverage HTML report
+go vet ./...                        # Static analysis (must produce zero output)
+gofmt -l .                          # Format check (must produce zero output)
+git log --oneline -5                # Recent commits
+```
+
+Hot reload via Air: config in `.air.toml` — watches `**/*.go`, excludes `vendor/`, `docker/`, `tmp/`, `bin/`, 1s debounce.
+
+All CLI commands use `go run main.go <command> --env <path>` (the `--env`/`-e` flag is required).
+
+No CI pipeline is configured. No lint or typecheck make targets exist beyond `go vet` and `gofmt`.
+
+## Environment Setup
+
+**Required services:** PostgreSQL 15 + MongoDB 8.0 must be running before `make serve`.
+
+```bash
+cd CredChain_Golang
+cp .env.example .env                    # create .env from template
+docker compose up -d postgres mongo     # start only the databases
+make serve                              # run Go app locally (uses .env)
+```
+
+For full Docker: use `.env.docker` (Docker-internal hostnames `postgres`, `mongo`, `host.docker.internal`). Before `make docker-fresh`, clear stale persisted data:
+
+```bash
+rm -rf docker/postgres/data/* docker/mongo/data/*
+```
+
+**Required env vars** (app exits at startup if empty or invalid):
+
+| Var | Constraint |
+|---|---|
+| `GIN_PORT` | HTTP port (default 8080) |
+| `JWT_SECRET` | fatal if empty |
+| `WALLET_ENCRYPTION_KEY` | **must be exactly 32 bytes** (AES-256); fatal if wrong length |
+| `GEMINI_API_KEY` | no fatal check, but AI features break |
+| `GOOGLE_CLIENT_ID` | Google OAuth client ID |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
+| `GOOGLE_REDIRECT_URI` | default `http://localhost:3000/google/callback` |
+| `GIN_CORS_*` | 6 vars (origins, methods, headers, credentials, max_age, expose_headers) |
+| `COOKIE_DOMAIN`, `COOKIE_SECURE`, `COOKIE_SAMESITE` | httpOnly cookie config |
+
+**Super admin init env vars** (optional; used only by `init-super-admin`):
+
+| Var | Purpose |
+|---|---|
+| `INITIAL_SUPER_ADMIN_EMAIL` | required for init-super-admin |
+| `INITIAL_SUPER_ADMIN_PRIVATE_KEY` | 64-char hex with 0x prefix; required for init-super-admin |
+| `INITIAL_SUPER_ADMIN_NAME`, `_NUMBER`, `_PHONE_NUMBER`, `_BIRTH_DATE`, `_META` | optional profile fields |
+
+CLI flags take priority over env vars when both are supplied.
+
+## Project Architecture
+
+```
+CredChain_Golang/
+  main.go               → entry: calls cmd.Execute(), log.Fatal on error
+  cmd/                  → Cobra CLI commands
+    root.go             → registers --env/-e flag
+    context.go          → ConfigFromCmd, NewConfigFromCmd helpers
+    server.go           → FX app wiring for HTTP server
+    migrate.go          → inline migrateUp / migrateDown (private helpers)
+    init_super_admin.go → initSuperAdmin* helpers, FX lifecycle, explicit shutdown
+    get_google_id_token.go → CLI to obtain ID token via Authorization Code Flow
+  config/               → env loading (godotenv), required-field validation (pointer types)
+  domain/               → entities, value objects, interfaces, error codes
+    codes.go            → 6-digit AABBCC response codes
+    errors.go           → domain error wrapper + metadata
+    user.go             → User entity, Role enum (None/Holder/Issuer/Admin/SuperAdmin)
+    credential.go       → Credential entity
+    wallet.go           → Wallet struct + WalletFromUser()
+    uow.go              → UnitOfWork interface
+    query.go + query/   → query DSL + parser for filters/sorts/pagination
+  feature/              → business logic per domain (DDD)
+    auth/               → auth_handler.go, auth_service.go, auth_request.go (+ tests)
+    user/               → user_handler.go, user_service.go, user_policy.go,
+                          user_request.go, gorm_user_repository.go,
+                          gorm_user_token_repository.go (+ tests)
+    credential/         → credential_handler.go, credential_service.go,
+                          gorm_credential_repository.go (stub, no tests yet)
+  infrastructure/
+    ai/gemini.go        → Gemini API client (no tests)
+    chain/              → go-ethereum chain infrastructure
+      contracts/        → abigen-generated bindings (DO NOT EDIT)
+      bindings.go       → AuthorityBinding + RegistryBinding interfaces
+      authority_service.go → AuthorityService interface + implementation
+      client.go         → RPC + contract client facade
+      address.go        → mustHexToAddress, validateHexToAddress
+      signer.go         → signature packing utilities
+    crypto/             → AES-256 encryption (encryption.go), random hex (token.go)
+    database/gorm/      → GORM setup, UnitOfWork, gorm_context
+      model/            → GORM structs: User, UserToken, Credential
+    database/migrations → 000001_initial_schema.up.sql / .down.sql
+    http/               → router.go + sub-packages
+      context/          → auth user injection helpers
+      middleware/        → AuthMiddleware, ErrorLoggerMiddleware,
+                           I18nMiddleware, RateLimitMiddleware (4 types)
+      request/query/    → query DSL parser (HTTP layer)
+      responder/        → mapper.go (code→message key), responder.go
+      response/         → Auth, User, Pagination DTOs + factory methods
+    i18n/bundle.go      → go-i18n bundle factory
+    logger/logger.go    → Zap logger
+    oauth/google.go     → GoogleOAuthClient interface + impl
+    security/jwt.go     → JWT generate/verify
+    storage/            → ipfs.go, local.go (no tests)
+    testutil/           → test-only helpers (never imported by production)
+      db/sqlite.go      → in-memory SQLite via glebarez (pure Go, no CGO)
+      fixtures/         → NewDomainUser, NewModelUser, NewDomainUserToken, NewWallet, TestWalletEncryptionKey
+      gintest/          → NewContext, LoadTestI18nBundle
+      mocks/            → testify mocks: repos, UoW, AuthorityService, UserPolicy, GoogleOAuthClient, bindings
+  locales/en.json, locales/id.json   → tracked i18n locale files
+  Makefile              → 22+ targets
+  Dockerfile            → multi-stage Go 1.25-alpine → alpine:3.19
+  docker-compose.yml    → backend + nginx + postgres:15 + mongo:8.0
+  .air.toml             → hot reload config
+  go.mod                → module CredChain_Golang (underscore), Go 1.25.1
+  CredChain_postman_collection.json → API testing collection
+```
+
+## Key Patterns & Conventions
+
+### Cobra CLI Entry Point
+
+`cmd/root.go` registers a required `--env`/`-e` flag. All subcommands obtain config via `ConfigFromCmd(cmd)` or `NewConfigFromCmd(cmd)` (defined in `cmd/context.go`). `main.go` is a thin wrapper that calls `cmd.Execute()` and uses `log.Fatal` for startup errors.
+
+**Helper function naming:** all helper functions in `cmd/` use the command name as prefix (e.g., `initSuperAdmin*` in `init_super_admin.go`, `getGoogleIdToken*` in `get_google_id_token.go`).
+
+**Config helper functions:** `getEnv`, `getIntEnv`, `getBoolEnv`, `getStringSliceEnv` for standard types; `getTimeEnv` (ISO 8601), `getJSONEnv` (JSON object, returns nil if empty) for super admin initialization.
+
+**Config pointer types:** all `Config` struct fields are pointers (`*string`, `*int`, `*bool`, `*[]string`); `nil` = not provided, non-nil = provided (from env or default); consumers dereference with `*cfg.Field`. CORS slice fields (`GinCorsAllowOrigins`, etc.) are `[]string` (not pointers) since slices are already nilable.
+
+### FX Dependency Injection
+
+Uber FX wires every component. `cmd/server.go` declares the full provider list. CLI subcommands instantiate trimmed FX apps with explicit shutdown (e.g., `init-super-admin` exits after initialization completes rather than blocking).
+
+**Logger:** all CLI commands use `infraLogger.NewZapLogger()` via FX injection with `ZapLoggerParams`. Never use `zap.NewProduction()` directly. Configurable via `LOG_LEVEL` (debug/info/warn/error, default info) and `LOG_OUTPUT` (stdout or file path, default stdout).
+
+**FX-injectable middlewares:** every middleware (`ErrorLoggerMiddleware`, `I18nMiddleware`, rate limiters, role middlewares) uses a named wrapper type + `Params` struct with `fx.In` + exported factory function. They are injected into `RouteParams` in `infrastructure/http/router.go`.
+
+### Feature Internal Structure
+
+Each domain folder under `feature/` follows the same five-file pattern:
+
+- `<feature>_handler.go` — Gin HTTP handlers (exported interface + unexported impl)
+- `<feature>_service.go` — business logic (exported interface + unexported impl)
+- `<feature>_policy.go` — authorization / role rules (exported interface + unexported impl)
+- `<feature>_request.go` — request DTOs with Ozzo validation (`Validate()` method)
+- `<feature>_request_test.go` — request validation tests
+- `gorm_<entity>_repository.go` — GORM repository implementations (unexported struct, exported factory)
+
+### Naming Convention (Interface + Impl + Factory)
+
+- Interfaces are **exported** (`UserService`, `AuthorityService`, `GoogleOAuthClient`).
+- Implementations are **unexported** (`userService`, `authorityService`, `googleOAuthClient`).
+- Factories are **exported** (`NewUserService`, `NewAuthorityService`, `NewGoogleOAuthClient`).
+- Request DTOs are **exported with feature prefix** (`AuthGoogleLoginRequest`, `UserStoreRequest`, `UserUpdateSelfProfileRequest`).
+
+### GORM Model Mapping
+
+`infrastructure/database/gorm/model/` contains GORM-specific structs (`User`, `UserToken`, `Credential`) that map domain entities to database tables.
+
+- `model.User.Meta` uses `gorm:"type:jsonb;serializer:json"` — Postgres stores native JSONB, SQLite stores as TEXT, GORM handles round-tripping.
+- `model.UserToken.Type` uses Postgres ENUM `user_token_type` (stored as TEXT in SQLite).
+- `model.User` has `gorm.DeletedAt` field for soft delete.
+- All models expose `ToDomain()` and `FromDomain()` mapping methods.
+
+### Unit of Work
+
+`domain.UnitOfWork` wraps multi-repo transactions. `GormUnitOfWork.Execute(ctx, fn)` creates transaction-scoped repositories via factory functions and passes a fresh UoW into `fn`. Roll back on error; commit on nil return.
+
+Mock variant `mocks.PropagatingUnitOfWork` (wraps `MockUnitOfWork`) actually runs the inner function and propagates its error — needed for testing chain-failure rollback paths where the default `RunUnitOfWorkFn` would swallow inner errors.
+
+### Request DTOs & Ozzo Validation
+
+DTOs validate with Ozzo (`Validate()` method). The `ToDomain()` pattern converts them into domain entities — see `UserStoreInput` and `UserStoreRequest`.
+
+**Date fields use `*string` + `validation.Date("2006-01-02")`** rather than `*time.Time` (default `time.Time` JSON unmarshalling only accepts RFC3339). `ToDomain()` then parses the string into `*time.Time`.
+
+**DB-constraint validation:** request DTOs (`UserStoreInput`, `UserUpdateInput`, `UserUpdateSelfProfileRequest`, `UserUpdateSelfEmailRequest`) enforce DB column maxima — name (1–256), number (0–256), phone_number (0–18 + `strictE164Rule`), email (1–256 + `is.Email`). `strictE164Rule` uses regex `^\+[1-9]\d{6,14}$` (stricter than `is.E164` which accepts bare country codes like `+62`); defined as package-level var in `feature/user/user_request.go`.
+
+### Response Envelope & 6-Digit Codes
+
+Every HTTP response uses `{code, message, data?}` envelope. Helpers:
+
+- `responder.Send(c, code, data)` — success
+- `responder.SendPagination(c, code, items, total, page, perPage)` — paginated success
+- `responder.SendError(c, err)` — error (auto-resolves code → message via i18n)
+- `responder.SendValidationError(c, errors)` — Ozzo validation errors
+
+Response codes follow a 6-digit `AABBCC` format defined in `domain/codes.go`. Categories: `10` (system), `20` (auth), `30` (user), `40` (credential). The `50` category is owned by `CredChain_Python` (AI service) and propagates through this backend untouched.
+
+`SendError` detects malformed-body errors (`io.EOF`, `io.ErrUnexpectedEOF`, `*json.SyntaxError`, `*json.UnmarshalTypeError` from `c.ShouldBindJSON`) via `isMalformedBodyError` helper and returns `CodeSystemValidation` (400) instead of falling through to `CodeSystemInternal` (500).
+
+**Response DTOs** live in `infrastructure/http/response/`:
+- `response.User` — mirrors `domain.User` minus `EncryptedWalletPrivateKey`; `Name` is `*string`; includes `Number`, `PhoneNumber`, `BirthDate`, `Meta`, `DeletedAt`.
+- `response.Auth` — embeds `response.User` with `json:",inline"` + `AccessToken`, `RefreshToken`, `AccessTokenExpiresIn`, `RefreshTokenExpiresIn`, `TokenType`.
+- Factory: `response.NewAuth(user, accessToken, refreshToken, accessExpirySec, refreshExpirySec)` — `TokenType` hardcoded to `"Bearer"`.
+
+### i18n & Locale Key Enforcement
+
+`responder.Send` / `SendError` resolves messages via `go-i18n` from `locales/{en,id}.json`. Locales directory configurable via `I18N_LOCALES_DIR` env var (default `./locales`). Bundle factory is `NewI18nBundle`; localizer helpers are `GetI18nLocalizer` / `SetI18nLocalizer`.
+
+**`infrastructure/http/responder/locale_keys_test.go` enforces two invariants via AST parsing:**
+
+1. Every `CodeToMessageKey` value must exist in both `locales/en.json` and `locales/id.json`.
+2. Every `{{.X}}` placeholder must be either auto-injected (`field`/`min`/`max`/`values`) or backed by a `WithMetadata("X", ...)` call somewhere in Go source.
+
+Adding a new `domain.Code*` constant requires updating: `mapper.go` (both `CodeToMessageKey` and `HttpCodes`), both locale files, and the hardcoded `allDomainCodes` list in `mapper_test.go`. Tests catch the drift.
+
+### Token Management & Cookie Auth
+
+- **Access tokens:** stateless JWTs; cannot be server-revoked; expire naturally.
+- **Refresh tokens:** stored in DB; can be revoked individually or in bulk via `UserTokenRepository.RevokeByUserIdAndType(ctx, userId, tokenType)`. Type-safe — prevents accidentally revoking the wrong token type.
+- **Token rotation:** uses `Update` (single query sets both `last_used_at` and `revoked_at`).
+- **Login flow:** revokes all existing refresh tokens before issuing new ones.
+- **Token generation:** `crypto.MustGenerateRandomHex32()` returns a 32-byte (64-char hex) cryptographically secure random string.
+
+**Cookie auth:** `POST /api/auth/google` and `POST /api/auth/refresh` set two httpOnly cookies — `access_token` (Path=/api) and `refresh_token` (Path=/api/auth). `POST /api/auth/logout` clears both. `AuthMiddleware` reads `access_token` cookie first, falls back to `Authorization: Bearer` header (for CLI/Postman).
+
+`GIN_CORS_ALLOW_ORIGINS` must NOT be `*` when `GIN_CORS_ALLOW_CREDENTIALS=true` — router panics at startup if misconfigured. Cookie env vars: `COOKIE_DOMAIN`, `COOKIE_SECURE` (must be `true` in prod), `COOKIE_SAMESITE` (strict/lax/none), `COOKIE_ACCESS_PATH` (default `/api`), `COOKIE_REFRESH_PATH` (default `/api/auth`).
+
+### Soft Delete & Trashed Scoping
+
+`model.User` has `gorm.DeletedAt`. `gormUserRepository.Delete` performs a soft delete. Migration includes `deleted_at TIMESTAMP WITH TIME ZONE` + `idx_users_deleted_at` index.
+
+**Scoping rules (admins must be able to see trashed users):**
+
+- `Find` / `FindByIds` / `FindByEmails` / `FindByRole` are **unscoped** — return soft-deleted rows so admins can inspect, list, and recover trashed users.
+- `Get` auto-unscopes when its query references `deleted_at` in any filter or sort (via `referencesDeletedAt(q)`); otherwise default scope applies.
+
+**Mutation paths protect against acting on trashed rows:**
+
+- `AuthMiddleware` rejects trashed users with `CodeAuthUnauthorized` (401) so a valid JWT cannot reauthenticate a trashed user.
+- `userPolicy.UpdatePostFetch` returns `CodeUserUpdateTrashedForbidden` (300846, 403).
+- `userPolicy.UpdateRolePostFetch` returns `CodeUserRoleTrashedForbidden` (300547, 403).
+- `userService.Delete` is idempotent on already-trashed rows (skips on-chain `RoleNone` sync, returns `deleted_count` of newly-deleted rows only).
+- `cmd/init_super_admin` filters out trashed entries from the `FindByRole(SuperAdmin)` existence check so a system whose previous SuperAdmin was soft-deleted can be re-initialized.
+
+`domain.User.DeletedAt` (`*time.Time`) is GORM-agnostic; mapped from `gorm.DeletedAt.Time` when `Valid=true`. Propagated through `response.User.DeletedAt`.
+
+**Trashed-user pagination:** `GET /api/users` exposes trashed via the `deleted_at` column allowlist on filters and sorts. Operator vocabulary: `deleted_at!_` (only trashed), `deleted_at_` (only live, explicit), `deleted_at..a and b` (trashed in date range), `-deleted_at` (sort desc, mixes live+trashed).
+
+### Two-Method Policy Splits
+
+`UpdateRole` and `Update` rules are split into pre-fetch (no DB) and post-fetch (target users in hand) methods.
+
+- `UpdateRolePreFetch` blocks below-Admin signers, SuperAdmin promotion, self-targeting.
+- `UpdateRolePostFetch` blocks Admin-updating-Admin, Admin-promoting-to-Admin, same-role updates.
+- `UpdatePreFetch` + `UpdatePostFetch` mirror this for the batch user update endpoint.
+- `DeletePreFetch` blocks below-Admin signers and self-targeting.
+- `DeletePostFetch` blocks Admin-deleting-Admin/SuperAdmin.
+
+Service methods contain zero role/rank comparisons — all authorization lives in policy. `UpdatePostFetch` signature: `(ctx, targets []domain.User, updates []domain.User)` — receives both the fetched targets and the proposed updates so role-hierarchy rules apply to both current and requested roles.
+
+**Self-target codes:** `UpdateRolePreFetch` returns `CodeUserRoleSelfTargetForbidden` (300546); `DeletePreFetch` returns `CodeUserDeleteSelfTargetForbidden` (300743). Both map to HTTP 403. Do NOT use `CodeAuthForbidden` — wrong locale message.
+
+### Chain Infrastructure
+
+`infrastructure/chain/` wraps go-ethereum:
+
+- `contracts/` — abigen-generated bindings (`authority.go`, `registry.go`) — **DO NOT EDIT**
+- `bindings.go` — `AuthorityBinding` + `RegistryBinding` interfaces that abstract abigen types for testability. Hand-written code holds these interfaces, not concrete pointers. `AuthorityBinding` includes `UserToRole`, `UserToNonce`, `BatchUpdateUserRoleWithSignature`. `RegistryBinding` includes `UserToNonce` (separate nonce for credential flows).
+- `authority_service.go` — `AuthorityService` interface + implementation
+- `client.go` — facade for RPC + contract bindings
+- `address.go` — `mustHexToAddress` (trusted) and `validateHexToAddress` (validates)
+- `signer.go` — signature packing utilities
+
+**AuthorityService rules:**
+- Accepts hex string addresses with `0x` prefix (42 chars total)
+- Uses `domain.Wallet` for signer authentication
+- Methods return raw errors (feature layer translates to domain codes)
+- `FindNonce` reads from `Authority.UserToNonce` (NOT Registry — they maintain separate nonces)
+- `UpdateUserRole` calls `bind.WaitMined` after the relayer tx and verifies `receipt.Status == 1` before returning, ensuring on-chain nonce has incremented before the next call
+- `waitMined` is a struct field (`waitMinedFunc` type) initialized in `NewAuthorityService` to `bind.WaitMined`; tests can substitute their own stub via type assertion to `*authorityService`
+
+**RoleNone:** `domain.RoleNone` (Solidity enum value 0) is the on-chain revocation target. Used by `userService.Delete` to revoke roles via `AuthorityService.UpdateUserRole`. **Never persisted to the Postgres `role` ENUM** — in-memory only for chain calls.
+
+**`syncBlockchainRoles` helper:** shared helper used by `Store`, `UpdateRole`, `Delete`, and `Update` flows. Calls `authorityService.UpdateUserRole(ctx, wallet, users)` and translates raw chain errors into a caller-supplied domain code. Caller is responsible for transactional context.
+
+### Rate Limiting Middlewares
+
+Four FX-injectable middlewares with named wrapper types:
+
+| Middleware | Scope | Limit (dev defaults) |
+|---|---|---|
+| `LoginRateLimitMiddleware` | per IP | 300/min, burst 50 |
+| `RefreshRateLimitMiddleware` | per IP | 200/min, burst 30 |
+| `LogoutRateLimitMiddleware` | per user | 100/min, burst 10 |
+| `ApiRateLimitMiddleware` | per user ID or IP fallback | 1200/min, burst 100 |
+
+`ApiRateLimitMiddleware` is applied globally on the `/api` group before any endpoint-specific limiter (global → specific; more restrictive wins).
+
+Production should re-tighten these (suggested: login 30/burst 5, refresh 60/burst 10, logout 30/burst 5, API 600/burst 50).
+
+### Google OAuth
+
+`oauth.GoogleOAuthClient` is an exported interface (single method `Validate(ctx, idToken, audience)`). Concrete impl is unexported `googleOAuthClient` embedding `*idtoken.Validator`.
+
+Backend validates **ID tokens only** (not the full OAuth flow). Use `make get-google-id-token` CLI to obtain ID tokens via OAuth 2.0 Authorization Code Flow for Postman testing.
+
+**UpdateEmail Google reauth:** `userService.UpdateEmail(ctx, id, email, idToken)` validates the ID token via `oauth.GoogleOAuthClient.Validate(ctx, idToken, *cfg.GoogleClientID)`, asserts the token's email claim matches the requested email, checks for cross-user email conflicts, then updates email + revokes all refresh tokens (`UserTokenRepository.RevokeByUserIdAndType`) inside the same UoW. Codes: `CodeUserEmailInvalidIdToken`, `CodeUserEmailMismatchedIdToken`, `CodeUserEmailConflict`.
+
+### API Routes
+
+All under `/api` prefix. Middleware order: `ErrorLoggerMiddleware` → `I18nMiddleware`.
+
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| GET | `/api/health` | None | Health check |
+| POST | `/api/auth/google` | None | Google OAuth login |
+| POST | `/api/auth/refresh` | None | Refresh token (rotates) |
+| POST | `/api/auth/logout` | Authenticated | Revoke all refresh tokens |
+| GET | `/api/users` | Admin+ | Paginated user list (handler `Paginate`) |
+| GET | `/api/users/self` | Authenticated | Current user (handler `Self`) |
+| PUT | `/api/users/self/profile` | Authenticated | Update own profile |
+| PUT | `/api/users/self/email` | Authenticated | Update own email; requires fresh Google ID token |
+| GET | `/api/users/:id` | Admin+ | Single user lookup (handler `Find`) |
+| POST | `/api/users/batch` | Admin+ | Batch create users |
+| PUT | `/api/users/batch` | Admin+ | Batch update users (handler `Update`); same-role updates silently skipped; email changes revoke target's refresh tokens; role changes sync to blockchain |
+| PUT | `/api/users/batch/role` | Admin+ | Batch role update (handler `UpdateRole`); syncs DB and on-chain |
+| DELETE | `/api/users/batch` | Admin+ | Soft delete users (handler `Delete`); on-chain role revoked to `RoleNone` |
+| GET | `/api/credentials` | Admin+ | List credentials |
+| GET | `/api/credentials/:id` | Admin+ | Single credential |
+| POST | `/api/credentials/batch/issue` | Issuer+ | Issue credentials |
+| POST | `/api/credentials/batch/revoke` | Issuer+ | Revoke credentials |
+| POST | `/api/credentials/verify` | Issuer+ | Verify hash |
+
+### Database
+
+**PostgreSQL** (via GORM + golang-migrate):
+
+- Primary store for `users`, `credentials`, `user_tokens`
+- Migration files in `infrastructure/database/migrations/` (currently only `000001_initial_schema`)
+- Migration logic is inlined in `cmd/migrate.go` (no separate `infrastructure/database/migrate.go`)
+- DSN: `POSTGRES_DSN=postgres://...?sslmode=disable`
+- Repository search uses dialect-agnostic `LOWER(name) LIKE LOWER(?)` (not Postgres-only `ILIKE`); works on both Postgres and SQLite
+
+**SQLite (testing only):** GORM repository tests run against in-memory SQLite via `github.com/glebarez/sqlite` (pure Go, no CGO). Not used in production.
+
+**MongoDB:** Driver v2 installed (`go.mongodb.org/mongo-driver/v2`). Config and connection wired via Uber FX. Usage patterns are emerging — check `infrastructure/storage/` for current usage.
+
+**Repository Store error translation:** `gormUserRepository.Store` catches Postgres `*pgconn.PgError` with code `23505` (unique_violation) and translates to `CodeUserStoreEmailDuplicateInDatabase` with input emails as metadata. Handles concurrent batch creates that race past the pre-check in `userService.storeValidateEmails`.
+
+**Repository Find error translation:** `userService.Find` translates `gorm.ErrRecordNotFound` to `domain.NewError(CodeUserFetchNotFound, WithMetadata("user_id", id))` so `GET /users/:id` returns HTTP 404 instead of leaking 500.
+
+**Repository Update:** variadic `Update(ctx, users ...domain.User) ([]domain.User, error)` — single and batch callers compile naturally. Uses a single batch CASE statement (`updateBatchCase` helper) to eliminate N+1: one UPDATE + one SELECT regardless of batch size. Per-column CASE branches are emitted only for users that provide a non-nil value; users that don't touch a column fall through to `ELSE column` (preserves existing value). `updated_at` stamped to `CURRENT_TIMESTAMP` explicitly (raw `db.Exec` bypasses GORM autoUpdateTime). `meta` marshalled via `json.Marshal` before binding.
+
+**Repository UpdateRole:** batch CASE statement with `WHERE id IN (?)` — pass IDs as a single `[]interface{}` slice (not spread) so GORM can expand the placeholder.
+
+### Docker
+
+`.env` uses `localhost` hostnames; `.env.docker` uses Docker network hostnames (`postgres`, `mongo`, `host.docker.internal`). The `docker-compose.yml` includes nginx reverse proxy on ports 80/443.
+
+**Note:** `docker-compose.yml` healthcheck hardcodes port 8080 (`wget -qO- http://localhost:8080/api/health`). If you change `GIN_PORT`, update the healthcheck too.
+
+**Stale data issue:** Delete `docker/postgres/data/*` and `docker/mongo/data/*` before `make docker-fresh` or tests may fail.
+
+### Postman Collection
+
+Postman collection for API testing: `CredChain_postman_collection.json` (in `CredChain_Golang/` root).
+
+**Structure:** `CredChain` → `API` → [Health, Auth, User > [Self, Admin], Credential]
+
+**Usage:**
+
+1. Obtain ID token: `make get-google-id-token`
+2. Paste into `ID_TOKEN` collection variable
+3. Run Google Login → tokens auto-captured into `ACCESS_TOKEN` + `REFRESH_TOKEN`
+4. Subsequent requests use Bearer auth inherited from API folder
+
+**Collection variables:** `BASE_URL`, `ID_TOKEN`, `ACCESS_TOKEN`, `REFRESH_TOKEN`, `AUTH_USER_ID`, `AUTH_USER_EMAIL`, `AUTH_USER_NAME`, `TARGET_USER_ID`, `TARGET_ADMIN_ID`, `TARGET_CREDENTIAL_ID`, `TEST_EMAIL`, `TEST_NAME`, `TEST_PHONE`, `TEST_BIRTH_DATE`.
+
+Every endpoint has response examples for all domain codes it can return (success + all error paths). Auth responses include `deleted_at` field in User DTO. List Users and Find User by ID include "trashed user" success variants (non-null `deleted_at`); Batch Update Users / Update Roles include `300846` / `300547` (trashed-target forbidden, 403) examples.
+
+## Configuration / Env Vars
+
+All Config fields are pointers (`*T`); `nil` = not provided, non-nil = provided (env or default). Application exits fast at startup for required fields.
+
+| Var | Required | Default | Purpose |
+|---|---|---|---|
+| `GIN_PORT` | no | `8080` | HTTP port |
+| `JWT_SECRET` | **yes** | — | JWT signing key (fatal if empty) |
+| `WALLET_ENCRYPTION_KEY` | **yes** | — | exactly 32 bytes (AES-256); fatal otherwise |
+| `GEMINI_API_KEY` | recommended | — | AI features break without it |
+| `GOOGLE_CLIENT_ID` | **yes** | — | OAuth client ID |
+| `GOOGLE_CLIENT_SECRET` | **yes** | — | OAuth client secret |
+| `GOOGLE_REDIRECT_URI` | no | `http://localhost:3000/google/callback` | OAuth callback URL |
+| `POSTGRES_DSN` | **yes** | — | `postgres://...?sslmode=disable` |
+| `MONGO_URI` | yes | — | MongoDB connection string |
+| `RPC_URL` | **yes** | — | Ethereum/Polygon RPC endpoint |
+| `AUTHORITY_CONTRACT` | **yes** | — | CredentialAuthority contract address |
+| `REGISTRY_CONTRACT` | **yes** | — | CredentialRegistry contract address |
+| `GIN_CORS_ALLOW_ORIGINS` | no | `*` | must NOT be `*` if credentials=true |
+| `GIN_CORS_ALLOW_METHODS` | no | all | |
+| `GIN_CORS_ALLOW_HEADERS` | no | incl. Authorization | |
+| `GIN_CORS_ALLOW_CREDENTIALS` | no | `false` | set `true` for cookie auth |
+| `GIN_CORS_MAX_AGE` | no | | seconds |
+| `GIN_CORS_EXPOSE_HEADERS` | no | | |
+| `COOKIE_DOMAIN` | no | empty | |
+| `COOKIE_SECURE` | recommended | `false` | **must be `true` in production** |
+| `COOKIE_SAMESITE` | no | `lax` | `strict`/`lax`/`none` |
+| `COOKIE_ACCESS_PATH` | no | `/api` | |
+| `COOKIE_REFRESH_PATH` | no | `/api/auth` | |
+| `LOG_LEVEL` | no | `info` | `debug`/`info`/`warn`/`error` |
+| `LOG_OUTPUT` | no | `stdout` | `stdout` or file path |
+| `I18N_LOCALES_DIR` | no | `./locales` | locale JSON files directory |
+| `INITIAL_SUPER_ADMIN_EMAIL` | only for init | — | required for `init-super-admin` |
+| `INITIAL_SUPER_ADMIN_PRIVATE_KEY` | only for init | — | 64-char hex with `0x` prefix |
+| `INITIAL_SUPER_ADMIN_NAME` | no | — | optional profile field |
+| `INITIAL_SUPER_ADMIN_NUMBER` | no | — | employee/student number |
+| `INITIAL_SUPER_ADMIN_PHONE_NUMBER` | no | — | E.164 format |
+| `INITIAL_SUPER_ADMIN_BIRTH_DATE` | no | — | ISO 8601 `YYYY-MM-DD` |
+| `INITIAL_SUPER_ADMIN_META` | no | — | JSON object string |
+
+## Testing
+
+- **Framework:** `stretchr/testify/assert` (assertions) + `stretchr/testify/mock` (mocks)
+- **Style:** white-box, in-package (same package as source)
+- **Count:** ~40 test files
+- **Database tests:** in-memory SQLite via `github.com/glebarez/sqlite` (pure Go, no CGO). Postgres-specific JSONB operators are not exercised — `Meta` round-trips via `serializer:json`. `UserTokenType` Postgres ENUM stores as TEXT in SQLite.
+- **No integration tests** against real Postgres / MongoDB / IPFS / RPC.
+
+**Coverage** (from `go test -cover ./...`):
+
+| Range | Packages |
+|---|---|
+| 100% | `config`, `infrastructure/http/context` |
+| 90%+ | `response` (97%), `security` (93%), `middleware` (92%), `request/query` (92%), `i18n` (90%) |
+| 60–85% | `crypto` (83%), `domain` (79%), `domain/query` (69%), `chain` (69%), `responder` (67%), `model` (67%), `feature/user` (67%) |
+| 30–55% | `feature/auth` (54%), `oauth` (50%), `database/gorm` (32%) |
+| 0% (intentional) | `cmd`, `ai`, `chain/contracts`, `feature/credential` (stubs), `http`, `logger`, `storage` |
+
+**Test Infrastructure** (`infrastructure/testutil/`, test-only, never imported by production):
+
+- `testutil/db/sqlite.go` — `OpenInMemorySQLite(t)` opens in-memory SQLite, auto-migrates `model.User`, `model.UserToken`, `model.Credential`; parallel-safe via random per-call shared-cache name
+- `testutil/fixtures/` — entity builders with options pattern: `NewDomainUser(opts...)`, `NewModelUser(opts...)`, `NewDomainUserToken(opts...)`, `NewWallet(t)`, `TestWalletEncryptionKey()`
+- `testutil/gintest/` — `NewContext(t, opts...)` builds gin context with i18n/user injection; `LoadTestI18nBundle(t)` loads real `locales/` (cached via `runtime.Caller`)
+- `testutil/mocks/` — `stretchr/testify/mock` implementations: `MockUserRepository`, `MockUserTokenRepository`, `MockCredentialRepository`, `MockUnitOfWork` + `RunUnitOfWorkFn(uow, inner)` helper, `PropagatingUnitOfWork` (for chain-failure rollback testing), `MockAuthorityService`, `MockUserPolicy`, `MockGoogleOAuthClient`, `MockAuthorityBinding`, `MockRegistryBinding`
+- `chain/authority_service_test.go` defines `localAuthorityBinding` / `localRegistryBinding` inline to avoid import cycle (`testutil/mocks` → `chain`)
+
+**Locale coverage** (`infrastructure/http/responder/locale_keys_test.go`):
+
+1. Every `CodeToMessageKey` value must exist in both `locales/en.json` and `locales/id.json`
+2. Every `{{.X}}` placeholder must be either auto-injected (`field`/`min`/`max`/`values`) or backed by a `WithMetadata("X", ...)` call somewhere in Go source (parsed via `go/ast`)
+
+When adding a new endpoint or service method, add at least: one happy-path test, one validation-failure test, one repository-error test, and update locale files + `mapper.go` if new codes are introduced.
+
+## Tech Stack
+
+| Layer | Tool | Version |
+|---|---|---|
+| Language | Go | 1.25.1 |
+| Module path | `CredChain_Golang` (underscore, not URL) | |
+| Web framework | gin-gonic/gin | v1.12 |
+| CORS | gin-contrib/cors | latest |
+| JWT | golang-jwt/jwt | v5 |
+| Validation | go-ozzo/ozzo-validation | v4 |
+| CLI | spf13/cobra | v1.10 |
+| DI | uber/fx | v1.24 |
+| Logger | uber/zap | v1.27 |
+| ORM | gorm.io/gorm | v1.31 |
+| Postgres driver | gorm.io/driver/postgres + pgx/v5 | latest |
+| SQLite (test only) | glebarez/sqlite | latest (pure Go) |
+| Migrations | golang-migrate/migrate/v4 | latest |
+| Mongo | go.mongodb.org/mongo-driver/v2 | latest |
+| Chain | ethereum/go-ethereum | v1.17 |
+| Env loader | joho/godotenv | latest |
+| i18n | nicksnyder/go-i18n/v2 | latest |
+| IDs | oklog/ulid/v2 | latest |
+| AI | google/generative-ai-go | latest |
+| Testing | stretchr/testify | latest |
+| Google ID token | google.golang.org/api/idtoken | latest |
+
+## Cross-Repo Integration
+
+- **`../CredChain_Solidity/AGENTS.md`** — contracts consumed via abigen bindings at `infrastructure/chain/contracts/`. When contract ABI changes, regenerate bindings and update `chain.AuthorityBinding` / `chain.RegistryBinding` interfaces in `chain/bindings.go` to mirror new methods.
+- **`../CredChain_React/AGENTS.md`** — sole HTTP consumer. Frontend mirrors `domain.Code*` constants in `@shared/api/codes.ts`. Locale files in `locales/{en,id}.json` are mirrored in `src/shared/i18n/` and verified by `npm run check-locales`.
+- **`../CredChain_Python/AGENTS.md`** — AI downstream over HTTP. Response envelope `{code, message, data, errors}` matches Go's format. Python owns category `50` (AI). Python errors propagate through this backend with their original `50xxxx` code intact so the frontend can resolve the i18n key.
+
+**Role enum (mirrored in all four repos):** `None(0) → Holder(1) → Issuer(2) → Admin(3) → SuperAdmin(4)`. Same enum in Solidity (`CredentialAuthority.Role`), Go (`domain.Role`), and React (`@shared/auth/role.ts`).
+
+**Response code format (mirrored in all four repos):** 6-digit `AABBCC`. Categories: `10` (system), `20` (auth), `30` (user), `40` (credential), `50` (AI service).
+
+## Key Constraints
+
+- **Go module path** is `CredChain_Golang` (with underscore) — imports use this, not a URL path.
+- **`WALLET_ENCRYPTION_KEY`** must be exactly 32 bytes (AES-256 key). Validated at startup in `config.NewConfig` — app fails fast with clear error if length is wrong.
+- **SuperAdmin** can only be created via `make init-super-admin` CLI, never via API.
+- **`init-super-admin`** validates wallet has SuperAdmin role on-chain before database initialization; checks for existing SuperAdmin by role using `FindByRole`, not by email. Filters out trashed users from the existence check.
+- **Auth is Google OAuth only** — no email/password login exists.
+- **Soulbound tokens:** `CredentialRegistry._update()` blocks all transfers and burns (reverts with `CredentialTransferError`) — Solidity-side enforcement; backend should not attempt transfer flows.
+- **`CredChain_React_Demo/` and `CredChain_GoogleTestHtml/`** in the workspace root are deprecated/test-only — never modify them from this repo.
+- **Policy checks** happen in `feature/*/policy.go`, not in middleware or domain.
+- **`migrate-down`** rolls back only ONE migration step, not all.
+- **Environment files:** `.env` and `.env.docker` contain credentials and are NOT tracked by git; use `.env.example` as template.
+- **`GoogleOAuthClient` is an interface** (not concrete pointer) — `*oauth.GoogleOAuthClient` does not exist; use `oauth.GoogleOAuthClient` directly.
+- **Chain bindings:** hand-written code holds `chain.AuthorityBinding` / `chain.RegistryBinding`, not concrete `*contracts.Authority` / `*contracts.Registry`.
+- **Test infrastructure** lives at `infrastructure/testutil/` — never imported by production code.
+- **Repository search** is dialect-agnostic via `LOWER(...) LIKE LOWER(...)` — works on Postgres and SQLite.
+- **`model.Meta`** uses `serializer:json` — required for SQLite test compatibility.
+- **Locale message templates:** any `{{.X}}` placeholder must be backed by either an auto-injected key or a `WithMetadata("X", ...)` call in Go source (enforced by `locale_keys_test.go`).
+
+## Deployment
+
+**Push to master branch only when build succeeds. Do not create feature branches, bugfix branches, or any other branch types — commit directly to master.**
+
+Before pushing, run the repo's canonical verification command and confirm it passes:
+
+- `CredChain_Golang`: `go test ./... && go vet ./... && gofmt -l .` (last must produce zero output)
+- `CredChain_Solidity`: `npx hardhat compile && npx hardhat test`
+- `CredChain_Python`: `make lint && make typecheck && make test`
+- `CredChain_React`: `npm run lint && npm run build && npm run test && npm run check-locales`
+
+## See Also
+
+- `Makefile` — canonical commands
+- `CredChain_postman_collection.json` — endpoint testing collection
+- `.air.toml` — hot reload config
+- `docker-compose.yml` — full stack (backend + nginx + postgres + mongo)
+- `infrastructure/database/migrations/` — schema migrations
+- `locales/{en,id}.json` — i18n message catalog
+- `../AGENTS.md` (workspace root, uncommitted) — multi-repo reference
+- `../CredChain_Solidity/AGENTS.md` — smart contract reference
+- `../CredChain_React/AGENTS.md` — frontend consumer reference
+- `../CredChain_Python/AGENTS.md` — AI service reference
