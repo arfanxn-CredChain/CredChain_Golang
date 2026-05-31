@@ -20,6 +20,10 @@ type AuthorityBinding interface {
 		opts *bind.TransactOpts,
 		params contracts.CredentialAuthorityBatchUpdateUserRoleWithSignatureParams,
 	) (*types.Transaction, error)
+	TransferSuperAdminWithSignature(
+		opts *bind.TransactOpts,
+		params contracts.CredentialAuthorityTransferSuperAdminWithSignatureParams,
+	) (*types.Transaction, error)
 }
 
 // RegistryBinding abstracts the methods used from the abigen-generated

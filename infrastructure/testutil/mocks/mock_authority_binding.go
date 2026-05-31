@@ -35,3 +35,11 @@ func (m *MockAuthorityBinding) BatchUpdateUserRoleWithSignature(opts *bind.Trans
 	}
 	return nil, args.Error(1)
 }
+
+func (m *MockAuthorityBinding) TransferSuperAdminWithSignature(opts *bind.TransactOpts, params contracts.CredentialAuthorityTransferSuperAdminWithSignatureParams) (*types.Transaction, error) {
+	args := m.Called(opts, params)
+	if v := args.Get(0); v != nil {
+		return v.(*types.Transaction), args.Error(1)
+	}
+	return nil, args.Error(1)
+}
