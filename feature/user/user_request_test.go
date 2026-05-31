@@ -222,14 +222,6 @@ func TestUserStoreRequest_ToDomain_MultiUser(t *testing.T) {
 	assert.Equal(t, "b@x.com", got[1].Email)
 }
 
-func TestUserUpdateSelfProfileRequest_Validate_AlwaysNil(t *testing.T) {
-	r := UserUpdateSelfProfileRequest{}
-	assert.NoError(t, r.Validate())
-	name := "x"
-	r2 := UserUpdateSelfProfileRequest{Name: &name}
-	assert.NoError(t, r2.Validate())
-}
-
 func TestUserUpdateRoleRequest_Validate_Empty(t *testing.T) {
 	r := UserUpdateRoleRequest{UserRoles: nil}
 	assert.Error(t, r.Validate())
@@ -294,40 +286,35 @@ func TestUserStoreInput_EmailOverMax(t *testing.T) {
 	assert.Error(t, in.Validate())
 }
 
-func TestUserUpdateSelfProfileRequest_PhoneInvalid(t *testing.T) {
-	bad := "12-34"
-	r := UserUpdateSelfProfileRequest{PhoneNumber: &bad}
-	assert.Error(t, r.Validate())
-}
-
-func TestUserUpdateSelfProfileRequest_NameAtMax(t *testing.T) {
-	n := strings.Repeat("a", 256)
-	r := UserUpdateSelfProfileRequest{Name: &n}
-	assert.NoError(t, r.Validate())
-}
-
-func TestUserUpdateSelfProfileRequest_NameOverMax(t *testing.T) {
-	n := strings.Repeat("a", 257)
-	r := UserUpdateSelfProfileRequest{Name: &n}
-	assert.Error(t, r.Validate())
+func TestUserUpdateSelfProfileRequest_Validate(t *testing.T) {
+	tests := []struct {
+		name    string
+		req     UserUpdateSelfProfileRequest
+		wantErr bool
+	}{
+		{"nil phone", UserUpdateSelfProfileRequest{PhoneNumber: nil}, false},
+		{"empty phone", UserUpdateSelfProfileRequest{PhoneNumber: strPtr("")}, false},
+		{"valid E.164", UserUpdateSelfProfileRequest{PhoneNumber: strPtr("+628123456789")}, false},
+		{"too long", UserUpdateSelfProfileRequest{PhoneNumber: strPtr("+62812345678901234567890")}, true},
+		{"non-E.164", UserUpdateSelfProfileRequest{PhoneNumber: strPtr("0812345")}, true},
+		{"bare country code", UserUpdateSelfProfileRequest{PhoneNumber: strPtr("+62")}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.req.Validate()
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestUserUpdateSelfEmailRequest_EmailOverMax(t *testing.T) {
 	longLocal := strings.Repeat("a", 250)
 	r := UserUpdateSelfEmailRequest{Email: longLocal + "@x.com"}
 	assert.Error(t, r.Validate())
-}
-
-func TestUserUpdateSelfProfileRequest_BirthDateInvalid(t *testing.T) {
-	bad := "1990/01/01"
-	r := UserUpdateSelfProfileRequest{BirthDate: &bad}
-	assert.Error(t, r.Validate())
-}
-
-func TestUserUpdateSelfProfileRequest_BirthDateValid(t *testing.T) {
-	ok := "1990-01-01"
-	r := UserUpdateSelfProfileRequest{BirthDate: &ok}
-	assert.NoError(t, r.Validate())
 }
 
 func TestUserUpdateSelfEmailRequest_Validate_RequiresIdToken(t *testing.T) {

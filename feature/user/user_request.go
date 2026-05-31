@@ -79,30 +79,13 @@ func (r UserStoreRequest) ToDomain() []domain.User {
 }
 
 type UserUpdateSelfProfileRequest struct {
-	Name        *string        `json:"name"`
-	Number      *string        `json:"number"`
-	PhoneNumber *string        `json:"phone_number"`
-	BirthDate   *string        `json:"birth_date"`
-	Meta        map[string]any `json:"meta"`
+	PhoneNumber *string `json:"phone_number"`
 }
 
 func (r UserUpdateSelfProfileRequest) Validate() error {
 	return validation.ValidateStruct(&r,
-		validation.Field(&r.Name, validation.Length(0, 256)),
-		validation.Field(&r.Number, validation.Length(0, 256)),
 		validation.Field(&r.PhoneNumber, validation.Length(0, 18), strictE164Rule),
-		validation.Field(&r.BirthDate, validation.Date("2006-01-02")),
 	)
-}
-
-func (r UserUpdateSelfProfileRequest) ParsedBirthDate() *time.Time {
-	if r.BirthDate == nil || *r.BirthDate == "" {
-		return nil
-	}
-	if t, err := time.Parse("2006-01-02", *r.BirthDate); err == nil {
-		return &t
-	}
-	return nil
 }
 
 type UserUpdateSelfEmailRequest struct {
