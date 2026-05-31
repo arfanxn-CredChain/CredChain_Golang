@@ -18,6 +18,11 @@ func TestUserStoreInput_Validate(t *testing.T) {
 		shouldErr bool
 	}{
 		{name: "Valid Request", req: UserStoreInput{Name: "John Doe", Email: "john@example.com", Role: domain.RoleHolder}, shouldErr: false},
+		{name: "Valid Gender Male", req: UserStoreInput{Name: "John", Email: "john1@example.com", Role: domain.RoleHolder, Gender: strPtr("male")}, shouldErr: false},
+		{name: "Valid Gender Female", req: UserStoreInput{Name: "Jane", Email: "jane@example.com", Role: domain.RoleHolder, Gender: strPtr("female")}, shouldErr: false},
+		{name: "Valid Gender Other", req: UserStoreInput{Name: "Alex", Email: "alex@example.com", Role: domain.RoleHolder, Gender: strPtr("other")}, shouldErr: false},
+		{name: "Invalid Gender", req: UserStoreInput{Name: "Pat", Email: "pat@example.com", Role: domain.RoleHolder, Gender: strPtr("unknown")}, shouldErr: true},
+		{name: "Nil Gender is valid", req: UserStoreInput{Name: "Sam", Email: "sam@example.com", Role: domain.RoleHolder, Gender: nil}, shouldErr: false},
 		{name: "Missing Name", req: UserStoreInput{Email: "john@example.com", Role: domain.RoleHolder}, shouldErr: true},
 		{name: "Invalid Email", req: UserStoreInput{Name: "John Doe", Email: "john-example.com", Role: domain.RoleHolder}, shouldErr: true},
 		{name: "Invalid Role", req: UserStoreInput{Name: "John Doe", Email: "john@example.com", Role: domain.Role("invalid_role")}, shouldErr: true},
@@ -137,6 +142,30 @@ func TestUserStoreInput_ToDomain(t *testing.T) {
 		got := input.ToDomain()
 
 		assert.Nil(t, got.BirthDate)
+	})
+
+	t.Run("Gender set yields domain.Gender pointer", func(t *testing.T) {
+		input := UserStoreInput{
+			Name:   "Test",
+			Email:  "test@example.com",
+			Role:   domain.RoleHolder,
+			Gender: strPtr("female"),
+		}
+		got := input.ToDomain()
+		assert.NotNil(t, got.Gender)
+		assert.Equal(t, domain.GenderFemale, *got.Gender)
+	})
+
+	t.Run("Empty gender string yields nil domain.Gender", func(t *testing.T) {
+		empty := ""
+		input := UserStoreInput{
+			Name:   "Test",
+			Email:  "test@example.com",
+			Role:   domain.RoleHolder,
+			Gender: &empty,
+		}
+		got := input.ToDomain()
+		assert.Nil(t, got.Gender)
 	})
 }
 
