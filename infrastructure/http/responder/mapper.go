@@ -69,6 +69,11 @@ var CodeToMessageKey = map[int]string{
 	domain.CodeUserUpdateSelfForbidden:              "error_users_update_self_forbidden",
 	domain.CodeUserUpdateBlockchainSyncFailed:       "error_users_update_blockchain_sync_failed",
 	domain.CodeUserUpdateTrashedForbidden:           "error_users_update_trashed_forbidden",
+	domain.CodeUserTransferSuperAdminSuccess:              "success_super_admin_transferred",
+	domain.CodeUserTransferSuperAdminSelfTargetForbidden:  "error_transfer_super_admin_self_target_forbidden",
+	domain.CodeUserTransferSuperAdminTargetNotFound:       "error_transfer_super_admin_target_not_found",
+	domain.CodeUserTransferSuperAdminTrashedForbidden:     "error_transfer_super_admin_trashed_forbidden",
+	domain.CodeUserTransferSuperAdminBlockchainSyncFailed: "error_transfer_super_admin_blockchain_sync_failed",
 
 	// Credential codes
 	domain.CodeCredentialFetchSuccess:  "success_credential_fetched",
@@ -139,6 +144,11 @@ var HttpCodes = map[int]int{
 	domain.CodeUserUpdateSelfForbidden:              http.StatusForbidden,
 	domain.CodeUserUpdateBlockchainSyncFailed:       http.StatusInternalServerError,
 	domain.CodeUserUpdateTrashedForbidden:           http.StatusForbidden,
+	domain.CodeUserTransferSuperAdminSuccess:              http.StatusOK,
+	domain.CodeUserTransferSuperAdminSelfTargetForbidden:  http.StatusForbidden,
+	domain.CodeUserTransferSuperAdminTargetNotFound:       http.StatusNotFound,
+	domain.CodeUserTransferSuperAdminTrashedForbidden:     http.StatusForbidden,
+	domain.CodeUserTransferSuperAdminBlockchainSyncFailed: http.StatusInternalServerError,
 
 	domain.CodeCredentialFetchSuccess:  http.StatusOK,
 	domain.CodeCredentialFetchNotFound: http.StatusNotFound,
