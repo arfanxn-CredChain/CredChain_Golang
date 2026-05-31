@@ -14,6 +14,7 @@ type User struct {
 	PhoneNumber   *string        `json:"phone_number"`
 	Email         string         `json:"email"`
 	BirthDate     *time.Time     `json:"birth_date"`
+	Gender        *domain.Gender `json:"gender"`
 	Meta          map[string]any `json:"meta"`
 	Role          domain.Role    `json:"role"`
 	WalletAddress string         `json:"wallet_address"`
@@ -31,6 +32,7 @@ func FromDomainUser(u domain.User) User {
 		PhoneNumber:   u.PhoneNumber,
 		Email:         u.Email,
 		BirthDate:     u.BirthDate,
+		Gender:        u.Gender,
 		Meta:          u.Meta,
 		Role:          u.Role,
 		WalletAddress: u.WalletAddress,
@@ -49,6 +51,7 @@ func (u *User) ToDomain() domain.User {
 		PhoneNumber:   u.PhoneNumber,
 		Email:         u.Email,
 		BirthDate:     u.BirthDate,
+		Gender:        u.Gender,
 		Meta:          u.Meta,
 		Role:          u.Role,
 		WalletAddress: u.WalletAddress,
