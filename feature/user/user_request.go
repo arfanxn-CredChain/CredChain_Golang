@@ -22,6 +22,7 @@ type UserStoreInput struct {
 	Number      *string        `json:"number"`
 	PhoneNumber *string        `json:"phone_number"`
 	BirthDate   *string        `json:"birth_date"`
+	Gender      *string        `json:"gender"`
 	Meta        map[string]any `json:"meta"`
 }
 
@@ -33,6 +34,7 @@ func (n UserStoreInput) Validate() error {
 		validation.Field(&n.Number, validation.Length(0, 256)),
 		validation.Field(&n.PhoneNumber, validation.Length(0, 18), strictE164Rule),
 		validation.Field(&n.BirthDate, validation.Date("2006-01-02")),
+		validation.Field(&n.Gender, validation.In("male", "female", "other")),
 	)
 }
 
@@ -43,6 +45,11 @@ func (n UserStoreInput) ToDomain() domain.User {
 			birthDate = &t
 		}
 	}
+	var gender *domain.Gender
+	if n.Gender != nil && *n.Gender != "" {
+		g := domain.Gender(*n.Gender)
+		gender = &g
+	}
 	return domain.User{
 		Name:        &n.Name,
 		Email:       n.Email,
@@ -50,6 +57,7 @@ func (n UserStoreInput) ToDomain() domain.User {
 		Number:      n.Number,
 		PhoneNumber: n.PhoneNumber,
 		BirthDate:   birthDate,
+		Gender:      gender,
 		Meta:        n.Meta,
 	}
 }
@@ -134,6 +142,7 @@ type UserUpdateInput struct {
 	Number      *string        `json:"number"`
 	PhoneNumber *string        `json:"phone_number"`
 	BirthDate   *string        `json:"birth_date"`
+	Gender      *string        `json:"gender"`
 	Meta        map[string]any `json:"meta"`
 	Email       *string        `json:"email"`
 	Role        *domain.Role   `json:"role"`
@@ -146,6 +155,7 @@ func (n UserUpdateInput) Validate() error {
 		validation.Field(&n.Number, validation.Length(0, 256)),
 		validation.Field(&n.PhoneNumber, validation.Length(0, 18), strictE164Rule),
 		validation.Field(&n.BirthDate, validation.Date("2006-01-02")),
+		validation.Field(&n.Gender, validation.In("male", "female", "other")),
 		validation.Field(&n.Email, is.Email, validation.Length(1, 256)),
 		validation.Field(&n.Role, validation.In(domain.RoleAdmin, domain.RoleIssuer, domain.RoleHolder)),
 	)
@@ -158,12 +168,18 @@ func (n UserUpdateInput) ToDomain() domain.User {
 			birthDate = &t
 		}
 	}
+	var gender *domain.Gender
+	if n.Gender != nil && *n.Gender != "" {
+		g := domain.Gender(*n.Gender)
+		gender = &g
+	}
 	u := domain.User{
 		Id:          n.Id,
 		Name:        n.Name,
 		Number:      n.Number,
 		PhoneNumber: n.PhoneNumber,
 		BirthDate:   birthDate,
+		Gender:      gender,
 		Meta:        n.Meta,
 	}
 	if n.Email != nil {
