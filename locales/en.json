@@ -87,5 +87,10 @@
   "error_credential_issue_failed": "Failed to issue credential.",
   "error_credential_revoke_failed": "Failed to revoke credential.",
   "error_credential_verify_failed": "Failed to verify credential.",
-  "error_rate_limit_exceeded": "Too many requests. Please try again later."
+  "error_rate_limit_exceeded": "Too many requests. Please try again later.",
+  "success_super_admin_transferred": "Super admin role transferred successfully.",
+  "error_transfer_super_admin_self_target_forbidden": "Cannot transfer super admin role to yourself.",
+  "error_transfer_super_admin_target_not_found": "Target user not found.",
+  "error_transfer_super_admin_trashed_forbidden": "Cannot transfer super admin role to a deleted user.",
+  "error_transfer_super_admin_blockchain_sync_failed": "Failed to transfer super admin role on blockchain."
 }

@@ -87,5 +87,10 @@
   "error_credential_issue_failed": "Gagal menerbitkan kredensial.",
   "error_credential_revoke_failed": "Gagal mencabut kredensial.",
   "error_credential_verify_failed": "Gagal memverifikasi kredensial.",
-  "error_rate_limit_exceeded": "Terlalu banyak permintaan. Silakan coba lagi nanti."
+  "error_rate_limit_exceeded": "Terlalu banyak permintaan. Silakan coba lagi nanti.",
+  "success_super_admin_transferred": "Peran super admin berhasil dialihkan.",
+  "error_transfer_super_admin_self_target_forbidden": "Tidak dapat mengalihkan peran super admin ke diri sendiri.",
+  "error_transfer_super_admin_target_not_found": "Pengguna target tidak ditemukan.",
+  "error_transfer_super_admin_trashed_forbidden": "Tidak dapat mengalihkan peran super admin ke pengguna yang telah dihapus.",
+  "error_transfer_super_admin_blockchain_sync_failed": "Gagal mengalihkan peran super admin di blockchain."
 }
