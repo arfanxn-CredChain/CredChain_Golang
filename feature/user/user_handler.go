@@ -126,7 +126,7 @@ func (h *userHandler) UpdateSelfProfile(c *gin.Context) {
 		responder.SendValidationError(c, err)
 		return
 	}
-	user, err := h.userSvc.UpdateProfile(c.Request.Context(), authUser.Id, req.Name, req.Number, req.PhoneNumber, req.ParsedBirthDate(), req.Meta)
+	user, err := h.userSvc.UpdateProfile(c.Request.Context(), authUser.Id, req.PhoneNumber)
 	if err != nil {
 		c.Error(err)
 		responder.SendError(c, err)
