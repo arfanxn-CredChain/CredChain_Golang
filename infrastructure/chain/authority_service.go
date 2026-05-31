@@ -127,6 +127,21 @@ type AuthorityService interface {
 	// signature verification. Registry has its own separate nonce mapping for
 	// credential issue/revoke flows.
 	FindNonce(ctx context.Context, addr string) (*big.Int, error)
+
+	// TransferSuperAdmin transfers the SuperAdmin role from the signer to the
+	// target user. It signs (signerAddr || newSuperAdminAddr || pad32(nonce))
+	// with EIP-191, submits via the relayer, and waits for mining. On success
+	// the contract downgrades the signer to Admin and promotes the target to
+	// SuperAdmin atomically.
+	//
+	// Parameters:
+	//   - ctx: Context for timeout/cancellation control
+	//   - signer: Wallet containing Address (current SuperAdmin) and EncryptedPrivateKey
+	//   - newSuperAdmin: domain.User entity to receive the SuperAdmin role; must have valid WalletAddress
+	//
+	// Returns:
+	//   - error: If any step fails (nonce fetch, decryption, signing, transaction, or mining)
+	TransferSuperAdmin(ctx context.Context, signer domain.Wallet, newSuperAdmin domain.User) error
 }
 
 // waitMinedFunc matches the signature of bind.WaitMined, allowing tests to
@@ -273,5 +288,67 @@ func (s *authorityService) UpdateUserRole(ctx context.Context, signer domain.Wal
 		return fmt.Errorf("transaction reverted on-chain: tx hash %s", tx.Hash().Hex())
 	}
 
+	return nil
+}
+
+// TransferSuperAdmin transfers the SuperAdmin role from the signer to the target user.
+func (s *authorityService) TransferSuperAdmin(ctx context.Context, signer domain.Wallet, newSuperAdmin domain.User) error {
+	if signer.Address == "" {
+		return fmt.Errorf("signer address is empty")
+	}
+	if newSuperAdmin.WalletAddress == "" {
+		return fmt.Errorf("new super admin wallet address is empty")
+	}
+
+	signerAddr := mustHexToAddress(signer.Address)
+	newSuperAdminAddr := mustHexToAddress(newSuperAdmin.WalletAddress)
+
+	nonce, err := s.FindNonce(ctx, signer.Address)
+	if err != nil {
+		return fmt.Errorf("failed to fetch nonce: %w", err)
+	}
+
+	decryptedKey, err := cryptoInfra.Decrypt(signer.EncryptedPrivateKey, []byte(*s.cfg.WalletEncryptionKey))
+	if err != nil {
+		return fmt.Errorf("failed to decrypt wallet: %w", err)
+	}
+
+	privateKey, err := crypto.HexToECDSA(strings.TrimPrefix(string(decryptedKey), "0x"))
+	if err != nil {
+		return fmt.Errorf("failed to parse private key: %w", err)
+	}
+
+	var packed []byte
+	packed = append(packed, signerAddr.Bytes()...)
+	packed = append(packed, newSuperAdminAddr.Bytes()...)
+	packed = append(packed, common.LeftPadBytes(nonce.Bytes(), 32)...)
+
+	digest := crypto.Keccak256(packed)
+	signature, err := crypto.Sign(accounts.TextHash(digest), privateKey)
+	if err != nil {
+		return fmt.Errorf("failed to sign: %w", err)
+	}
+	signature[64] += 27
+
+	tx, err := s.client.Authority.TransferSuperAdminWithSignature(
+		s.client.Relayer,
+		contracts.CredentialAuthorityTransferSuperAdminWithSignatureParams{
+			Signer:        signerAddr,
+			NewSuperAdmin: newSuperAdminAddr,
+			Nonce:         nonce,
+			Signature:     signature,
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("failed to execute transfer: %w", err)
+	}
+
+	receipt, err := s.waitMined(ctx, s.client.EthClient, tx)
+	if err != nil {
+		return fmt.Errorf("failed to wait for transaction to be mined: %w", err)
+	}
+	if receipt.Status == 0 {
+		return fmt.Errorf("transaction reverted on-chain: tx hash %s", tx.Hash().Hex())
+	}
 	return nil
 }

@@ -43,6 +43,14 @@ func (m *localAuthorityBinding) BatchUpdateUserRoleWithSignature(opts *bind.Tran
 	return nil, args.Error(1)
 }
 
+func (m *localAuthorityBinding) TransferSuperAdminWithSignature(opts *bind.TransactOpts, params contracts.CredentialAuthorityTransferSuperAdminWithSignatureParams) (*types.Transaction, error) {
+	args := m.Called(opts, params)
+	if v := args.Get(0); v != nil {
+		return v.(*types.Transaction), args.Error(1)
+	}
+	return nil, args.Error(1)
+}
+
 // localRegistryBinding is an inline mock to avoid import cycle with testutil/mocks.
 type localRegistryBinding struct{ mock.Mock }
 
@@ -198,6 +206,53 @@ func TestAuthorityService_UpdateUserRole_Success(t *testing.T) {
 		WalletAddress: "0x000000000000000000000000000000000000bEEf",
 		Role:          domain.RoleIssuer,
 	})
+	assert.NoError(t, err)
+	authMock.AssertExpectations(t)
+}
+
+func TestAuthorityService_TransferSuperAdmin_NonceFetchFails(t *testing.T) {
+	authMock := &localAuthorityBinding{}
+	regMock := &localRegistryBinding{}
+	authMock.On("UserToNonce", mock.Anything, mock.Anything).Return(nil, errors.New("nonce err"))
+
+	svc := NewAuthorityService(mkClient(authMock, regMock), mkConfig())
+	err := svc.TransferSuperAdmin(context.Background(), domain.Wallet{
+		Address:             "0x0000000000000000000000000000000000000000",
+		EncryptedPrivateKey: "irrelevant",
+	}, domain.User{WalletAddress: "0x000000000000000000000000000000000000bEEf"})
+	assert.Error(t, err)
+}
+
+func TestAuthorityService_TransferSuperAdmin_Success(t *testing.T) {
+	authMock := &localAuthorityBinding{}
+	regMock := &localRegistryBinding{}
+
+	privKey, err := ethCrypto.GenerateKey()
+	assert.NoError(t, err)
+	privKeyHex := common.Bytes2Hex(ethCrypto.FromECDSA(privKey))
+	signerAddr := ethCrypto.PubkeyToAddress(privKey.PublicKey).Hex()
+	targetAddr := "0x000000000000000000000000000000000000bEEf"
+
+	cfg := mkConfig()
+	encrypted, err := cryptoInfra.Encrypt([]byte(privKeyHex), []byte(*cfg.WalletEncryptionKey))
+	assert.NoError(t, err)
+
+	authMock.On("UserToNonce", mock.Anything, mock.Anything).Return(big.NewInt(7), nil)
+	authMock.On("TransferSuperAdminWithSignature",
+		mock.Anything,
+		mock.MatchedBy(func(p contracts.CredentialAuthorityTransferSuperAdminWithSignatureParams) bool {
+			return p.Nonce.Cmp(big.NewInt(7)) == 0 && len(p.Signature) == 65
+		})).Return(types.NewTx(&types.LegacyTx{}), nil)
+
+	svc := NewAuthorityService(mkClient(authMock, regMock), cfg).(*authorityService)
+	svc.waitMined = func(ctx context.Context, b bind.DeployBackend, tx *types.Transaction) (*types.Receipt, error) {
+		return &types.Receipt{Status: 1}, nil
+	}
+
+	err = svc.TransferSuperAdmin(context.Background(), domain.Wallet{
+		Address:             signerAddr,
+		EncryptedPrivateKey: encrypted,
+	}, domain.User{WalletAddress: targetAddr})
 	assert.NoError(t, err)
 	authMock.AssertExpectations(t)
 }

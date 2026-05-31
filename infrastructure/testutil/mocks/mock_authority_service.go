@@ -37,4 +37,9 @@ func (m *MockAuthorityService) FindNonce(ctx context.Context, addr string) (*big
 	return nil, args.Error(1)
 }
 
+func (m *MockAuthorityService) TransferSuperAdmin(ctx context.Context, signer domain.Wallet, newSuperAdmin domain.User) error {
+	args := m.Called(ctx, signer, newSuperAdmin)
+	return args.Error(0)
+}
+
 var _ chain.AuthorityService = (*MockAuthorityService)(nil)
