@@ -21,6 +21,7 @@ type UserHandler interface {
 	UpdateSelfEmail(c *gin.Context)
 	UpdateRole(c *gin.Context)
 	Delete(c *gin.Context)
+	TransferSuperAdmin(c *gin.Context)
 }
 
 type userHandler struct {
@@ -205,6 +206,25 @@ func (h *userHandler) Delete(c *gin.Context) {
 		return
 	}
 	responder.Send(c, domain.CodeUserBatchDeleteSuccess, gin.H{"deleted_count": deletedCount})
+}
+
+func (h *userHandler) TransferSuperAdmin(c *gin.Context) {
+	var req UserTransferSuperAdminRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.Error(err)
+		responder.SendError(c, err)
+		return
+	}
+	if err := req.Validate(); err != nil {
+		responder.SendValidationError(c, err)
+		return
+	}
+	if err := h.userSvc.TransferSuperAdmin(c.Request.Context(), req.Id); err != nil {
+		c.Error(err)
+		responder.SendError(c, err)
+		return
+	}
+	responder.Send(c, domain.CodeUserTransferSuperAdminSuccess, gin.H{})
 }
 
 func (h *userHandler) Update(c *gin.Context) {
