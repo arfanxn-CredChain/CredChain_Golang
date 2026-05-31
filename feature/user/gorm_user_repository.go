@@ -38,6 +38,7 @@ var allowedFilterColumns = map[string]bool{
 	"number":       true,
 	"phone_number": true,
 	"birth_date":   true,
+	"gender":       true,
 	"created_at":   true,
 	"updated_at":   true,
 	"deleted_at":   true,
@@ -51,6 +52,7 @@ var allowedSortColumns = map[string]bool{
 	"name":       true,
 	"email":      true,
 	"role":       true,
+	"gender":     true,
 	"created_at": true,
 	"updated_at": true,
 	"deleted_at": true,
@@ -311,6 +313,12 @@ func (r *gormUserRepository) updateBatchCase(ctx context.Context, users []domain
 	addCaseClause("birth_date", func(u domain.User) (interface{}, bool) {
 		if u.BirthDate != nil {
 			return *u.BirthDate, true
+		}
+		return nil, false
+	})
+	addCaseClause("gender", func(u domain.User) (interface{}, bool) {
+		if u.Gender != nil {
+			return string(*u.Gender), true
 		}
 		return nil, false
 	})

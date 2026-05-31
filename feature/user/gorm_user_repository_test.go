@@ -334,6 +334,32 @@ func TestGormUserRepository_Update_BirthDateExplicitClear_SetsNull(t *testing.T)
 	t.Skip("explicit-clear-to-null is intentionally unsupported with struct-based Updates; revisit if product requires it")
 }
 
+func TestGormUserRepository_Update_GenderSet_PersistsValue(t *testing.T) {
+	repo := newRepo(t)
+	u := fixtures.NewDomainUser(fixtures.WithID("g1"), fixtures.WithEmail("g1@x.com"))
+	_, _ = repo.Store(context.Background(), u)
+	gender := domain.GenderFemale
+	_, err := repo.Update(context.Background(), domain.User{Id: "g1", Gender: &gender})
+	assert.NoError(t, err)
+	got, _ := repo.Find(context.Background(), "g1")
+	assert.NotNil(t, got.Gender)
+	assert.Equal(t, domain.GenderFemale, *got.Gender)
+}
+
+func TestGormUserRepository_Update_GenderNil_PreservesExisting(t *testing.T) {
+	repo := newRepo(t)
+	gender := domain.GenderMale
+	u := fixtures.NewDomainUser(fixtures.WithID("g2"), fixtures.WithEmail("g2@x.com"))
+	u.Gender = &gender
+	_, _ = repo.Store(context.Background(), u)
+	name := "Renamed"
+	_, err := repo.Update(context.Background(), domain.User{Id: "g2", Name: &name})
+	assert.NoError(t, err)
+	got, _ := repo.Find(context.Background(), "g2")
+	assert.NotNil(t, got.Gender, "nil pointer in update payload must not clear existing gender")
+	assert.Equal(t, domain.GenderMale, *got.Gender)
+}
+
 func TestGormUserRepository_Update_BatchCASE_MixedColumns(t *testing.T) {
 	repo := newRepo(t)
 
