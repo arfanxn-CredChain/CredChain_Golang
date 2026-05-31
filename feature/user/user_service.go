@@ -30,6 +30,7 @@ type UserService interface {
 	UpdateRole(ctx context.Context, updates ...domain.UserRoleUpdate) ([]domain.User, int64, error)
 	Store(ctx context.Context, users ...domain.User) ([]domain.User, error)
 	Delete(ctx context.Context, ids ...string) (int64, error)
+	TransferSuperAdmin(ctx context.Context, targetId string) error
 }
 
 type userService struct {
@@ -440,4 +441,57 @@ func (s *userService) Delete(ctx context.Context, ids ...string) (int64, error) 
 		return 0, nil
 	}
 	return s.deleteUserAndSyncBlockchain(ctx, ids, targetUsers)
+}
+
+func (s *userService) TransferSuperAdmin(ctx context.Context, targetId string) error {
+	if err := s.policy.TransferSuperAdminPreFetch(ctx, targetId); err != nil {
+		return err
+	}
+	authUser := httpContext.MustGetUser(ctx)
+	return s.uow.Execute(ctx, func(uow domain.UnitOfWork) error {
+		targets, err := uow.User().FindByIds(ctx, targetId)
+		if err != nil {
+			return err
+		}
+		if len(targets) == 0 {
+			return domain.NewError(domain.CodeUserTransferSuperAdminTargetNotFound,
+				domain.WithMetadata("user_id", targetId))
+		}
+		target := targets[0]
+		if target.DeletedAt != nil {
+			return domain.NewError(domain.CodeUserTransferSuperAdminTrashedForbidden,
+				domain.WithMetadata("user_id", targetId))
+		}
+
+		wallet := domain.WalletFromUser(*authUser)
+		if err := s.authorityService.TransferSuperAdmin(ctx, wallet, target); err != nil {
+			return domain.NewError(domain.CodeUserTransferSuperAdminBlockchainSyncFailed,
+				domain.WithError(err))
+		}
+
+		if _, _, err := uow.User().UpdateRole(ctx,
+			domain.User{
+				Id:                        authUser.Id,
+				Role:                      domain.RoleAdmin,
+				WalletAddress:             authUser.WalletAddress,
+				EncryptedWalletPrivateKey: authUser.EncryptedWalletPrivateKey,
+			},
+			domain.User{
+				Id:                        target.Id,
+				Role:                      domain.RoleSuperAdmin,
+				WalletAddress:             target.WalletAddress,
+				EncryptedWalletPrivateKey: target.EncryptedWalletPrivateKey,
+			},
+		); err != nil {
+			return err
+		}
+
+		if _, err := uow.UserToken().RevokeByUserIdAndType(ctx, authUser.Id, domain.UserTokenTypeRefresh); err != nil {
+			return err
+		}
+		if _, err := uow.UserToken().RevokeByUserIdAndType(ctx, target.Id, domain.UserTokenTypeRefresh); err != nil {
+			return err
+		}
+		return nil
+	})
 }
