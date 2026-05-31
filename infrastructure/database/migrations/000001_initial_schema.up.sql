@@ -5,6 +5,12 @@ CREATE TYPE role AS ENUM (
     'holder'
 );
 
+CREATE TYPE gender AS ENUM (
+    'male',
+    'female',
+    'other'
+);
+
 CREATE TABLE users (
     id CHAR(26) PRIMARY KEY,
     name VARCHAR(256),
@@ -12,6 +18,7 @@ CREATE TABLE users (
     phone_number VARCHAR(18) UNIQUE,
     email VARCHAR(256) UNIQUE NOT NULL,
     birth_date DATE,
+    gender gender,
     meta JSONB,
     role role NOT NULL,
     wallet_address CHAR(42) UNIQUE NOT NULL,

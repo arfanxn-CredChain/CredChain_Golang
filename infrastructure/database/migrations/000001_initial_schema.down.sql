@@ -7,6 +7,7 @@ DROP INDEX IF EXISTS idx_users_deleted_at;
 DROP TABLE IF EXISTS users;
 
 DROP TYPE IF EXISTS role;
+DROP TYPE IF EXISTS gender;
 
 -- Drop user_tokens table and indexes
 DROP INDEX IF EXISTS idx_user_tokens_token;
