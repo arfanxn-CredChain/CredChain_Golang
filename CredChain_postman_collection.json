@@ -1524,7 +1524,7 @@
                     ],
                     "body": {
                       "mode": "raw",
-                      "raw": "{\n  \"users\": [\n    {\n      \"name\": \"Test Holder\",\n      \"email\": \"{{TEST_EMAIL}}\",\n      \"role\": \"holder\",\n      \"phone_number\": \"{{TEST_PHONE}}\",\n      \"birth_date\": \"{{TEST_BIRTH_DATE}}\"\n    }\n  ]\n}"
+                      "raw": "{\n  \"users\": [\n    {\n      \"name\": \"Test Holder\",\n      \"email\": \"{{TEST_EMAIL}}\",\n      \"role\": \"holder\",\n      \"phone_number\": \"{{TEST_PHONE}}\",\n      \"birth_date\": \"{{TEST_BIRTH_DATE}}\",\n      \"gender\": \"male\"\n    }\n  ]\n}"
                     },
                     "url": {
                       "raw": "{{BASE_URL}}/api/users/batch",
@@ -1537,7 +1537,7 @@
                         "batch"
                       ]
                     },
-                    "description": "Batch create users. Admin+. Required: name, email, role (admin|issuer|holder). Optional: number, phone_number (E.164), birth_date (YYYY-MM-DD), meta. Wallets auto-generated and roles synced on-chain."
+                    "description": "Batch create users. Admin+. Required: name, email, role (admin|issuer|holder). Optional: number, phone_number (E.164), birth_date (YYYY-MM-DD), gender (male|female|other), meta. Wallets auto-generated and roles synced on-chain."
                   },
                   "response": [
                     {
@@ -1695,7 +1695,7 @@
                     ],
                     "body": {
                       "mode": "raw",
-                      "raw": "{\n  \"users\": [\n    {\n      \"id\": \"{{TARGET_USER_ID}}\",\n      \"name\": \"Updated Name\"\n    }\n  ]\n}"
+                      "raw": "{\n  \"users\": [\n    {\n      \"id\": \"{{TARGET_USER_ID}}\",\n      \"name\": \"Updated Name\",\n      \"gender\": \"female\"\n    }\n  ]\n}"
                     },
                     "url": {
                       "raw": "{{BASE_URL}}/api/users/batch",
