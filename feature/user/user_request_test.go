@@ -402,3 +402,26 @@ func TestUserUpdateInput_ToDomain_PropagatesEmailAndRole(t *testing.T) {
 	assert.Equal(t, "new@x.com", u.Email)
 	assert.Equal(t, domain.RoleIssuer, u.Role)
 }
+
+func TestUserTransferSuperAdminRequest_Validate(t *testing.T) {
+	tests := []struct {
+		name    string
+		req     UserTransferSuperAdminRequest
+		wantErr bool
+	}{
+		{"valid UUID", UserTransferSuperAdminRequest{Id: "123e4567-e89b-12d3-a456-426614174000"}, false},
+		{"empty id", UserTransferSuperAdminRequest{Id: ""}, true},
+		{"non-UUID string", UserTransferSuperAdminRequest{Id: "not-a-uuid"}, true},
+		{"plain number", UserTransferSuperAdminRequest{Id: "12345"}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.req.Validate()
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}

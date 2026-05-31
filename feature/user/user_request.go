@@ -215,3 +215,13 @@ func (r UserUpdateRequest) ToDomain() []domain.User {
 	}
 	return users
 }
+
+type UserTransferSuperAdminRequest struct {
+	Id string `json:"id"`
+}
+
+func (r UserTransferSuperAdminRequest) Validate() error {
+	return validation.ValidateStruct(&r,
+		validation.Field(&r.Id, validation.Required, is.UUID),
+	)
+}
