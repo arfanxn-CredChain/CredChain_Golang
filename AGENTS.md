@@ -349,8 +349,9 @@ All under `/api` prefix. Middleware order: `ErrorLoggerMiddleware` → `I18nMidd
 | POST | `/api/auth/logout` | Authenticated | Revoke all refresh tokens |
 | GET | `/api/users` | Admin+ | Paginated user list (handler `Paginate`) |
 | GET | `/api/users/self` | Authenticated | Current user (handler `Self`) |
-| PUT | `/api/users/self/profile` | Authenticated | Update own profile |
+| PUT | `/api/users/self/profile` | Authenticated | Update own phone number only (handler `UpdateSelfProfile`); name/number/birth_date/meta are admin-managed |
 | PUT | `/api/users/self/email` | Authenticated | Update own email; requires fresh Google ID token |
+| POST | `/api/users/self/transfer-super-admin` | SuperAdmin | Transfer SuperAdmin role (handler `TransferSuperAdmin`); caller → Admin, target → SuperAdmin, both refresh tokens revoked |
 | GET | `/api/users/:id` | Admin+ | Single user lookup (handler `Find`) |
 | POST | `/api/users/batch` | Admin+ | Batch create users |
 | PUT | `/api/users/batch` | Admin+ | Batch update users (handler `Update`); same-role updates silently skipped; email changes revoke target's refresh tokens; role changes sync to blockchain |
@@ -523,6 +524,8 @@ When adding a new endpoint or service method, add at least: one happy-path test,
 - **Go module path** is `CredChain_Golang` (with underscore) — imports use this, not a URL path.
 - **`WALLET_ENCRYPTION_KEY`** must be exactly 32 bytes (AES-256 key). Validated at startup in `config.NewConfig` — app fails fast with clear error if length is wrong.
 - **SuperAdmin** can only be created via `make init-super-admin` CLI, never via API.
+- **Transfer Super Admin**: Only the current SuperAdmin can transfer their role via `POST /api/users/self/transfer-super-admin`. Caller is downgraded to Admin, target promoted to SuperAdmin. Refresh tokens for both users are revoked.
+- **Self-profile lockdown**: `PUT /api/users/self/profile` only accepts `phone_number`. Name, number, birth_date, and meta are admin-managed via `PUT /api/users/batch`.
 - **`init-super-admin`** validates wallet has SuperAdmin role on-chain before database initialization; checks for existing SuperAdmin by role using `FindByRole`, not by email. Filters out trashed users from the existence check.
 - **Auth is Google OAuth only** — no email/password login exists.
 - **Soulbound tokens:** `CredentialRegistry._update()` blocks all transfers and burns (reverts with `CredentialTransferError`) — Solidity-side enforcement; backend should not attempt transfer flows.
