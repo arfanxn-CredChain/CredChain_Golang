@@ -879,3 +879,136 @@ func TestUserService_Update_AssigningSuperAdmin_Forbidden(t *testing.T) {
 	assert.ErrorAs(t, err, &de)
 	assert.Equal(t, domain.CodeUserRoleSuperAdminBatchForbidden, de.Code)
 }
+
+func TestUserService_TransferSuperAdmin_PolicyFails(t *testing.T) {
+	repo := &mocks.MockUserRepository{}
+	uow := &mocks.MockUnitOfWork{}
+	auth := &mocks.MockAuthorityService{}
+	policy := &mocks.MockUserPolicy{}
+
+	policy.On("TransferSuperAdminPreFetch", mock.Anything, "self-id").
+		Return(domain.NewError(domain.CodeUserTransferSuperAdminSelfTargetForbidden))
+
+	svc := NewUserService(UserServiceParams{
+		UserRepo: repo, UoW: uow, Config: mkSvcCfg(),
+		AuthorityService: auth, Logger: zap.NewNop(), Policy: policy,
+	})
+
+	authUser := fixtures.NewDomainUser(fixtures.WithID("self-id"), fixtures.WithRole(domain.RoleSuperAdmin))
+	err := svc.TransferSuperAdmin(ctxWithAuth(&authUser), "self-id")
+	assert.Error(t, err)
+	var de *domain.Error
+	assert.ErrorAs(t, err, &de)
+	assert.Equal(t, domain.CodeUserTransferSuperAdminSelfTargetForbidden, de.Code)
+}
+
+func TestUserService_TransferSuperAdmin_TargetNotFound(t *testing.T) {
+	repo := &mocks.MockUserRepository{}
+	uow := mocks.NewPropagatingUnitOfWork()
+	auth := &mocks.MockAuthorityService{}
+	policy := &mocks.MockUserPolicy{}
+
+	policy.On("TransferSuperAdminPreFetch", mock.Anything, "missing-id").Return(nil)
+	uow.On("User").Return(repo)
+	repo.On("FindByIds", mock.Anything, mock.Anything).Return([]domain.User{}, nil)
+
+	svc := NewUserService(UserServiceParams{
+		UserRepo: repo, UoW: uow, Config: mkSvcCfg(),
+		AuthorityService: auth, Logger: zap.NewNop(), Policy: policy,
+	})
+
+	authUser := fixtures.NewDomainUser(fixtures.WithID("admin1"), fixtures.WithRole(domain.RoleSuperAdmin))
+	err := svc.TransferSuperAdmin(ctxWithAuth(&authUser), "missing-id")
+	assert.Error(t, err)
+	var de *domain.Error
+	assert.ErrorAs(t, err, &de)
+	assert.Equal(t, domain.CodeUserTransferSuperAdminTargetNotFound, de.Code)
+}
+
+func TestUserService_TransferSuperAdmin_TargetTrashed(t *testing.T) {
+	repo := &mocks.MockUserRepository{}
+	uow := mocks.NewPropagatingUnitOfWork()
+	auth := &mocks.MockAuthorityService{}
+	policy := &mocks.MockUserPolicy{}
+
+	now := time.Now()
+	trashed := fixtures.NewDomainUser(fixtures.WithID("trashed-id"), fixtures.WithRole(domain.RoleAdmin))
+	trashed.DeletedAt = &now
+
+	policy.On("TransferSuperAdminPreFetch", mock.Anything, "trashed-id").Return(nil)
+	uow.On("User").Return(repo)
+	repo.On("FindByIds", mock.Anything, mock.Anything).Return([]domain.User{trashed}, nil)
+
+	svc := NewUserService(UserServiceParams{
+		UserRepo: repo, UoW: uow, Config: mkSvcCfg(),
+		AuthorityService: auth, Logger: zap.NewNop(), Policy: policy,
+	})
+
+	authUser := fixtures.NewDomainUser(fixtures.WithID("admin1"), fixtures.WithRole(domain.RoleSuperAdmin))
+	err := svc.TransferSuperAdmin(ctxWithAuth(&authUser), "trashed-id")
+	assert.Error(t, err)
+	var de *domain.Error
+	assert.ErrorAs(t, err, &de)
+	assert.Equal(t, domain.CodeUserTransferSuperAdminTrashedForbidden, de.Code)
+}
+
+func TestUserService_TransferSuperAdmin_BlockchainSyncFailure_RollsBack(t *testing.T) {
+	repo := &mocks.MockUserRepository{}
+	tokenRepo := &mocks.MockUserTokenRepository{}
+	uow := mocks.NewPropagatingUnitOfWork()
+	auth := &mocks.MockAuthorityService{}
+	policy := &mocks.MockUserPolicy{}
+
+	target := fixtures.NewDomainUser(fixtures.WithID("target-id"), fixtures.WithRole(domain.RoleAdmin))
+
+	policy.On("TransferSuperAdminPreFetch", mock.Anything, "target-id").Return(nil)
+	uow.On("User").Return(repo)
+	uow.On("UserToken").Return(tokenRepo)
+	repo.On("FindByIds", mock.Anything, mock.Anything).Return([]domain.User{target}, nil)
+	auth.On("TransferSuperAdmin", mock.Anything, mock.Anything, mock.Anything).Return(errors.New("chain reverted"))
+
+	svc := NewUserService(UserServiceParams{
+		UserRepo: repo, UoW: uow, Config: mkSvcCfg(),
+		AuthorityService: auth, Logger: zap.NewNop(), Policy: policy,
+	})
+
+	authUser := fixtures.NewDomainUser(fixtures.WithID("admin1"), fixtures.WithRole(domain.RoleSuperAdmin))
+	err := svc.TransferSuperAdmin(ctxWithAuth(&authUser), "target-id")
+	assert.Error(t, err)
+	var de *domain.Error
+	assert.ErrorAs(t, err, &de)
+	assert.Equal(t, domain.CodeUserTransferSuperAdminBlockchainSyncFailed, de.Code)
+	repo.AssertNotCalled(t, "UpdateRole", mock.Anything, mock.Anything)
+	tokenRepo.AssertNotCalled(t, "RevokeByUserIdAndType", mock.Anything, mock.Anything, mock.Anything)
+}
+
+func TestUserService_TransferSuperAdmin_Success(t *testing.T) {
+	repo := &mocks.MockUserRepository{}
+	tokenRepo := &mocks.MockUserTokenRepository{}
+	uow := mocks.NewPropagatingUnitOfWork()
+	auth := &mocks.MockAuthorityService{}
+	policy := &mocks.MockUserPolicy{}
+
+	authUser := fixtures.NewDomainUser(fixtures.WithID("super-admin-id"), fixtures.WithRole(domain.RoleSuperAdmin))
+	target := fixtures.NewDomainUser(fixtures.WithID("target-id"), fixtures.WithRole(domain.RoleAdmin))
+
+	policy.On("TransferSuperAdminPreFetch", mock.Anything, "target-id").Return(nil)
+	uow.On("User").Return(repo)
+	uow.On("UserToken").Return(tokenRepo)
+	repo.On("FindByIds", mock.Anything, mock.Anything).Return([]domain.User{target}, nil)
+	auth.On("TransferSuperAdmin", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	repo.On("UpdateRole", mock.Anything, mock.Anything).Return([]domain.User{authUser, target}, 2, nil)
+	tokenRepo.On("RevokeByUserIdAndType", mock.Anything, "super-admin-id", domain.UserTokenTypeRefresh).Return(1, nil)
+	tokenRepo.On("RevokeByUserIdAndType", mock.Anything, "target-id", domain.UserTokenTypeRefresh).Return(1, nil)
+
+	svc := NewUserService(UserServiceParams{
+		UserRepo: repo, UoW: uow, Config: mkSvcCfg(),
+		AuthorityService: auth, Logger: zap.NewNop(), Policy: policy,
+	})
+
+	err := svc.TransferSuperAdmin(ctxWithAuth(&authUser), "target-id")
+	assert.NoError(t, err)
+	auth.AssertCalled(t, "TransferSuperAdmin", mock.Anything, mock.Anything, mock.Anything)
+	tokenRepo.AssertCalled(t, "RevokeByUserIdAndType", mock.Anything, "super-admin-id", domain.UserTokenTypeRefresh)
+	tokenRepo.AssertCalled(t, "RevokeByUserIdAndType", mock.Anything, "target-id", domain.UserTokenTypeRefresh)
+}
