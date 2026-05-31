@@ -19,6 +19,7 @@ type Config struct {
 	InitialSuperAdminNumber      *string
 	InitialSuperAdminPhoneNumber *string
 	InitialSuperAdminBirthDate   *time.Time
+	InitialSuperAdminGender      *string
 	InitialSuperAdminMeta        map[string]any
 	WalletEncryptionKey          *string
 	RPCURL                       *string
@@ -118,6 +119,7 @@ func NewConfig(envPath string) (*Config, error) {
 		InitialSuperAdminNumber:      getEnv("INITIAL_SUPER_ADMIN_NUMBER", nil),
 		InitialSuperAdminPhoneNumber: getEnv("INITIAL_SUPER_ADMIN_PHONE_NUMBER", nil),
 		InitialSuperAdminBirthDate:   getTimeEnv("INITIAL_SUPER_ADMIN_BIRTH_DATE", nil),
+		InitialSuperAdminGender:      getEnv("INITIAL_SUPER_ADMIN_GENDER", nil),
 		InitialSuperAdminMeta:        getJSONEnv("INITIAL_SUPER_ADMIN_META", nil),
 		WalletEncryptionKey:          getEnv("WALLET_ENCRYPTION_KEY", nil),
 		RPCURL:                       getEnv("RPC_URL", nil),

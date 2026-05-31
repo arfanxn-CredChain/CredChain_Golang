@@ -30,6 +30,7 @@ var (
 	initSuperAdminEmail     string
 	initSuperAdminPrivKey   string
 	initSuperAdminBirthDate string
+	initSuperAdminGender    string
 	initSuperAdminMeta      string
 )
 
@@ -42,6 +43,7 @@ func init() {
 	initSuperAdminCmd.Flags().StringVar(&initSuperAdminEmail, "email", "", "Super admin email (required)")
 	initSuperAdminCmd.Flags().StringVar(&initSuperAdminPrivKey, "private-key", "", "Super admin wallet private key (required)")
 	initSuperAdminCmd.Flags().StringVar(&initSuperAdminBirthDate, "birth-date", "", "Super admin birth date in ISO 8601 format (YYYY-MM-DD, optional)")
+	initSuperAdminCmd.Flags().StringVar(&initSuperAdminGender, "gender", "", "Super admin gender: male, female, or other (optional)")
 	initSuperAdminCmd.Flags().StringVar(&initSuperAdminMeta, "meta", "", "Super admin meta as JSON string (optional)")
 }
 
@@ -132,6 +134,7 @@ func initSuperAdminEncryptKey(privKey, encryptionKey string) (string, error) {
 //   - number: User number/ID like employee or student number (optional, may be nil)
 //   - phoneNumber: User phone number (optional, may be nil)
 //   - birthDate: User birth date in ISO 8601 format (optional, may be nil)
+//   - gender: User gender (optional, may be nil)
 //   - meta: User metadata as JSON object (optional, may be nil)
 //
 // Returns:
@@ -144,6 +147,7 @@ func initSuperAdminBuildUser(
 	number *string,
 	phoneNumber *string,
 	birthDate *time.Time,
+	gender *domain.Gender,
 	meta map[string]any,
 ) domain.User {
 	return domain.User{
@@ -152,6 +156,7 @@ func initSuperAdminBuildUser(
 		PhoneNumber:               phoneNumber,
 		Email:                     email,
 		BirthDate:                 birthDate,
+		Gender:                    gender,
 		Meta:                      meta,
 		Role:                      domain.RoleSuperAdmin,
 		WalletAddress:             walletAddress,
@@ -181,6 +186,27 @@ func initSuperAdminGetMeta(cfg *config.Config, metaFlag string) map[string]any {
 		}
 	}
 	return cfg.InitialSuperAdminMeta
+}
+
+// initSuperAdminGetGender resolves gender from CLI flag or environment variable.
+// Flag takes priority over environment variable. Returns nil if not set.
+// Fatals if an invalid value is provided.
+func initSuperAdminGetGender(cfg *config.Config, genderFlag string) *domain.Gender {
+	raw := genderFlag
+	if raw == "" && cfg.InitialSuperAdminGender != nil {
+		raw = *cfg.InitialSuperAdminGender
+	}
+	if raw == "" {
+		return nil
+	}
+	switch raw {
+	case "male", "female", "other":
+		g := domain.Gender(raw)
+		return &g
+	default:
+		log.Fatalf("invalid gender %q: must be one of: male, female, other", raw)
+		return nil
+	}
 }
 
 // initSuperAdminGetString resolves a string field from CLI flag or environment variable.
@@ -234,6 +260,7 @@ func initSuperAdminVerifyOnChainRole(ctx context.Context, authorityService chain
 // initSuperAdmin is the main FX-invoked function
 func initSuperAdmin(cfg *config.Config, userRepo domain.UserRepository, authorityService chain.AuthorityService, logger *zap.Logger) error {
 	birthDate := initSuperAdminGetBirthDate(cfg, initSuperAdminBirthDate)
+	gender := initSuperAdminGetGender(cfg, initSuperAdminGender)
 	meta := initSuperAdminGetMeta(cfg, initSuperAdminMeta)
 	name := initSuperAdminGetString(cfg.InitialSuperAdminName, initSuperAdminName)
 	number := initSuperAdminGetString(cfg.InitialSuperAdminNumber, initSuperAdminNumber)
@@ -280,7 +307,7 @@ func initSuperAdmin(cfg *config.Config, userRepo domain.UserRepository, authorit
 		return err
 	}
 
-	adminUser := initSuperAdminBuildUser(email, walletAddress, encryptedKey, name, number, phone, birthDate, meta)
+	adminUser := initSuperAdminBuildUser(email, walletAddress, encryptedKey, name, number, phone, birthDate, gender, meta)
 
 	_, err = userRepo.Store(context.Background(), adminUser)
 	if err != nil {
@@ -294,6 +321,7 @@ func initSuperAdmin(cfg *config.Config, userRepo domain.UserRepository, authorit
 		zap.String("number", getStringValue(adminUser.Number)),
 		zap.String("phoneNumber", getStringValue(adminUser.PhoneNumber)),
 		zap.Time("birthDate", getTimeValue(adminUser.BirthDate)),
+		zap.Any("gender", adminUser.Gender),
 		zap.Any("meta", adminUser.Meta),
 	)
 	return nil
@@ -318,6 +346,7 @@ Environment Variables:
   INITIAL_SUPER_ADMIN_EMAIL        Super admin email address (required)
   INITIAL_SUPER_ADMIN_PRIVATE_KEY  Super admin wallet private key, 64-char hex with 0x prefix (required)
   INITIAL_SUPER_ADMIN_BIRTH_DATE   Super admin birth date in ISO 8601 format YYYY-MM-DD (optional)
+  INITIAL_SUPER_ADMIN_GENDER       Super admin gender: male, female, or other (optional)
   INITIAL_SUPER_ADMIN_META         Super admin metadata as JSON string (optional)
 
 CLI Flags (take priority over env vars):
@@ -327,6 +356,7 @@ CLI Flags (take priority over env vars):
   --email         Super admin email (required)
   --private-key   Super admin wallet private key (required)
   --birth-date    Super admin birth date (YYYY-MM-DD, optional)
+  --gender        Super admin gender: male, female, or other (optional)
   --meta          Super admin meta as JSON string (optional)
 
 Examples:
