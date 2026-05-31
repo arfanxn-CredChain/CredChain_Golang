@@ -14,6 +14,7 @@ type User struct {
 	PhoneNumber               *string        `gorm:"type:varchar(50);column:phone_number" json:"phone_number"`
 	Email                     string         `gorm:"type:varchar(255);uniqueIndex;column:email" json:"email"`
 	BirthDate                 *time.Time     `gorm:"column:birth_date" json:"birth_date"`
+	Gender                    *string        `gorm:"type:gender;column:gender" json:"gender"`
 	Meta                      map[string]any `gorm:"type:jsonb;serializer:json;column:meta" json:"meta"`
 	Role                      string         `gorm:"type:varchar(50);column:role" json:"role"`
 	WalletAddress             string         `gorm:"type:varchar(255);column:wallet_address" json:"wallet_address"`
@@ -29,6 +30,11 @@ func (m *User) ToDomain() domain.User {
 		t := m.DeletedAt.Time
 		deletedAt = &t
 	}
+	var gender *domain.Gender
+	if m.Gender != nil {
+		g := domain.Gender(*m.Gender)
+		gender = &g
+	}
 	return domain.User{
 		Id:                        m.Id,
 		Name:                      m.Name,
@@ -36,6 +42,7 @@ func (m *User) ToDomain() domain.User {
 		PhoneNumber:               m.PhoneNumber,
 		Email:                     m.Email,
 		BirthDate:                 m.BirthDate,
+		Gender:                    gender,
 		Meta:                      m.Meta,
 		Role:                      domain.Role(m.Role),
 		WalletAddress:             m.WalletAddress,
@@ -51,6 +58,11 @@ func FromDomainUser(u domain.User) User {
 	if u.DeletedAt != nil {
 		deletedAt = gorm.DeletedAt{Time: *u.DeletedAt, Valid: true}
 	}
+	var gender *string
+	if u.Gender != nil {
+		g := string(*u.Gender)
+		gender = &g
+	}
 	return User{
 		Id:                        u.Id,
 		Name:                      u.Name,
@@ -58,6 +70,7 @@ func FromDomainUser(u domain.User) User {
 		PhoneNumber:               u.PhoneNumber,
 		Email:                     u.Email,
 		BirthDate:                 u.BirthDate,
+		Gender:                    gender,
 		Meta:                      u.Meta,
 		Role:                      string(u.Role),
 		WalletAddress:             u.WalletAddress,
