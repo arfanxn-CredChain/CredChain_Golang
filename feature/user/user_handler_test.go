@@ -34,7 +34,7 @@ func (m *mockUserService) FindByIds(ctx context.Context, ids ...string) ([]domai
 func (m *mockUserService) Update(ctx context.Context, users ...domain.User) ([]domain.User, error) {
 	panic("not implemented")
 }
-func (m *mockUserService) UpdateProfile(ctx context.Context, id string, name, number, phoneNumber *string, birthDate *time.Time, meta map[string]any) (*domain.User, error) {
+func (m *mockUserService) UpdateProfile(ctx context.Context, id string, phoneNumber *string) (*domain.User, error) {
 	panic("not implemented")
 }
 func (m *mockUserService) UpdateEmail(ctx context.Context, id string, email string, idToken string) (string, error) {

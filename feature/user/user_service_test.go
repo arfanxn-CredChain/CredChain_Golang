@@ -142,27 +142,23 @@ func TestUserService_UpdateProfile(t *testing.T) {
 		UserRepo: repo, UoW: nil, Config: mkSvcCfg(),
 		Logger: zap.NewNop(), Policy: nil,
 	})
-	name := "Alice"
-	got, err := svc.UpdateProfile(context.Background(), "u1", &name, nil, nil, nil, nil)
+	phone := "+1234567890"
+	got, err := svc.UpdateProfile(context.Background(), "u1", &phone)
 	assert.NoError(t, err)
 	assert.Equal(t, "u1", got.Id)
 }
 
-func TestUserService_UpdateProfile_PassesBirthDate(t *testing.T) {
+func TestUserService_UpdateProfile_PhoneOnly(t *testing.T) {
 	repo := &mocks.MockUserRepository{}
-	bd := time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC)
 	updated := fixtures.NewDomainUser(fixtures.WithID("u1"))
-	updated.BirthDate = &bd
-	repo.On("Update", mock.Anything, mock.MatchedBy(func(users []domain.User) bool {
-		return len(users) == 1 && users[0].Id == "u1" && users[0].BirthDate != nil && users[0].BirthDate.Year() == 1990
-	})).Return([]domain.User{updated}, nil)
+	repo.On("Update", mock.Anything, mock.Anything).Return([]domain.User{updated}, nil)
 
 	svc := NewUserService(UserServiceParams{
 		UserRepo: repo, UoW: nil, Config: mkSvcCfg(),
 		Logger: zap.NewNop(), Policy: nil,
 	})
-	name := "Alice"
-	got, err := svc.UpdateProfile(context.Background(), "u1", &name, nil, nil, &bd, nil)
+	phone := "+1234567890"
+	got, err := svc.UpdateProfile(context.Background(), "u1", &phone)
 	assert.NoError(t, err)
 	assert.Equal(t, "u1", got.Id)
 }

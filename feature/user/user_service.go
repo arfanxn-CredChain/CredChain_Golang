@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
-	"time"
 
 	"CredChain_Golang/config"
 	"CredChain_Golang/domain"
@@ -25,7 +24,7 @@ type UserService interface {
 	Find(ctx context.Context, id string) (*domain.User, error)
 	FindByIds(ctx context.Context, ids ...string) ([]domain.User, error)
 	Update(ctx context.Context, users ...domain.User) ([]domain.User, error)
-	UpdateProfile(ctx context.Context, id string, name, number, phoneNumber *string, birthDate *time.Time, meta map[string]any) (*domain.User, error)
+	UpdateProfile(ctx context.Context, id string, phoneNumber *string) (*domain.User, error)
 	UpdateEmail(ctx context.Context, id string, email string, idToken string) (string, error)
 	UpdateRole(ctx context.Context, updates ...domain.UserRoleUpdate) ([]domain.User, int64, error)
 	Store(ctx context.Context, users ...domain.User) ([]domain.User, error)
@@ -277,8 +276,8 @@ func (s *userService) Update(ctx context.Context, users ...domain.User) ([]domai
 	return updated, err
 }
 
-func (s *userService) UpdateProfile(ctx context.Context, id string, name, number, phoneNumber *string, birthDate *time.Time, meta map[string]any) (*domain.User, error) {
-	updated, err := s.userRepo.Update(ctx, domain.User{Id: id, Name: name, Number: number, PhoneNumber: phoneNumber, BirthDate: birthDate, Meta: meta})
+func (s *userService) UpdateProfile(ctx context.Context, id string, phoneNumber *string) (*domain.User, error) {
+	updated, err := s.userRepo.Update(ctx, domain.User{Id: id, PhoneNumber: phoneNumber})
 	if err != nil {
 		return nil, err
 	}
