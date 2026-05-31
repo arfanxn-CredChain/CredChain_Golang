@@ -15,6 +15,7 @@ type UserPolicy interface {
 	UpdateRolePostFetch(ctx context.Context, targets []domain.User, updates ...domain.UserRoleUpdate) error
 	DeletePreFetch(ctx context.Context, ids ...string) error
 	DeletePostFetch(ctx context.Context, targets []domain.User) error
+	TransferSuperAdminPreFetch(ctx context.Context, targetId string) error
 }
 
 type userPolicy struct{}
@@ -165,6 +166,15 @@ func (p *userPolicy) DeletePostFetch(ctx context.Context, targets []domain.User)
 				domain.WithMetadata("target_user_id", target.Id),
 				domain.WithMetadata("target_role", target.Role.String()))
 		}
+	}
+	return nil
+}
+
+func (p *userPolicy) TransferSuperAdminPreFetch(ctx context.Context, targetId string) error {
+	authUser := httpContext.MustGetUser(ctx)
+	if authUser.Id == targetId {
+		return domain.NewError(domain.CodeUserTransferSuperAdminSelfTargetForbidden,
+			domain.WithMetadata("user_id", authUser.Id))
 	}
 	return nil
 }

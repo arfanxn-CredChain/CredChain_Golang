@@ -46,3 +46,8 @@ func (m *MockUserPolicy) DeletePostFetch(ctx context.Context, targets []domain.U
 	args := m.Called(ctx, targets)
 	return args.Error(0)
 }
+
+func (m *MockUserPolicy) TransferSuperAdminPreFetch(ctx context.Context, targetId string) error {
+	args := m.Called(ctx, targetId)
+	return args.Error(0)
+}

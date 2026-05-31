@@ -296,3 +296,24 @@ func TestUserPolicy_UpdateRolePostFetch_TrashedTargetForbidden(t *testing.T) {
 	assert.Equal(t, domain.CodeUserRoleTrashedForbidden, de.Code)
 	assert.Equal(t, "trashed", de.Metadata["user_id"])
 }
+
+func TestUserPolicy_TransferSuperAdminPreFetch_DifferentIds_OK(t *testing.T) {
+	p := NewUserPolicy()
+	auth := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleSuperAdmin))
+	ctx := ctxWithUser(&auth)
+
+	err := p.TransferSuperAdminPreFetch(ctx, "some-other-id")
+	assert.NoError(t, err)
+}
+
+func TestUserPolicy_TransferSuperAdminPreFetch_SameId_Forbidden(t *testing.T) {
+	p := NewUserPolicy()
+	auth := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleSuperAdmin))
+	ctx := ctxWithUser(&auth)
+
+	err := p.TransferSuperAdminPreFetch(ctx, auth.Id)
+	assert.Error(t, err)
+	var de *domain.Error
+	assert.ErrorAs(t, err, &de)
+	assert.Equal(t, domain.CodeUserTransferSuperAdminSelfTargetForbidden, de.Code)
+}
