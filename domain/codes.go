@@ -70,6 +70,12 @@ const (
 	CodeUserUpdateBlockchainSyncFailed       = 300845
 	CodeUserUpdateTrashedForbidden           = 300846
 
+	CodeUserTransferSuperAdminSuccess              = 300600
+	CodeUserTransferSuperAdminSelfTargetForbidden  = 300641
+	CodeUserTransferSuperAdminTargetNotFound       = 300642
+	CodeUserTransferSuperAdminTrashedForbidden     = 300643
+	CodeUserTransferSuperAdminBlockchainSyncFailed = 300645
+
 	// ── Credential (40) ──────────────────────────────────────────────────────
 	CodeCredentialFetchSuccess  = 400100
 	CodeCredentialFetchNotFound = 400140
