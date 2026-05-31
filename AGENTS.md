@@ -83,7 +83,7 @@ rm -rf docker/postgres/data/* docker/mongo/data/*
 |---|---|
 | `INITIAL_SUPER_ADMIN_EMAIL` | required for init-super-admin |
 | `INITIAL_SUPER_ADMIN_PRIVATE_KEY` | 64-char hex with 0x prefix; required for init-super-admin |
-| `INITIAL_SUPER_ADMIN_NAME`, `_NUMBER`, `_PHONE_NUMBER`, `_BIRTH_DATE`, `_META` | optional profile fields |
+| `INITIAL_SUPER_ADMIN_NAME`, `_NUMBER`, `_PHONE_NUMBER`, `_BIRTH_DATE`, `_GENDER`, `_META` | optional profile fields |
 
 CLI flags take priority over env vars when both are supplied.
 
@@ -353,7 +353,7 @@ All under `/api` prefix. Middleware order: `ErrorLoggerMiddleware` → `I18nMidd
 | PUT | `/api/users/self/email` | Authenticated | Update own email; requires fresh Google ID token |
 | POST | `/api/users/self/transfer-super-admin` | SuperAdmin | Transfer SuperAdmin role (handler `TransferSuperAdmin`); caller → Admin, target → SuperAdmin, both refresh tokens revoked |
 | GET | `/api/users/:id` | Admin+ | Single user lookup (handler `Find`) |
-| POST | `/api/users/batch` | Admin+ | Batch create users |
+| POST | `/api/users/batch` | Admin+ | Batch create users (optional: number, phone_number, birth_date, gender, meta) |
 | PUT | `/api/users/batch` | Admin+ | Batch update users (handler `Update`); same-role updates silently skipped; email changes revoke target's refresh tokens; role changes sync to blockchain |
 | PUT | `/api/users/batch/role` | Admin+ | Batch role update (handler `UpdateRole`); syncs DB and on-chain |
 | DELETE | `/api/users/batch` | Admin+ | Soft delete users (handler `Delete`); on-chain role revoked to `RoleNone` |
@@ -448,6 +448,7 @@ All Config fields are pointers (`*T`); `nil` = not provided, non-nil = provided 
 | `INITIAL_SUPER_ADMIN_NUMBER` | no | — | employee/student number |
 | `INITIAL_SUPER_ADMIN_PHONE_NUMBER` | no | — | E.164 format |
 | `INITIAL_SUPER_ADMIN_BIRTH_DATE` | no | — | ISO 8601 `YYYY-MM-DD` |
+| `INITIAL_SUPER_ADMIN_GENDER` | no | — | `male`, `female`, or `other` |
 | `INITIAL_SUPER_ADMIN_META` | no | — | JSON object string |
 
 ## Testing
