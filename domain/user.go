@@ -77,6 +77,20 @@ func RoleFromUint8(v uint8) Role {
 	}
 }
 
+// Gender defines the allowed gender values mapped to the Postgres ENUM
+type Gender string
+
+const (
+	GenderMale   Gender = "male"
+	GenderFemale Gender = "female"
+	GenderOther  Gender = "other"
+)
+
+// String returns the string representation of the gender
+func (g Gender) String() string {
+	return string(g)
+}
+
 // UserRoleUpdate defines a single target role update for a user
 type UserRoleUpdate struct {
 	UserID string
@@ -91,6 +105,7 @@ type User struct {
 	PhoneNumber               *string        `json:"phone_number"`
 	Email                     string         `json:"email"`
 	BirthDate                 *time.Time     `json:"birth_date"`
+	Gender                    *Gender        `json:"gender"`
 	Meta                      map[string]any `json:"meta"`
 	Role                      Role           `json:"role"`
 	WalletAddress             string         `json:"wallet_address"`
