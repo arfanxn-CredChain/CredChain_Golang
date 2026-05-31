@@ -5,6 +5,7 @@
     "name": "Nama",
     "number": "Nomor",
     "phone_number": "Nomor Telepon",
+    "gender": "Jenis Kelamin",
     "role": "Peran",
     "users": "Pengguna",
     "user_ids": "ID Pengguna"

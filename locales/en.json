@@ -5,6 +5,7 @@
     "name": "Name",
     "number": "Number",
     "phone_number": "Phone Number",
+    "gender": "Gender",
     "role": "Role",
     "users": "Users",
     "user_ids": "User IDs"
