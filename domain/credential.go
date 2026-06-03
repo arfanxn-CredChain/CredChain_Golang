@@ -7,23 +7,84 @@ import (
 	domainQuery "CredChain_Golang/domain/query"
 )
 
-// Credential represents a row in the credentials table
+// ExtractStatus is the lifecycle of the asynchronous Python /extract job
+// attached to a credential. On-chain issuance is synchronous (Go computes
+// keccak256 of raw file bytes immediately), but embeddings (needed by
+// /api/credentials/verify) require a slow Python OCR+LaBSE round-trip and
+// are computed asynchronously via the CredentialExtractWorker.
+type ExtractStatus string
+
+const (
+	ExtractStatusPending   ExtractStatus = "pending"
+	ExtractStatusSucceeded ExtractStatus = "succeeded"
+	ExtractStatusFailed    ExtractStatus = "failed"
+)
+
+// Credential represents a row in the credentials table.
+//
+// FileHash is the keccak256 of the raw file bytes, used by the on-chain
+// CredentialRegistry contract to derive the ERC-721 token ID:
+//
+//	id = uint256(keccak256(abi.encodePacked(hash)))
+//
+// FileURI points at the persisted upload (e.g. local:///uploads/...).
+// Embeddings is populated asynchronously by the extract worker.
+//
+// Holder, Issuer, and Revoker are optional preloaded User references.
+// They are populated by the repository when the caller's query includes
+// "holder", "issuer", or "revoker" in its Includes slice.
 type Credential struct {
-	ID            string         `db:"id" json:"id"`
-	HolderUserID  string         `db:"holder_user_id" json:"holder_user_id"`
-	IssuerUserID  string         `db:"issuer_user_id" json:"issuer_user_id"`
+	ID            string         `db:"id"              json:"id"`
+	HolderUserID  string         `db:"holder_user_id"  json:"holder_user_id"`
+	IssuerUserID  string         `db:"issuer_user_id"  json:"issuer_user_id"`
 	RevokerUserID *string        `db:"revoker_user_id" json:"revoker_user_id"`
-	Name          string         `db:"name" json:"name"`
-	Meta          map[string]any `db:"meta" json:"meta"`
-	TokenID       *string        `db:"token_id" json:"token_id"`
-	FileHash      string         `db:"file_hash" json:"file_hash"`
-	IssuedAt      time.Time      `db:"issued_at" json:"issued_at"`
-	RevokedAt     *time.Time     `db:"revoked_at" json:"revoked_at"`
+	Name          string         `db:"name"            json:"name"`
+	Meta          map[string]any `db:"meta"            json:"meta"`
+	TokenID       *string        `db:"token_id"        json:"token_id"`
+	FileHash      string         `db:"file_hash"       json:"file_hash"`
+	FileURI       *string        `db:"file_uri"        json:"file_uri"`
+	ExtractStatus ExtractStatus  `db:"extract_status"  json:"extract_status"`
+	Embeddings    []float64      `db:"embeddings"      json:"embeddings,omitempty"`
+	ExtractError  *string        `db:"extract_error"   json:"extract_error"`
+	ExtractedAt   *time.Time     `db:"extracted_at"    json:"extracted_at"`
+	IssuedAt      time.Time      `db:"issued_at"       json:"issued_at"`
+	RevokedAt     *time.Time     `db:"revoked_at"      json:"revoked_at"`
+
+	// Preloaded relations (populated by repository when query.Includes contains
+	// "holder", "issuer", or "revoker"). json:"-" so they never leak through
+	// the API envelope; the response DTO maps them explicitly.
+	Holder  *User `gorm:"-" json:"-"`
+	Issuer  *User `gorm:"-" json:"-"`
+	Revoker *User `gorm:"-" json:"-"`
 }
 
-// CredentialRepository defines the database contract for the Credential Domain
+// CredentialRepository defines the database contract for the credential domain.
 type CredentialRepository interface {
+	// Pagination-aware retrieval with filters, sorts, search, and includes.
+	// When query.Includes contains "holder", "issuer", or "revoker" the
+	// corresponding GORM Preload runs (single batch IN-clause; no N+1).
 	Get(ctx context.Context, query *domainQuery.Query) ([]Credential, int, error)
-	Find(ctx context.Context, id string) (*Credential, error)
-	FindByHolder(ctx context.Context, holderID string) ([]Credential, error)
+
+	// Find retrieves a single credential by ID. query.Includes may request
+	// Preload of holder/issuer/revoker user relations.
+	Find(ctx context.Context, id string, query *domainQuery.Query) (*Credential, error)
+
+	// FindByIds retrieves credentials by ID list (batch lookup).
+	FindByIds(ctx context.Context, ids ...string) ([]Credential, error)
+
+	// FindByHolderId retrieves all credentials owned by a given holder.
+	FindByHolderId(ctx context.Context, holderID string) ([]Credential, error)
+
+	// FindByFileHashes retrieves credentials whose file_hash matches any of
+	// the given hashes. Used during issue to detect duplicate uploads.
+	FindByFileHashes(ctx context.Context, hashes ...string) ([]Credential, error)
+
+	// Store batch-inserts credentials. Generates ULIDs for any missing IDs.
+	Store(ctx context.Context, credentials ...Credential) ([]Credential, error)
+
+	// Update partially updates one or more credentials using a single batched
+	// UPDATE with per-column CASE expressions (mirrors user repository pattern).
+	// Only non-nil / non-zero fields are touched; unspecified columns fall
+	// through to ELSE column (preserving existing value).
+	Update(ctx context.Context, credentials ...Credential) ([]Credential, error)
 }

@@ -77,12 +77,30 @@ const (
 	CodeUserTransferSuperAdminBlockchainSyncFailed = 300645
 
 	// ── Credential (40) ──────────────────────────────────────────────────────
-	CodeCredentialFetchSuccess  = 400100
-	CodeCredentialFetchNotFound = 400140
-	CodeCredentialIssueSuccess  = 400200
-	CodeCredentialIssueFailed   = 400240
-	CodeCredentialRevokeSuccess = 400300
-	CodeCredentialRevokeFailed  = 400340
-	CodeCredentialVerifySuccess = 400400
-	CodeCredentialVerifyFailed  = 400440
+	CodeCredentialFetchSuccess    = 400100
+	CodeCredentialFetchNotFound   = 400140
+	CodeCredentialFetchValidation = 400141
+
+	CodeCredentialIssueSuccess              = 400200
+	CodeCredentialIssueFailed               = 400240
+	CodeCredentialIssueValidation           = 400241
+	CodeCredentialIssueDuplicateFileHash    = 400242
+	CodeCredentialIssueHolderNotFound       = 400243
+	CodeCredentialIssueBlockchainSyncFailed = 400244
+	CodeCredentialIssueStorageFailed        = 400245
+	CodeCredentialIssueHashFailed           = 400246
+
+	CodeCredentialRevokeSuccess              = 400300
+	CodeCredentialRevokeFailed               = 400340
+	CodeCredentialRevokeNotFound             = 400341
+	CodeCredentialRevokeAlreadyRevoked       = 400342
+	CodeCredentialRevokeBlockchainSyncFailed = 400343
+
+	CodeCredentialVerifySuccess            = 400400
+	CodeCredentialVerifyFailed             = 400440
+	CodeCredentialVerifyValidation         = 400441
+	CodeCredentialVerifyExtractNotReady    = 400442
+	CodeCredentialVerifyExtractFailed      = 400443
+	CodeCredentialVerifyAiServiceFailed    = 400444
+	CodeCredentialVerifyCredentialNotFound = 400445
 )

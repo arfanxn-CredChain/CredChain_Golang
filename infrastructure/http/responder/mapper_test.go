@@ -77,12 +77,27 @@ var allDomainCodes = []int{
 	// Credential
 	domain.CodeCredentialFetchSuccess,
 	domain.CodeCredentialFetchNotFound,
+	domain.CodeCredentialFetchValidation,
 	domain.CodeCredentialIssueSuccess,
 	domain.CodeCredentialIssueFailed,
+	domain.CodeCredentialIssueValidation,
+	domain.CodeCredentialIssueDuplicateFileHash,
+	domain.CodeCredentialIssueHolderNotFound,
+	domain.CodeCredentialIssueBlockchainSyncFailed,
+	domain.CodeCredentialIssueStorageFailed,
+	domain.CodeCredentialIssueHashFailed,
 	domain.CodeCredentialRevokeSuccess,
 	domain.CodeCredentialRevokeFailed,
+	domain.CodeCredentialRevokeNotFound,
+	domain.CodeCredentialRevokeAlreadyRevoked,
+	domain.CodeCredentialRevokeBlockchainSyncFailed,
 	domain.CodeCredentialVerifySuccess,
 	domain.CodeCredentialVerifyFailed,
+	domain.CodeCredentialVerifyValidation,
+	domain.CodeCredentialVerifyExtractNotReady,
+	domain.CodeCredentialVerifyExtractFailed,
+	domain.CodeCredentialVerifyAiServiceFailed,
+	domain.CodeCredentialVerifyCredentialNotFound,
 }
 
 func TestHttpCodeFromCode_KnownCodes(t *testing.T) {
