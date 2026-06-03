@@ -9,54 +9,60 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
+	"github.com/samber/lo"
 )
 
 type Config struct {
-	GinPort                      *string
-	InitialSuperAdminEmail       *string
-	InitialSuperAdminPrivKey     *string
-	InitialSuperAdminName        *string
-	InitialSuperAdminNumber      *string
-	InitialSuperAdminPhoneNumber *string
-	InitialSuperAdminBirthDate   *time.Time
-	InitialSuperAdminGender      *string
-	InitialSuperAdminMeta        map[string]any
-	WalletEncryptionKey          *string
-	RPCURL                       *string
-	RelayerPrivateKey            *string
-	AuthorityContract            *string
-	RegistryContract             *string
-	JWTSecret                    *string
-	JWTAccessExpiryMinutes       *int
-	JWTRefreshExpiryHours        *int
-	PostgresUser                 *string
-	PostgresPassword             *string
-	PostgresDB                   *string
-	PostgresDSN                  *string
-	DBMaxOpenConns               *int
-	DBMaxIdleConns               *int
-	DBConnMaxLifetime            *int
-	MongoInitDBUsername          *string
-	MongoInitPassword            *string
-	MongoURI                     *string
-	GeminiAPIKey                 *string
-	GoogleClientID               *string
-	GoogleClientSecret           *string
-	GoogleRedirectURI            *string
-	GinCorsAllowOrigins          []string
-	GinCorsAllowMethods          []string
-	GinCorsAllowHeaders          []string
-	GinCorsExposeHeaders         []string
-	GinCorsAllowCredentials      *bool
-	GinCorsMaxAge                time.Duration
-	LogLevel                     *string
-	LogOutput                    *string
-	I18nLocalesDir               *string
-	CookieDomain                 *string
-	CookieSecure                 *bool
-	CookieSameSite               *string
-	CookieAccessPath             *string
-	CookieRefreshPath            *string
+	GinPort                            *string
+	InitialSuperAdminEmail             *string
+	InitialSuperAdminPrivKey           *string
+	InitialSuperAdminName              *string
+	InitialSuperAdminNumber            *string
+	InitialSuperAdminPhoneNumber       *string
+	InitialSuperAdminBirthDate         *time.Time
+	InitialSuperAdminGender            *string
+	InitialSuperAdminMeta              map[string]any
+	WalletEncryptionKey                *string
+	RPCURL                             *string
+	RelayerPrivateKey                  *string
+	AuthorityContract                  *string
+	RegistryContract                   *string
+	JWTSecret                          *string
+	JWTAccessExpiryMinutes             *int
+	JWTRefreshExpiryHours              *int
+	PostgresUser                       *string
+	PostgresPassword                   *string
+	PostgresDB                         *string
+	PostgresDSN                        *string
+	DBMaxOpenConns                     *int
+	DBMaxIdleConns                     *int
+	DBConnMaxLifetime                  *int
+	MongoInitDBUsername                *string
+	MongoInitPassword                  *string
+	MongoURI                           *string
+	GoogleClientID                     *string
+	GoogleClientSecret                 *string
+	GoogleRedirectURI                  *string
+	GinCorsAllowOrigins                []string
+	GinCorsAllowMethods                []string
+	GinCorsAllowHeaders                []string
+	GinCorsExposeHeaders               []string
+	GinCorsAllowCredentials            *bool
+	GinCorsMaxAge                      time.Duration
+	LogLevel                           *string
+	LogOutput                          *string
+	I18nLocalesDir                     *string
+	CookieDomain                       *string
+	CookieSecure                       *bool
+	CookieSameSite                     *string
+	CookieAccessPath                   *string
+	CookieRefreshPath                  *string
+	PythonAIBaseURL                    *string
+	PythonAITimeoutSeconds             *int
+	CredentialExtractWorkerCount       *int
+	CredentialExtractWorkerPollSeconds *int
+	CredentialExtractWorkerMaxAttempts *int
+	StoragePath                        *string
 }
 
 func getIntEnv(key string, defaultVal *int) *int {
@@ -110,53 +116,64 @@ func NewConfig(envPath string) (*Config, error) {
 	defaultCookieSameSite := "strict"
 	defaultCookieAccessPath := "/api"
 	defaultCookieRefreshPath := "/api/auth"
+	defaultPythonAIBaseURL := "http://localhost:8081"
+	defaultPythonAITimeout := 120
+	defaultCredentialExtractWorkerCount := 1
+	defaultCredentialExtractWorkerPoll := 2
+	defaultCredentialExtractWorkerMaxAttempts := 3
+	defaultStoragePath := "uploads/credentials"
 
 	cfg := &Config{
-		GinPort:                      getEnv("GIN_PORT", ptr("8080")),
-		InitialSuperAdminEmail:       getEnv("INITIAL_SUPER_ADMIN_EMAIL", nil),
-		InitialSuperAdminPrivKey:     getEnv("INITIAL_SUPER_ADMIN_PRIVATE_KEY", nil),
-		InitialSuperAdminName:        getEnv("INITIAL_SUPER_ADMIN_NAME", nil),
-		InitialSuperAdminNumber:      getEnv("INITIAL_SUPER_ADMIN_NUMBER", nil),
-		InitialSuperAdminPhoneNumber: getEnv("INITIAL_SUPER_ADMIN_PHONE_NUMBER", nil),
-		InitialSuperAdminBirthDate:   getTimeEnv("INITIAL_SUPER_ADMIN_BIRTH_DATE", nil),
-		InitialSuperAdminGender:      getEnv("INITIAL_SUPER_ADMIN_GENDER", nil),
-		InitialSuperAdminMeta:        getJSONEnv("INITIAL_SUPER_ADMIN_META", nil),
-		WalletEncryptionKey:          getEnv("WALLET_ENCRYPTION_KEY", nil),
-		RPCURL:                       getEnv("RPC_URL", nil),
-		RelayerPrivateKey:            getEnv("RELAYER_PRIVATE_KEY", nil),
-		AuthorityContract:            getEnv("AUTHORITY_CONTRACT", nil),
-		RegistryContract:             getEnv("REGISTRY_CONTRACT", nil),
-		JWTSecret:                    getEnv("JWT_SECRET", nil),
-		JWTAccessExpiryMinutes:       getIntEnv("JWT_ACCESS_EXPIRY_MINUTES", &defaultJWTAccessExpiry),
-		JWTRefreshExpiryHours:        getIntEnv("JWT_REFRESH_EXPIRY_HOURS", &defaultJWTRefreshExpiry),
-		PostgresUser:                 getEnv("POSTGRES_USER", nil),
-		PostgresPassword:             getEnv("POSTGRES_PASSWORD", nil),
-		PostgresDB:                   getEnv("POSTGRES_DB", nil),
-		PostgresDSN:                  getEnv("POSTGRES_DSN", nil),
-		DBMaxOpenConns:               getIntEnv("DB_MAX_OPEN_CONNS", &defaultDBMaxOpenConns),
-		DBMaxIdleConns:               getIntEnv("DB_MAX_IDLE_CONNS", &defaultDBMaxIdleConns),
-		DBConnMaxLifetime:            getIntEnv("DB_CONN_MAX_LIFETIME", &defaultDBConnMaxLifetime),
-		MongoInitDBUsername:          getEnv("MONGO_INIT_DB_USERNAME", nil),
-		MongoInitPassword:            getEnv("MONGO_INITDB_ROOT_PASSWORD", nil),
-		MongoURI:                     getEnv("MONGO_URI", nil),
-		GeminiAPIKey:                 getEnv("GEMINI_API_KEY", nil),
-		GoogleClientID:               getEnv("GOOGLE_CLIENT_ID", nil),
-		GoogleClientSecret:           getEnv("GOOGLE_CLIENT_SECRET", nil),
-		GoogleRedirectURI:            getEnv("GOOGLE_REDIRECT_URI", &defaultGoogleRedirectURI),
-		GinCorsAllowOrigins:          getStringSliceEnv("GIN_CORS_ALLOW_ORIGINS", defaultCORSOrigins),
-		GinCorsAllowMethods:          getStringSliceEnv("GIN_CORS_ALLOW_METHODS", defaultCORSMethods),
-		GinCorsAllowHeaders:          getStringSliceEnv("GIN_CORS_ALLOW_HEADERS", defaultCORSHeaders),
-		GinCorsExposeHeaders:         getStringSliceEnv("GIN_CORS_EXPOSE_HEADERS", defaultCORSExposeHeaders),
-		GinCorsAllowCredentials:      getBoolEnv("GIN_CORS_ALLOW_CREDENTIALS", &defaultGinCorsAllowCredentials),
-		GinCorsMaxAge:                time.Duration(*getIntEnv("GIN_CORS_MAX_AGE", &defaultGinCorsMaxAge)) * time.Second,
-		LogLevel:                     getEnv("LOG_LEVEL", ptr("info")),
-		LogOutput:                    getEnv("LOG_OUTPUT", ptr("stdout")),
-		I18nLocalesDir:               getEnv("I18N_LOCALES_DIR", ptr("./locales")),
-		CookieDomain:                 getEnv("COOKIE_DOMAIN", ptr("")),
-		CookieSecure:                 getBoolEnv("COOKIE_SECURE", &defaultCookieSecure),
-		CookieSameSite:               getEnv("COOKIE_SAMESITE", &defaultCookieSameSite),
-		CookieAccessPath:             getEnv("COOKIE_ACCESS_PATH", &defaultCookieAccessPath),
-		CookieRefreshPath:            getEnv("COOKIE_REFRESH_PATH", &defaultCookieRefreshPath),
+		GinPort:                            getEnv("GIN_PORT", lo.ToPtr("8080")),
+		InitialSuperAdminEmail:             getEnv("INITIAL_SUPER_ADMIN_EMAIL", nil),
+		InitialSuperAdminPrivKey:           getEnv("INITIAL_SUPER_ADMIN_PRIVATE_KEY", nil),
+		InitialSuperAdminName:              getEnv("INITIAL_SUPER_ADMIN_NAME", nil),
+		InitialSuperAdminNumber:            getEnv("INITIAL_SUPER_ADMIN_NUMBER", nil),
+		InitialSuperAdminPhoneNumber:       getEnv("INITIAL_SUPER_ADMIN_PHONE_NUMBER", nil),
+		InitialSuperAdminBirthDate:         getTimeEnv("INITIAL_SUPER_ADMIN_BIRTH_DATE", nil),
+		InitialSuperAdminGender:            getEnv("INITIAL_SUPER_ADMIN_GENDER", nil),
+		InitialSuperAdminMeta:              getJSONEnv("INITIAL_SUPER_ADMIN_META", nil),
+		WalletEncryptionKey:                getEnv("WALLET_ENCRYPTION_KEY", nil),
+		RPCURL:                             getEnv("RPC_URL", nil),
+		RelayerPrivateKey:                  getEnv("RELAYER_PRIVATE_KEY", nil),
+		AuthorityContract:                  getEnv("AUTHORITY_CONTRACT", nil),
+		RegistryContract:                   getEnv("REGISTRY_CONTRACT", nil),
+		JWTSecret:                          getEnv("JWT_SECRET", nil),
+		JWTAccessExpiryMinutes:             getIntEnv("JWT_ACCESS_EXPIRY_MINUTES", &defaultJWTAccessExpiry),
+		JWTRefreshExpiryHours:              getIntEnv("JWT_REFRESH_EXPIRY_HOURS", &defaultJWTRefreshExpiry),
+		PostgresUser:                       getEnv("POSTGRES_USER", nil),
+		PostgresPassword:                   getEnv("POSTGRES_PASSWORD", nil),
+		PostgresDB:                         getEnv("POSTGRES_DB", nil),
+		PostgresDSN:                        getEnv("POSTGRES_DSN", nil),
+		DBMaxOpenConns:                     getIntEnv("DB_MAX_OPEN_CONNS", &defaultDBMaxOpenConns),
+		DBMaxIdleConns:                     getIntEnv("DB_MAX_IDLE_CONNS", &defaultDBMaxIdleConns),
+		DBConnMaxLifetime:                  getIntEnv("DB_CONN_MAX_LIFETIME", &defaultDBConnMaxLifetime),
+		MongoInitDBUsername:                getEnv("MONGO_INIT_DB_USERNAME", nil),
+		MongoInitPassword:                  getEnv("MONGO_INITDB_ROOT_PASSWORD", nil),
+		MongoURI:                           getEnv("MONGO_URI", nil),
+		GoogleClientID:                     getEnv("GOOGLE_CLIENT_ID", nil),
+		GoogleClientSecret:                 getEnv("GOOGLE_CLIENT_SECRET", nil),
+		GoogleRedirectURI:                  getEnv("GOOGLE_REDIRECT_URI", &defaultGoogleRedirectURI),
+		GinCorsAllowOrigins:                getStringSliceEnv("GIN_CORS_ALLOW_ORIGINS", defaultCORSOrigins),
+		GinCorsAllowMethods:                getStringSliceEnv("GIN_CORS_ALLOW_METHODS", defaultCORSMethods),
+		GinCorsAllowHeaders:                getStringSliceEnv("GIN_CORS_ALLOW_HEADERS", defaultCORSHeaders),
+		GinCorsExposeHeaders:               getStringSliceEnv("GIN_CORS_EXPOSE_HEADERS", defaultCORSExposeHeaders),
+		GinCorsAllowCredentials:            getBoolEnv("GIN_CORS_ALLOW_CREDENTIALS", &defaultGinCorsAllowCredentials),
+		GinCorsMaxAge:                      time.Duration(*getIntEnv("GIN_CORS_MAX_AGE", &defaultGinCorsMaxAge)) * time.Second,
+		LogLevel:                           getEnv("LOG_LEVEL", lo.ToPtr("info")),
+		LogOutput:                          getEnv("LOG_OUTPUT", lo.ToPtr("stdout")),
+		I18nLocalesDir:                     getEnv("I18N_LOCALES_DIR", lo.ToPtr("./locales")),
+		CookieDomain:                       getEnv("COOKIE_DOMAIN", lo.ToPtr("")),
+		CookieSecure:                       getBoolEnv("COOKIE_SECURE", &defaultCookieSecure),
+		CookieSameSite:                     getEnv("COOKIE_SAMESITE", &defaultCookieSameSite),
+		CookieAccessPath:                   getEnv("COOKIE_ACCESS_PATH", &defaultCookieAccessPath),
+		CookieRefreshPath:                  getEnv("COOKIE_REFRESH_PATH", &defaultCookieRefreshPath),
+		PythonAIBaseURL:                    getEnv("PYTHON_AI_BASE_URL", &defaultPythonAIBaseURL),
+		PythonAITimeoutSeconds:             getIntEnv("PYTHON_AI_TIMEOUT_SECONDS", &defaultPythonAITimeout),
+		CredentialExtractWorkerCount:       getIntEnv("CREDENTIAL_EXTRACT_WORKER_COUNT", &defaultCredentialExtractWorkerCount),
+		CredentialExtractWorkerPollSeconds: getIntEnv("CREDENTIAL_EXTRACT_WORKER_POLL_SECONDS", &defaultCredentialExtractWorkerPoll),
+		CredentialExtractWorkerMaxAttempts: getIntEnv("CREDENTIAL_EXTRACT_WORKER_MAX_ATTEMPTS", &defaultCredentialExtractWorkerMaxAttempts),
+		StoragePath:                        getEnv("STORAGE_PATH", &defaultStoragePath),
 	}
 
 	if cfg.JWTSecret == nil {
@@ -190,12 +207,6 @@ func getEnv(key string, fallback *string) *string {
 		return fallback
 	}
 	return &val
-}
-
-// ptr returns a pointer to a copy of the given value.
-// Useful for creating pointers from literals in struct initialization.
-func ptr[T any](v T) *T {
-	return &v
 }
 
 // getTimeEnv parses an environment variable as a time.Time in ISO 8601 format (YYYY-MM-DD).
