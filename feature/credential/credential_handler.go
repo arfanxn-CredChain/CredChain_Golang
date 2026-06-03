@@ -1,19 +1,36 @@
 package credential
 
 import (
+	"encoding/json"
+	"mime/multipart"
+	"strconv"
+	"strings"
+
 	"CredChain_Golang/domain"
+	domainQuery "CredChain_Golang/domain/query"
+	pyai "CredChain_Golang/infrastructure/ai/pyai"
+	queryRequest "CredChain_Golang/infrastructure/http/request/query"
 	"CredChain_Golang/infrastructure/http/responder"
+	"CredChain_Golang/infrastructure/http/response"
+
 	"github.com/gin-gonic/gin"
+	"github.com/samber/lo"
 	"go.uber.org/fx"
 )
 
+// ── Interface ─────────────────────────────────────────────────────────────
+
+// CredentialHandler is the HTTP layer for credential operations. Method names
+// follow the user feature pattern: Paginate, Find, Issue, Revoke, Verify.
 type CredentialHandler interface {
-	GetCredentials(c *gin.Context)
-	GetCredentialByID(c *gin.Context)
-	IssueCredential(c *gin.Context)
-	RevokeCredential(c *gin.Context)
-	VerifyHash(c *gin.Context)
+	Paginate(c *gin.Context)
+	Find(c *gin.Context)
+	Issue(c *gin.Context)
+	Revoke(c *gin.Context)
+	Verify(c *gin.Context)
 }
+
+// ── Implementation & constructor ──────────────────────────────────────────
 
 type credentialHandler struct {
 	credSvc CredentialService
@@ -24,22 +41,332 @@ type CredentialHandlerParams struct {
 	CredSvc CredentialService
 }
 
+// NewCredentialHandler is the exported factory for FX injection.
 func NewCredentialHandler(p CredentialHandlerParams) CredentialHandler {
 	return &credentialHandler{credSvc: p.CredSvc}
 }
 
-func (h *credentialHandler) GetCredentials(c *gin.Context) {
-	responder.Send(c, domain.CodeCredentialFetchSuccess, gin.H{"status": "stub"})
+// ── Paginate ──────────────────────────────────────────────────────────────
+
+// Paginate returns a paginated credential list with search, filters, sorts,
+// and optional holder/issuer/revoker user expansions via the includes query
+// parameter (e.g. ?includes=holder,issuer).
+func (h *credentialHandler) Paginate(c *gin.Context) {
+	var req queryRequest.QueryRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.Error(err)
+		responder.SendError(c, err)
+		return
+	}
+	if err := req.Validate(); err != nil {
+		responder.SendValidationError(c, err)
+		return
+	}
+	query, err := req.ToDomain()
+	if err != nil {
+		c.Error(err)
+		responder.SendError(c, err)
+		return
+	}
+	credentials, total, err := h.credSvc.Paginate(c.Request.Context(), query)
+	if err != nil {
+		c.Error(err)
+		responder.SendError(c, err)
+		return
+	}
+	out := mapCredentialsToResponse(credentials)
+	responder.SendPagination(c, domain.CodeCredentialFetchSuccess, out, total)
 }
-func (h *credentialHandler) GetCredentialByID(c *gin.Context) {
-	responder.Send(c, domain.CodeCredentialFetchSuccess, gin.H{"status": "stub"})
+
+// ── Find ──────────────────────────────────────────────────────────────────
+
+// Find returns a single credential by ID with optional user expansions.
+// The includes query parameter controls which relations (holder, issuer,
+// revoker) are preloaded by the repository.
+func (h *credentialHandler) Find(c *gin.Context) {
+	id := c.Param("id")
+
+	var req queryRequest.QueryRequest
+	c.ShouldBindQuery(&req)
+	query, _ := req.ToDomain()
+	if query == nil {
+		query = &domainQuery.Query{}
+	}
+
+	cred, err := h.credSvc.Find(c.Request.Context(), id, query)
+	if err != nil {
+		c.Error(err)
+		responder.SendError(c, err)
+		return
+	}
+	out := mapCredentialsToResponse([]domain.Credential{*cred})
+	if len(out) == 0 {
+		responder.Send(c, domain.CodeCredentialFetchSuccess, gin.H{})
+		return
+	}
+	responder.Send(c, domain.CodeCredentialFetchSuccess, out[0])
 }
-func (h *credentialHandler) IssueCredential(c *gin.Context) {
-	responder.Send(c, domain.CodeCredentialIssueSuccess, gin.H{"status": "stub"})
+
+// ── Issue ─────────────────────────────────────────────────────────────────
+
+// Issue parses a multipart form into batch credential issue items and
+// delegates to the service layer.
+//
+// Expected form structure (one set per item, zero-indexed):
+//
+//	items[0][holder_user_id]
+//	items[0][name]
+//	items[0][meta]            (JSON string, optional)
+//	items[0][file]            (binary upload)
+//	items[1][...]
+func (h *credentialHandler) Issue(c *gin.Context) {
+	form, err := c.MultipartForm()
+	if err != nil {
+		c.Error(err)
+		responder.SendError(c, err)
+		return
+	}
+
+	items, err := buildIssueItems(form)
+	if err != nil {
+		c.Error(err)
+		responder.SendValidationError(c, err)
+		return
+	}
+
+	req := CredentialIssueRequest{Items: items}
+	if err := req.Validate(); err != nil {
+		responder.SendValidationError(c, err)
+		return
+	}
+
+	serviceItems := make([]CredentialIssuance, len(items))
+	for i, it := range items {
+		fileBytes, mime, filename, err := readUploadedFile(it.File)
+		if err != nil {
+			c.Error(err)
+			responder.SendError(c, err)
+			return
+		}
+		if !allowedMIMETypes[mime] {
+			responder.SendError(c, domain.NewError(domain.CodeCredentialIssueValidation,
+				domain.WithMetadata("file_mime", mime)))
+			return
+		}
+		if int64(len(fileBytes)) > maxFileBytes {
+			responder.SendError(c, domain.NewError(domain.CodeCredentialIssueValidation,
+				domain.WithMetadata("file_size", len(fileBytes))))
+			return
+		}
+		serviceItems[i] = CredentialIssuance{
+			HolderUserID: it.HolderUserID,
+			Name:         it.Name,
+			Meta:         it.Meta,
+			Filename:     filename,
+			MIMEType:     mime,
+			FileBytes:    fileBytes,
+		}
+	}
+
+	created, err := h.credSvc.Issue(c.Request.Context(), serviceItems)
+	if err != nil {
+		c.Error(err)
+		responder.SendError(c, err)
+		return
+	}
+
+	out := mapCredentialsToResponse(created)
+	responder.Send(c, domain.CodeCredentialIssueSuccess, out)
 }
-func (h *credentialHandler) RevokeCredential(c *gin.Context) {
-	responder.Send(c, domain.CodeCredentialRevokeSuccess, gin.H{"status": "stub"})
+
+// ── Revoke ────────────────────────────────────────────────────────────────
+
+// Revoke batch-revokes credentials by ID (JSON body).
+func (h *credentialHandler) Revoke(c *gin.Context) {
+	var req CredentialRevokeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.Error(err)
+		responder.SendError(c, err)
+		return
+	}
+	if err := req.Validate(); err != nil {
+		responder.SendValidationError(c, err)
+		return
+	}
+	revoked, err := h.credSvc.Revoke(c.Request.Context(), req.Ids...)
+	if err != nil {
+		c.Error(err)
+		responder.SendError(c, err)
+		return
+	}
+	out := mapCredentialsToResponse(revoked)
+	responder.Send(c, domain.CodeCredentialRevokeSuccess, out)
 }
-func (h *credentialHandler) VerifyHash(c *gin.Context) {
-	responder.Send(c, domain.CodeCredentialVerifySuccess, gin.H{"status": "stub"})
+
+// ── Verify ────────────────────────────────────────────────────────────────
+
+// Verify accepts a multipart form with a credential_id and file, forwards
+// to the service layer, and returns a similarity verdict.
+func (h *credentialHandler) Verify(c *gin.Context) {
+	credID := c.PostForm("credential_id")
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		responder.SendError(c, domain.NewError(domain.CodeCredentialVerifyValidation,
+			domain.WithError(err)))
+		return
+	}
+	req := CredentialVerifyRequest{CredentialID: credID, File: fileHeader}
+	if err := req.Validate(); err != nil {
+		responder.SendValidationError(c, err)
+		return
+	}
+
+	fileBytes, mime, filename, err := readUploadedFile(fileHeader)
+	if err != nil {
+		c.Error(err)
+		responder.SendError(c, err)
+		return
+	}
+	if !allowedMIMETypes[mime] {
+		responder.SendError(c, domain.NewError(domain.CodeCredentialVerifyValidation,
+			domain.WithMetadata("file_mime", mime)))
+		return
+	}
+	if int64(len(fileBytes)) > maxFileBytes {
+		responder.SendError(c, domain.NewError(domain.CodeCredentialVerifyValidation,
+			domain.WithMetadata("file_size", len(fileBytes))))
+		return
+	}
+
+	verdict, score, percent, desc, cred, err := h.credSvc.Verify(c.Request.Context(), credID, pyai.ExtractFile{
+		Filename: filename,
+		MIMEType: mime,
+		Data:     fileBytes,
+	})
+	if err != nil {
+		c.Error(err)
+		responder.SendError(c, err)
+		return
+	}
+
+	responseCred := mapCredentialsToResponse([]domain.Credential{cred})
+	verifyResponse := response.CredentialVerify{
+		Verdict:           verdict,
+		SimilarityScore:   score,
+		SimilarityPercent: percent,
+		Description:       desc.EN,
+	}
+	if len(responseCred) > 0 {
+		verifyResponse.Credential = responseCred[0]
+	}
+	responder.Send(c, domain.CodeCredentialVerifySuccess, verifyResponse)
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+
+// mapCredentialsToResponse converts domain credentials to response DTOs.
+// Preloaded user relations (Holder, Issuer, Revoker) are mapped directly
+// from the domain entity — no separate user lookup needed.
+func mapCredentialsToResponse(credentials []domain.Credential) []response.Credential {
+	out := make([]response.Credential, len(credentials))
+	for i, c := range credentials {
+		out[i] = response.FromDomainCredential(c)
+	}
+	return out
+}
+
+// readUploadedFile reads a multipart upload into memory and returns
+// (bytes, MIME type, filename, error). MIME is taken from the multipart
+// header; falls back to extension-based detection.
+func readUploadedFile(fh *multipart.FileHeader) ([]byte, string, string, error) {
+	src, err := fh.Open()
+	if err != nil {
+		return nil, "", "", err
+	}
+	defer src.Close()
+	buf := make([]byte, fh.Size)
+	_, err = src.Read(buf)
+	if err != nil && err.Error() != "EOF" {
+		return nil, "", "", err
+	}
+	mime := fh.Header.Get("Content-Type")
+	if mime == "" {
+		mime = pyai.FileExtToMIME(fh.Filename)
+	}
+	return buf, mime, fh.Filename, nil
+}
+
+// ── Multipart parsing ─────────────────────────────────────────────────────
+
+// buildIssueItems extracts CredentialIssueInput slices from a parsed multipart
+// form. Keys follow the pattern:
+//
+//	items[N][holder_user_id] = "ulid"
+//	items[N][name] = "Bachelor's Degree"
+//	items[N][meta] = `{"institution":"UI"}`
+//	items[N][file] = <binary>
+func buildIssueItems(form *multipart.Form) ([]CredentialIssueInput, error) {
+	values := form.Value
+	files := form.File
+
+	idxSet := make(map[int]bool)
+	for k := range values {
+		if idx, ok := parseItemIndex(k); ok {
+			idxSet[idx] = true
+		}
+	}
+	for k := range files {
+		if idx, ok := parseItemIndex(k); ok {
+			idxSet[idx] = true
+		}
+	}
+	if len(idxSet) == 0 {
+		return nil, nil
+	}
+
+	maxIdx := lo.Max(lo.Keys(idxSet))
+
+	items := make([]CredentialIssueInput, maxIdx+1)
+	for i := 0; i <= maxIdx; i++ {
+		key := "items[" + strconv.Itoa(i) + "][holder_user_id]"
+		if v, ok := values[key]; ok && len(v) > 0 {
+			items[i].HolderUserID = v[0]
+		}
+		key = "items[" + strconv.Itoa(i) + "][name]"
+		if v, ok := values[key]; ok && len(v) > 0 {
+			items[i].Name = v[0]
+		}
+		key = "items[" + strconv.Itoa(i) + "][meta]"
+		if v, ok := values[key]; ok && len(v) > 0 && v[0] != "" {
+			var m map[string]any
+			if err := json.Unmarshal([]byte(v[0]), &m); err == nil {
+				items[i].Meta = m
+			}
+		}
+		key = "items[" + strconv.Itoa(i) + "][file]"
+		if fh, ok := files[key]; ok && len(fh) > 0 {
+			items[i].File = fh[0]
+		}
+	}
+
+	out := lo.Filter(items, func(it CredentialIssueInput, _ int) bool {
+		return it.HolderUserID != "" || it.Name != "" || it.File != nil
+	})
+	return out, nil
+}
+
+func parseItemIndex(key string) (int, bool) {
+	if !strings.HasPrefix(key, "items[") {
+		return 0, false
+	}
+	closeBracket := strings.Index(key, "]")
+	if closeBracket == -1 {
+		return 0, false
+	}
+	idxStr := key[6:closeBracket]
+	idx, err := strconv.Atoi(idxStr)
+	if err != nil {
+		return 0, false
+	}
+	return idx, true
 }

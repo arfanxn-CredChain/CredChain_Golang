@@ -13,6 +13,7 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/samber/lo"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 )
@@ -26,10 +27,8 @@ func NewGinRouter(p RouterParams) *gin.Engine {
 	// Browsers reject Access-Control-Allow-Origin: * when credentials are sent.
 	// Detect the misconfiguration early so cookie auth doesn't silently break.
 	if p.Config.GinCorsAllowCredentials != nil && *p.Config.GinCorsAllowCredentials {
-		for _, origin := range p.Config.GinCorsAllowOrigins {
-			if origin == "*" {
-				panic("GIN_CORS_ALLOW_ORIGINS cannot contain \"*\" when GIN_CORS_ALLOW_CREDENTIALS=true; specify explicit origins")
-			}
+		if lo.Contains(p.Config.GinCorsAllowOrigins, "*") {
+			panic("GIN_CORS_ALLOW_ORIGINS cannot contain \"*\" when GIN_CORS_ALLOW_CREDENTIALS=true; specify explicit origins")
 		}
 	}
 
@@ -53,7 +52,7 @@ type RouteParams struct {
 	I18nMiddleware             middleware.I18nMiddleware
 	AuthHandler                auth.AuthHandler
 	UserHandler                user.UserHandler
-	CredHandler                credential.CredentialHandler
+	CredentialHandler          credential.CredentialHandler
 	Logger                     *zap.Logger
 	AuthMiddleware             gin.HandlerFunc
 	AdminRoleMiddleware        middleware.AdminRoleMiddleware
@@ -96,11 +95,11 @@ func RegisterRoutes(p RouteParams) {
 			}
 			creds := secure.Group("/credentials")
 			{
-				creds.GET("", gin.HandlerFunc(p.AdminRoleMiddleware), p.CredHandler.GetCredentials)
-				creds.GET("/:id", gin.HandlerFunc(p.AdminRoleMiddleware), p.CredHandler.GetCredentialByID)
-				creds.POST("/batch/issue", gin.HandlerFunc(p.IssuerRoleMiddleware), p.CredHandler.IssueCredential)
-				creds.POST("/batch/revoke", gin.HandlerFunc(p.IssuerRoleMiddleware), p.CredHandler.RevokeCredential)
-				creds.POST("/verify", gin.HandlerFunc(p.IssuerRoleMiddleware), p.CredHandler.VerifyHash)
+				creds.GET("", gin.HandlerFunc(p.IssuerRoleMiddleware), p.CredentialHandler.Paginate)
+				creds.GET("/:id", gin.HandlerFunc(p.IssuerRoleMiddleware), p.CredentialHandler.Find)
+				creds.POST("/batch/issue", gin.HandlerFunc(p.IssuerRoleMiddleware), p.CredentialHandler.Issue)
+				creds.POST("/batch/revoke", gin.HandlerFunc(p.IssuerRoleMiddleware), p.CredentialHandler.Revoke)
+				creds.POST("/verify", gin.HandlerFunc(p.IssuerRoleMiddleware), p.CredentialHandler.Verify)
 			}
 		}
 	}
