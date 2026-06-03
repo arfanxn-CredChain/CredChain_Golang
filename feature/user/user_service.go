@@ -14,6 +14,7 @@ import (
 	"CredChain_Golang/infrastructure/oauth"
 
 	ethCrypto "github.com/ethereum/go-ethereum/crypto"
+	"github.com/samber/lo"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -81,10 +82,7 @@ func (s *userService) Store(ctx context.Context, users ...domain.User) ([]domain
 func (s *userService) storeValidateEmails(ctx context.Context, users []domain.User) error {
 	batchDuplicates := []string{}
 	dbDuplicates := []string{}
-	emailIndex := make(map[string][]int)
-	for i, u := range users {
-		emailIndex[u.Email] = append(emailIndex[u.Email], i)
-	}
+	emailIndex := lo.GroupBy(users, func(u domain.User) string { return u.Email })
 	for email, indices := range emailIndex {
 		if len(indices) > 1 {
 			batchDuplicates = append(batchDuplicates, email)
@@ -226,10 +224,7 @@ func (s *userService) Update(ctx context.Context, users ...domain.User) ([]domai
 		}
 
 		// Build target map; apply same-role no-op filter; collect role-changed users
-		targetMap := make(map[string]domain.User, len(targets))
-		for _, t := range targets {
-			targetMap[t.Id] = t
-		}
+		targetMap := lo.SliceToMap(targets, func(t domain.User) (string, domain.User) { return t.Id, t })
 		filteredUsers := make([]domain.User, len(users))
 		copy(filteredUsers, users)
 		var roleChainUsers []domain.User
@@ -338,10 +333,7 @@ func (s *userService) updateRoleValidateAndPrepare(ctx context.Context, updates 
 	if err := s.policy.UpdateRolePostFetch(ctx, targetUsers, updates...); err != nil {
 		return nil, err
 	}
-	targetMap := make(map[string]domain.User, len(targetUsers))
-	for _, t := range targetUsers {
-		targetMap[t.Id] = t
-	}
+	targetMap := lo.SliceToMap(targetUsers, func(t domain.User) (string, domain.User) { return t.Id, t })
 	usersToUpdate := make([]domain.User, 0, len(updates))
 	for _, u := range updates {
 		target := targetMap[u.UserID]

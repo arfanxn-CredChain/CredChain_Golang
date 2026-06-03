@@ -6,10 +6,9 @@ import (
 	"time"
 
 	"CredChain_Golang/domain"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 )
-
-func strPtr(s string) *string { return &s }
 
 func TestUserStoreInput_Validate(t *testing.T) {
 	tests := []struct {
@@ -18,10 +17,10 @@ func TestUserStoreInput_Validate(t *testing.T) {
 		shouldErr bool
 	}{
 		{name: "Valid Request", req: UserStoreInput{Name: "John Doe", Email: "john@example.com", Role: domain.RoleHolder}, shouldErr: false},
-		{name: "Valid Gender Male", req: UserStoreInput{Name: "John", Email: "john1@example.com", Role: domain.RoleHolder, Gender: strPtr("male")}, shouldErr: false},
-		{name: "Valid Gender Female", req: UserStoreInput{Name: "Jane", Email: "jane@example.com", Role: domain.RoleHolder, Gender: strPtr("female")}, shouldErr: false},
-		{name: "Valid Gender Other", req: UserStoreInput{Name: "Alex", Email: "alex@example.com", Role: domain.RoleHolder, Gender: strPtr("other")}, shouldErr: false},
-		{name: "Invalid Gender", req: UserStoreInput{Name: "Pat", Email: "pat@example.com", Role: domain.RoleHolder, Gender: strPtr("unknown")}, shouldErr: true},
+		{name: "Valid Gender Male", req: UserStoreInput{Name: "John", Email: "john1@example.com", Role: domain.RoleHolder, Gender: lo.ToPtr("male")}, shouldErr: false},
+		{name: "Valid Gender Female", req: UserStoreInput{Name: "Jane", Email: "jane@example.com", Role: domain.RoleHolder, Gender: lo.ToPtr("female")}, shouldErr: false},
+		{name: "Valid Gender Other", req: UserStoreInput{Name: "Alex", Email: "alex@example.com", Role: domain.RoleHolder, Gender: lo.ToPtr("other")}, shouldErr: false},
+		{name: "Invalid Gender", req: UserStoreInput{Name: "Pat", Email: "pat@example.com", Role: domain.RoleHolder, Gender: lo.ToPtr("unknown")}, shouldErr: true},
 		{name: "Nil Gender is valid", req: UserStoreInput{Name: "Sam", Email: "sam@example.com", Role: domain.RoleHolder, Gender: nil}, shouldErr: false},
 		{name: "Missing Name", req: UserStoreInput{Email: "john@example.com", Role: domain.RoleHolder}, shouldErr: true},
 		{name: "Invalid Email", req: UserStoreInput{Name: "John Doe", Email: "john-example.com", Role: domain.RoleHolder}, shouldErr: true},
@@ -32,9 +31,9 @@ func TestUserStoreInput_Validate(t *testing.T) {
 				Name:        "Jane Doe",
 				Email:       "jane@example.com",
 				Role:        domain.RoleIssuer,
-				Number:      strPtr("12345"),
-				PhoneNumber: strPtr("+62812345678"),
-				BirthDate:   strPtr("1990-01-01"),
+				Number:      lo.ToPtr("12345"),
+				PhoneNumber: lo.ToPtr("+62812345678"),
+				BirthDate:   lo.ToPtr("1990-01-01"),
 				Meta:        map[string]any{"key": "value"},
 			},
 			shouldErr: false,
@@ -45,7 +44,7 @@ func TestUserStoreInput_Validate(t *testing.T) {
 				Name:      "John Doe",
 				Email:     "john@example.com",
 				Role:      domain.RoleHolder,
-				BirthDate: strPtr("1990/01/01"),
+				BirthDate: lo.ToPtr("1990/01/01"),
 			},
 			shouldErr: true,
 		},
@@ -55,7 +54,7 @@ func TestUserStoreInput_Validate(t *testing.T) {
 				Name:      "John Doe",
 				Email:     "john@example.com",
 				Role:      domain.RoleHolder,
-				BirthDate: strPtr("not-a-date"),
+				BirthDate: lo.ToPtr("not-a-date"),
 			},
 			shouldErr: true,
 		},
@@ -65,7 +64,7 @@ func TestUserStoreInput_Validate(t *testing.T) {
 				Name:      "John Doe",
 				Email:     "john@example.com",
 				Role:      domain.RoleHolder,
-				BirthDate: strPtr(""),
+				BirthDate: lo.ToPtr(""),
 			},
 			shouldErr: false,
 		},
@@ -149,7 +148,7 @@ func TestUserStoreInput_ToDomain(t *testing.T) {
 			Name:   "Test",
 			Email:  "test@example.com",
 			Role:   domain.RoleHolder,
-			Gender: strPtr("female"),
+			Gender: lo.ToPtr("female"),
 		}
 		got := input.ToDomain()
 		assert.NotNil(t, got.Gender)
@@ -322,11 +321,11 @@ func TestUserUpdateSelfProfileRequest_Validate(t *testing.T) {
 		wantErr bool
 	}{
 		{"nil phone", UserUpdateSelfProfileRequest{PhoneNumber: nil}, false},
-		{"empty phone", UserUpdateSelfProfileRequest{PhoneNumber: strPtr("")}, false},
-		{"valid E.164", UserUpdateSelfProfileRequest{PhoneNumber: strPtr("+628123456789")}, false},
-		{"too long", UserUpdateSelfProfileRequest{PhoneNumber: strPtr("+62812345678901234567890")}, true},
-		{"non-E.164", UserUpdateSelfProfileRequest{PhoneNumber: strPtr("0812345")}, true},
-		{"bare country code", UserUpdateSelfProfileRequest{PhoneNumber: strPtr("+62")}, true},
+		{"empty phone", UserUpdateSelfProfileRequest{PhoneNumber: lo.ToPtr("")}, false},
+		{"valid E.164", UserUpdateSelfProfileRequest{PhoneNumber: lo.ToPtr("+628123456789")}, false},
+		{"too long", UserUpdateSelfProfileRequest{PhoneNumber: lo.ToPtr("+62812345678901234567890")}, true},
+		{"non-E.164", UserUpdateSelfProfileRequest{PhoneNumber: lo.ToPtr("0812345")}, true},
+		{"bare country code", UserUpdateSelfProfileRequest{PhoneNumber: lo.ToPtr("+62")}, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

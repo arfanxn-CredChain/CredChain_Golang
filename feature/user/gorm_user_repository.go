@@ -13,6 +13,7 @@ import (
 	"CredChain_Golang/infrastructure/database/gorm/model"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/oklog/ulid/v2"
+	"github.com/samber/lo"
 	"gorm.io/gorm"
 )
 
@@ -62,17 +63,8 @@ var allowedSortColumns = map[string]bool{
 // deleted_at column. When true, Get bypasses GORM's soft-delete scope
 // so trashed users can be listed and ordered by their deletion timestamp.
 func referencesDeletedAt(q *domainQuery.Query) bool {
-	for _, f := range q.Filters {
-		if f.Column == "deleted_at" {
-			return true
-		}
-	}
-	for _, s := range q.Sorts {
-		if s.Column == "deleted_at" {
-			return true
-		}
-	}
-	return false
+	return lo.ContainsBy(q.Filters, func(f domainQuery.Filter) bool { return f.Column == "deleted_at" }) ||
+		lo.ContainsBy(q.Sorts, func(s domainQuery.Sort) bool { return s.Column == "deleted_at" })
 }
 
 // Get retrieves users with pagination, search, filters, and sorts (batch operation)

@@ -14,8 +14,10 @@ import (
 	"CredChain_Golang/feature/user"
 	"CredChain_Golang/infrastructure/chain"
 	cryptoInfra "CredChain_Golang/infrastructure/crypto"
+
 	gormInfra "CredChain_Golang/infrastructure/database/gorm"
 	infraLogger "CredChain_Golang/infrastructure/logger"
+	"github.com/samber/lo"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/spf13/cobra"
@@ -289,12 +291,9 @@ func initSuperAdmin(cfg *config.Config, userRepo domain.UserRepository, authorit
 	if err != nil {
 		return err
 	}
-	liveSuperAdmins := 0
-	for _, u := range existingSuperAdmins {
-		if u.DeletedAt == nil {
-			liveSuperAdmins++
-		}
-	}
+	liveSuperAdmins := lo.CountBy(existingSuperAdmins, func(u domain.User) bool {
+		return u.DeletedAt == nil
+	})
 
 	if liveSuperAdmins > 0 {
 		msg := "super admin already exists in database"

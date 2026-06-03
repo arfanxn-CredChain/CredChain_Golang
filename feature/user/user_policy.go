@@ -5,6 +5,8 @@ import (
 
 	"CredChain_Golang/domain"
 	httpContext "CredChain_Golang/infrastructure/http/context"
+
+	"github.com/samber/lo"
 )
 
 type UserPolicy interface {
@@ -50,10 +52,6 @@ func (p *userPolicy) UpdatePreFetch(ctx context.Context, users ...domain.User) e
 
 func (p *userPolicy) UpdatePostFetch(ctx context.Context, targets []domain.User, updates []domain.User) error {
 	authUser := httpContext.MustGetUser(ctx)
-	targetMap := make(map[string]domain.User, len(targets))
-	for _, t := range targets {
-		targetMap[t.Id] = t
-	}
 	for _, t := range targets {
 		if t.DeletedAt != nil {
 			return domain.NewError(domain.CodeUserUpdateTrashedForbidden,
@@ -107,10 +105,7 @@ func (p *userPolicy) UpdateRolePreFetch(ctx context.Context, updates ...domain.U
 
 func (p *userPolicy) UpdateRolePostFetch(ctx context.Context, targets []domain.User, updates ...domain.UserRoleUpdate) error {
 	authUser := httpContext.MustGetUser(ctx)
-	targetMap := make(map[string]domain.User, len(targets))
-	for _, t := range targets {
-		targetMap[t.Id] = t
-	}
+	targetMap := lo.SliceToMap(targets, func(t domain.User) (string, domain.User) { return t.Id, t })
 	for _, u := range updates {
 		target, ok := targetMap[u.UserID]
 		if !ok {
