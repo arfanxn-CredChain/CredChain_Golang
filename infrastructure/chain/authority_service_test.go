@@ -62,6 +62,30 @@ func (m *localRegistryBinding) UserToNonce(opts *bind.CallOpts, addr common.Addr
 	return nil, args.Error(1)
 }
 
+func (m *localRegistryBinding) FindCredential(opts *bind.CallOpts, id *big.Int) (contracts.CredentialRegistryCredential, error) {
+	args := m.Called(opts, id)
+	if v := args.Get(0); v != nil {
+		return v.(contracts.CredentialRegistryCredential), args.Error(1)
+	}
+	return contracts.CredentialRegistryCredential{}, args.Error(1)
+}
+
+func (m *localRegistryBinding) BatchIssueCredentialsWithSignature(opts *bind.TransactOpts, params contracts.CredentialRegistryBatchIssueCredentialsWithSignatureParams) (*types.Transaction, error) {
+	args := m.Called(opts, params)
+	if v := args.Get(0); v != nil {
+		return v.(*types.Transaction), args.Error(1)
+	}
+	return nil, args.Error(1)
+}
+
+func (m *localRegistryBinding) BatchRevokeCredentialsWithSignature(opts *bind.TransactOpts, params contracts.CredentialRegistryBatchRevokeCredentialsWithSignatureParams) (*types.Transaction, error) {
+	args := m.Called(opts, params)
+	if v := args.Get(0); v != nil {
+		return v.(*types.Transaction), args.Error(1)
+	}
+	return nil, args.Error(1)
+}
+
 // testEncKey returns a 32-byte encryption key as a string.
 func testEncKey() string {
 	raw := make([]byte, 32)

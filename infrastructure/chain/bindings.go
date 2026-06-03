@@ -27,8 +27,17 @@ type AuthorityBinding interface {
 }
 
 // RegistryBinding abstracts the methods used from the abigen-generated
-// CredentialRegistry contract binding. The concrete *contracts.Registry satisfies
-// this interface structurally.
+// CredentialRegistry contract binding. The concrete *contracts.Registry
+// satisfies this interface structurally.
 type RegistryBinding interface {
 	UserToNonce(opts *bind.CallOpts, addr common.Address) (*big.Int, error)
+	FindCredential(opts *bind.CallOpts, id *big.Int) (contracts.CredentialRegistryCredential, error)
+	BatchIssueCredentialsWithSignature(
+		opts *bind.TransactOpts,
+		params contracts.CredentialRegistryBatchIssueCredentialsWithSignatureParams,
+	) (*types.Transaction, error)
+	BatchRevokeCredentialsWithSignature(
+		opts *bind.TransactOpts,
+		params contracts.CredentialRegistryBatchRevokeCredentialsWithSignatureParams,
+	) (*types.Transaction, error)
 }
