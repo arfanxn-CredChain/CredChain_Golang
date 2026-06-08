@@ -361,8 +361,8 @@ All under `/api` prefix. Middleware order: `ErrorLoggerMiddleware` → `I18nMidd
 | PUT | `/api/users/batch` | Admin+ | Batch update users (handler `Update`); same-role updates silently skipped; email changes revoke target's refresh tokens; role changes sync to blockchain |
 | PUT | `/api/users/batch/role` | Admin+ | Batch role update (handler `UpdateRole`); syncs DB and on-chain |
 | DELETE | `/api/users/batch` | Admin+ | Soft delete users (handler `Delete`); on-chain role revoked to `RoleNone` |
-| GET | `/api/credentials` | Admin+ | List credentials |
-| GET | `/api/credentials/:id` | Admin+ | Single credential |
+| GET | `/api/credentials` | Issuer+ | List credentials |
+| GET | `/api/credentials/:id` | Issuer+ | Single credential |
 | POST | `/api/credentials/batch/issue` | Issuer+ | Issue credentials |
 | POST | `/api/credentials/batch/revoke` | Issuer+ | Revoke credentials |
 | POST | `/api/credentials/batch/reextract` | Issuer+ | Re-extract failed credentials |
