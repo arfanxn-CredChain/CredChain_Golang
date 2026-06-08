@@ -21,6 +21,12 @@ func NewClient(lc fx.Lifecycle, cfg *config.Config) (*mongo.Client, error) {
 		return nil, fmt.Errorf("failed to connect to mongo: %w", err)
 	}
 	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			if err := client.Ping(ctx, nil); err != nil {
+				return fmt.Errorf("failed to ping mongo: %w", err)
+			}
+			return nil
+		},
 		OnStop: func(ctx context.Context) error { return client.Disconnect(ctx) },
 	})
 	return client, nil
