@@ -22,6 +22,8 @@ type CredentialPolicy interface {
 	RevokePostFetch(ctx context.Context, targets []domain.Credential) error
 	// VerifyPreFetch checks signer rank only (Issuer+).
 	VerifyPreFetch(ctx context.Context) error
+	// ReExtractPreFetch checks signer rank only (Issuer+).
+	ReExtractPreFetch(ctx context.Context) error
 }
 
 type credentialPolicy struct{}
@@ -60,6 +62,13 @@ func (p *credentialPolicy) RevokePostFetch(ctx context.Context, targets []domain
 }
 
 func (p *credentialPolicy) VerifyPreFetch(ctx context.Context) error {
+	if !signerIsIssuerOrAbove(ctx) {
+		return domain.NewError(domain.CodeAuthForbidden)
+	}
+	return nil
+}
+
+func (p *credentialPolicy) ReExtractPreFetch(ctx context.Context) error {
 	if !signerIsIssuerOrAbove(ctx) {
 		return domain.NewError(domain.CodeAuthForbidden)
 	}

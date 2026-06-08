@@ -552,7 +552,7 @@ func (s *credentialService) verifyCacheVerdict(ctx context.Context, hash string,
 // jobs. All-or-nothing within one UoW: validates all exist + are failed with
 // file_uri, resets to pending, then enqueues River jobs after commit.
 func (s *credentialService) ReExtract(ctx context.Context, ids ...string) ([]domain.Credential, error) {
-	if err := s.policy.VerifyPreFetch(ctx); err != nil {
+	if err := s.policy.ReExtractPreFetch(ctx); err != nil {
 		return nil, err
 	}
 	var updated []domain.Credential
@@ -584,14 +584,37 @@ func (s *credentialService) ReExtract(ctx context.Context, ids ...string) ([]dom
 	if err != nil {
 		return nil, err
 	}
+	// Enqueue River jobs. If enqueue fails, compensate: re-stamp the failed
+	// credential back to failed so the operator can retry the whole batch.
+	// Earlier credentials in this batch remain in pending with active jobs and
+	// will be extracted normally by the River worker.
 	for _, t := range toEnqueue {
 		if err := s.enqueuer.EnqueueExtract(ctx, jobs.CredentialExtractArgs{
 			CredentialID: t.ID, FileURI: *t.FileURI,
 		}); err != nil {
+			if compErr := s.reExtractCompensate(ctx, t); compErr != nil {
+				s.logger.Error("reextract compensate failed",
+					zap.String("credential_id", t.ID), zap.Error(compErr))
+			}
 			return nil, err
 		}
 	}
 	return updated, nil
+}
+
+// reExtractCompensate restamps a credential back to ExtractStatusFailed after a
+// failed enqueue attempt so the operator can retry reextraction.
+func (s *credentialService) reExtractCompensate(ctx context.Context, t domain.Credential) error {
+	errMsg := "reenqueue failed"
+	if t.ExtractError != nil {
+		errMsg = *t.ExtractError
+	}
+	_, err := s.repo.Update(ctx, domain.Credential{
+		ID:            t.ID,
+		ExtractStatus: domain.ExtractStatusFailed,
+		ExtractError:  &errMsg,
+	})
+	return err
 }
 
 // reExtractValidate ensures all targets exist and are in failed state with a
