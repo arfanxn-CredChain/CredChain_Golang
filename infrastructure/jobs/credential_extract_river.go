@@ -93,8 +93,18 @@ func (w *CredentialExtractWorker) Work(ctx context.Context, job *river.Job[Crede
 	return w.workExtract(ctx, job.Args)
 }
 
-// workExtract reads the file, calls Python, writes Mongo, updates Postgres lifecycle.
-// Helper prefixed "work" (the method name).
+// workExtract performs the credential extraction: reads the file, calls Python
+// /extract, writes the extraction to MongoDB, and updates the Postgres lifecycle.
+//
+// Atomicity design:
+//   - MongoDB single-document upsert (Store) is atomically executed by MongoDB.
+//   - Postgres single-row Update is atomically executed by Postgres.
+//   - Cross-database atomicity is NOT possible (Mongo + Postgres cannot share a
+//     transaction). The pattern uses idempotency: Mongo upsert FIRST, then
+//     Postgres. If Postgres fails, River retries the whole job. The Mongo upsert
+//     is keyed by credential_id and safely overwrites on retry.
+//   - Each step is individually idempotent: os.ReadFile, aiClient.Extract,
+//     credRepo.Find, extractionRepo.Store (upsert).
 func (w *CredentialExtractWorker) workExtract(ctx context.Context, args CredentialExtractArgs) error {
 	data, err := os.ReadFile(args.FileURI)
 	if err != nil {
@@ -129,6 +139,9 @@ func (w *CredentialExtractWorker) workExtract(ctx context.Context, args Credenti
 	}); err != nil {
 		return fmt.Errorf("store extraction: %w", err)
 	}
+	// Mongo write done. If the Postgres update below fails, River retries and
+	// this upsert runs harmlessly again (same data). Cross-DB atomicity is not
+	// possible — see the workExtract doc for the full rationale.
 
 	// Postgres lifecycle update
 	now := time.Now()
