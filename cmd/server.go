@@ -10,6 +10,7 @@ import (
 	"CredChain_Golang/infrastructure/ai/pyai"
 	"CredChain_Golang/infrastructure/chain"
 	gormInfra "CredChain_Golang/infrastructure/database/gorm"
+	infraMongo "CredChain_Golang/infrastructure/database/mongo"
 	apphttp "CredChain_Golang/infrastructure/http"
 	"CredChain_Golang/infrastructure/http/middleware"
 	"CredChain_Golang/infrastructure/i18n"
@@ -42,6 +43,10 @@ var serverCmd = &cobra.Command{
 				},
 				i18n.NewI18nBundle,
 				gormInfra.NewGorm,
+				infraMongo.NewClient,
+				infraMongo.NewDatabase,
+				credential.NewMongoCredentialExtractionRepository,
+				credential.NewMongoCredentialVerificationRepository,
 				storage.NewStorage,
 				storage.NewIPFSClient,
 				pyai.NewPythonAIClient,
