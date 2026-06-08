@@ -39,7 +39,7 @@ type CredentialService interface {
 	Find(ctx context.Context, id string, query *domainQuery.Query) (*domain.Credential, error)
 	Issue(ctx context.Context, items []CredentialIssuance) ([]domain.Credential, map[string][]string, error)
 	Revoke(ctx context.Context, ids ...string) ([]domain.Credential, error)
-	Verify(ctx context.Context, credentialID string, file pyai.ExtractFile) (string, float64, string, domain.Credential, error)
+	Verify(ctx context.Context, file pyai.ExtractFile) (int, *domain.Credential, *float64, *string, error)
 }
 
 // CredentialIssuance is the service-layer input for one credential issuance. File
@@ -57,45 +57,51 @@ type CredentialIssuance struct {
 // ── Implementation struct & constructor ───────────────────────────────────
 
 type credentialService struct {
-	repo            domain.CredentialRepository
-	uow             domain.UnitOfWork
-	cfg             *config.Config
-	registryService chain.RegistryService
-	aiClient        pyai.PythonAIClient
-	storage         *storage.Storage
-	policy          CredentialPolicy
-	userRepo        domain.UserRepository
-	logger          *zap.Logger
-	enqueuer        jobs.Enqueuer
+	repo             domain.CredentialRepository
+	uow              domain.UnitOfWork
+	cfg              *config.Config
+	registryService  chain.RegistryService
+	aiClient         pyai.PythonAIClient
+	extractionRepo   domain.CredentialExtractionRepository
+	verificationRepo domain.CredentialVerificationRepository
+	storage          *storage.Storage
+	policy           CredentialPolicy
+	userRepo         domain.UserRepository
+	logger           *zap.Logger
+	enqueuer         jobs.Enqueuer
 }
 
 type CredentialServiceParams struct {
 	fx.In
-	Repo            domain.CredentialRepository
-	UoW             domain.UnitOfWork
-	Config          *config.Config
-	RegistryService chain.RegistryService
-	AIClient        pyai.PythonAIClient
-	Storage         *storage.Storage
-	Policy          CredentialPolicy
-	UserRepo        domain.UserRepository
-	Logger          *zap.Logger
-	Enqueuer        jobs.Enqueuer
+	Repo             domain.CredentialRepository
+	UoW              domain.UnitOfWork
+	Config           *config.Config
+	RegistryService  chain.RegistryService
+	AIClient         pyai.PythonAIClient
+	ExtractionRepo   domain.CredentialExtractionRepository
+	VerificationRepo domain.CredentialVerificationRepository
+	Storage          *storage.Storage
+	Policy           CredentialPolicy
+	UserRepo         domain.UserRepository
+	Logger           *zap.Logger
+	Enqueuer         jobs.Enqueuer
 }
 
 // NewCredentialService is the exported factory for FX injection.
 func NewCredentialService(p CredentialServiceParams) CredentialService {
 	return &credentialService{
-		repo:            p.Repo,
-		uow:             p.UoW,
-		cfg:             p.Config,
-		registryService: p.RegistryService,
-		aiClient:        p.AIClient,
-		storage:         p.Storage,
-		policy:          p.Policy,
-		userRepo:        p.UserRepo,
-		logger:          p.Logger,
-		enqueuer:        p.Enqueuer,
+		repo:             p.Repo,
+		uow:              p.UoW,
+		cfg:              p.Config,
+		registryService:  p.RegistryService,
+		aiClient:         p.AIClient,
+		extractionRepo:   p.ExtractionRepo,
+		verificationRepo: p.VerificationRepo,
+		storage:          p.Storage,
+		policy:           p.Policy,
+		userRepo:         p.UserRepo,
+		logger:           p.Logger,
+		enqueuer:         p.Enqueuer,
 	}
 }
 
@@ -377,40 +383,160 @@ func (s *credentialService) Revoke(ctx context.Context, ids ...string) ([]domain
 
 // ── Verify ────────────────────────────────────────────────────────────────
 
-// Verify calls Python /verify with the uploaded file and the credential's
-// stored embeddings. It gates on the credential's extract_status:
-// pending → 409, failed → 422, succeeded → proceed.
-func (s *credentialService) Verify(ctx context.Context, credentialID string, file pyai.ExtractFile) (string, float64, string, domain.Credential, error) {
+// Verify runs the cache → exact hash → fuzzy pipeline against the uploaded
+// file. Returns (verdictCode, matchedCredential, score, percent, error).
+func (s *credentialService) Verify(ctx context.Context, file pyai.ExtractFile) (int, *domain.Credential, *float64, *string, error) {
 	if err := s.policy.VerifyPreFetch(ctx); err != nil {
-		return "", 0, "", domain.Credential{}, err
+		return 0, nil, nil, nil, err
 	}
 
-	query := &domainQuery.Query{}
-	cred, err := s.repo.Find(ctx, credentialID, query)
+	uploadedHash := "0x" + hex.EncodeToString(ethCrypto.Keccak256(file.Data))
+
+	// CACHE LOOKUP
+	cached, err := s.verificationRepo.FindByUploadedFileHash(ctx, uploadedHash)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return "", 0, "", domain.Credential{}, domain.NewError(domain.CodeCredentialVerifyCredentialNotFound,
-				domain.WithMetadata("credential_id", credentialID))
+		return 0, nil, nil, nil, err
+	}
+	if cached != nil {
+		var cred *domain.Credential
+		if cached.MatchedCredentialID != nil {
+			cred, _ = s.repo.Find(ctx, *cached.MatchedCredentialID, nil)
 		}
-		return "", 0, "", domain.Credential{}, err
+		return cached.VerdictCode, cred, cached.SimilarityScore, cached.SimilarityPercent, nil
 	}
 
-	switch cred.ExtractStatus {
-	case domain.ExtractStatusPending:
-		return "", 0, "", domain.Credential{}, domain.NewError(domain.CodeCredentialVerifyExtractNotReady)
-	case domain.ExtractStatusFailed:
-		return "", 0, "", domain.Credential{}, domain.NewError(domain.CodeCredentialVerifyExtractFailed,
-			domain.WithMetadata("extract_error", lo.FromPtrOr(cred.ExtractError, "")))
-	}
-
-	// TODO(Task 4.3): Verify is rewritten as a cache→exact→fuzzy pipeline; embedding now comes from MongoDB extraction.
-	result, err := s.aiClient.Verify(ctx, file, nil)
+	// EXACT-HASH PATH
+	existing, err := s.repo.FindByFileHashes(ctx, uploadedHash)
 	if err != nil {
-		return "", 0, "", domain.Credential{}, domain.NewError(domain.CodeCredentialVerifyAiServiceFailed,
-			domain.WithError(err))
+		return 0, nil, nil, nil, err
+	}
+	if len(existing) > 0 {
+		cred := existing[0]
+		_, onChain, chainErr := s.registryService.FindCredentialByHash(ctx, uploadedHash)
+		code := domain.CodeCredentialVerifyAuthentic
+		if chainErr != nil || !onChain {
+			code = domain.CodeCredentialVerifyIntegrityWarning
+		} else if cred.RevokedAt != nil {
+			code = domain.CodeCredentialVerifyRevoked
+		}
+		s.verifyCacheVerdict(ctx, uploadedHash, code, &cred.ID, nil, nil)
+		return code, &cred, nil, nil, nil
 	}
 
-	return result.Verdict, result.SimilarityScore, result.SimilarityPercent, *cred, nil
+	// FUZZY PATH
+	ids, err := s.aiClient.ExtractIDs(ctx, file)
+	if err != nil {
+		return 0, nil, nil, nil, domain.NewError(domain.CodeCredentialVerifyAiServiceFailed, domain.WithError(err))
+	}
+	if len(ids) == 0 {
+		code := domain.CodeCredentialVerifyNoIdentifiers
+		s.verifyCacheVerdict(ctx, uploadedHash, code, nil, nil, nil)
+		return code, nil, nil, nil, nil
+	}
+
+	values := lo.Map(ids, func(id pyai.ExtractedID, _ int) string { return id.Value })
+	ranked, err := s.extractionRepo.FindRankedByIds(ctx, values, 10)
+	if err != nil {
+		return 0, nil, nil, nil, err
+	}
+	if len(ranked) == 0 {
+		code := domain.CodeCredentialVerifyNoMatch
+		s.verifyCacheVerdict(ctx, uploadedHash, code, nil, nil, nil)
+		return code, nil, nil, nil, nil
+	}
+
+	best := s.verifyPickBestMatch(ctx, ranked, values)
+	result, err := s.aiClient.Verify(ctx, file, best.Embedding)
+	if err != nil {
+		return 0, nil, nil, nil, domain.NewError(domain.CodeCredentialVerifyAiServiceFailed, domain.WithError(err))
+	}
+
+	code := s.verifyVerdictToCode(result.Verdict)
+	cred, _ := s.repo.Find(ctx, best.CredentialID, nil)
+	s.verifyCacheVerdict(ctx, uploadedHash, code, &best.CredentialID, &result.SimilarityScore, &result.SimilarityPercent)
+	return code, cred, &result.SimilarityScore, &result.SimilarityPercent, nil
+}
+
+// verifyPickBestMatch selects the best-matching extraction from ranked
+// results. Uses one FindByIds IN-query for tie-breaking (no per-candidate
+// queries). Prefers non-revoked credentials; then prefers newer IssuedAt.
+func (s *credentialService) verifyPickBestMatch(ctx context.Context, ranked []domain.CredentialExtraction, values []string) domain.CredentialExtraction {
+	maxCount := s.verifyCountIntersection(ranked[0].IDs, values)
+	var tied []domain.CredentialExtraction
+	for _, r := range ranked {
+		if s.verifyCountIntersection(r.IDs, values) == maxCount {
+			tied = append(tied, r)
+		}
+	}
+	if len(tied) == 1 {
+		return tied[0]
+	}
+	ids := lo.Map(tied, func(e domain.CredentialExtraction, _ int) string { return e.CredentialID })
+	creds, err := s.repo.FindByIds(ctx, ids...)
+	if err != nil {
+		return tied[0]
+	}
+	credByID := lo.SliceToMap(creds, func(c domain.Credential) (string, domain.Credential) { return c.ID, c })
+	best, bestCred, bestOK := tied[0], credByID[tied[0].CredentialID], true
+	for _, t := range tied[1:] {
+		tc, ok := credByID[t.CredentialID]
+		if !ok {
+			continue
+		}
+		if !bestOK {
+			best, bestCred, bestOK = t, tc, true
+			continue
+		}
+		bestRevoked := bestCred.RevokedAt != nil
+		tRevoked := tc.RevokedAt != nil
+		if bestRevoked && !tRevoked {
+			best, bestCred = t, tc
+		} else if bestRevoked == tRevoked && tc.IssuedAt.After(bestCred.IssuedAt) {
+			best, bestCred = t, tc
+		}
+	}
+	return best
+}
+
+// verifyCountIntersection counts how many of the extraction's IDs appear in
+// the uploaded file's value set.
+func (s *credentialService) verifyCountIntersection(ids []domain.ExtractedID, values []string) int {
+	set := lo.SliceToMap(values, func(v string) (string, struct{}) { return v, struct{}{} })
+	count := 0
+	for _, id := range ids {
+		if _, ok := set[id.Value]; ok {
+			count++
+		}
+	}
+	return count
+}
+
+// verifyVerdictToCode maps the Python /verify verdict string to a domain code.
+func (s *credentialService) verifyVerdictToCode(verdict string) int {
+	switch verdict {
+	case "tampered":
+		return domain.CodeCredentialVerifyTampered
+	case "suspicious":
+		return domain.CodeCredentialVerifySuspicious
+	case "low_similarity":
+		return domain.CodeCredentialVerifyLowSimilarity
+	default:
+		return domain.CodeCredentialVerifyNotSimilar
+	}
+}
+
+// verifyCacheVerdict stores the verify result in the MongoDB cache. Logs
+// failures (non-fatal — the next call will recompute).
+func (s *credentialService) verifyCacheVerdict(ctx context.Context, hash string, code int, credID *string, score *float64, percent *string) {
+	if err := s.verificationRepo.Store(ctx, domain.CredentialVerification{
+		UploadedFileHash:    hash,
+		VerdictCode:         code,
+		MatchedCredentialID: credID,
+		SimilarityScore:     score,
+		SimilarityPercent:   percent,
+	}); err != nil {
+		s.logger.Warn("failed to cache verification", zap.String("hash", hash), zap.Error(err))
+	}
 }
 
 // ── Blockchain sync helpers ───────────────────────────────────────────────

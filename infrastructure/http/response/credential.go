@@ -68,14 +68,13 @@ func FromDomainCredential(c domain.Credential) Credential {
 }
 
 // CredentialVerify is the response payload for POST /api/credentials/verify.
-// Verdict and Description come from the Python /verify endpoint via the
-// service layer. Description is the locale-appropriate string (the handler
-// picks EN from the Python bilingual response; i18n-awareness is deferred to
-// a future iteration if needed).
+// VerdictCode is the 6-digit domain code for the verify outcome; Description
+// is its localized message, resolved by the handler via the request's i18n
+// localizer (Accept-Language). Credential is the matched credential, if any.
 type CredentialVerify struct {
-	Verdict           string     `json:"verdict"`
-	SimilarityScore   float64    `json:"similarity_score"`
-	SimilarityPercent string     `json:"similarity_percent"`
-	Description       string     `json:"description"`
-	Credential        Credential `json:"credential"`
+	VerdictCode       int         `json:"verdict_code"`
+	SimilarityScore   *float64    `json:"similarity_score,omitempty"`
+	SimilarityPercent *string     `json:"similarity_percent,omitempty"`
+	Description       string      `json:"description"`
+	Credential        *Credential `json:"credential,omitempty"`
 }

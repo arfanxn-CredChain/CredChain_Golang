@@ -254,3 +254,8 @@ func resolveMessage(c *gin.Context, code int) string {
 	msgKey := getMessageKey(code)
 	return localize(c, localizer, msgKey, nil)
 }
+
+// ResolveMessage returns the localized message for a code using the request's localizer.
+func ResolveMessage(c *gin.Context, code int) string {
+	return resolveMessage(c, code)
+}

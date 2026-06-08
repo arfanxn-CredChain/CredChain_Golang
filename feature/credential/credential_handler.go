@@ -219,22 +219,15 @@ func (h *credentialHandler) Revoke(c *gin.Context) {
 
 // ── Verify ────────────────────────────────────────────────────────────────
 
-// Verify accepts a multipart form with a credential_id and file, forwards
-// to the service layer, and returns a similarity verdict.
+// Verify accepts a multipart file upload and returns a similarity verdict
+// against all known credentials (cache → exact hash → fuzzy pipeline).
 func (h *credentialHandler) Verify(c *gin.Context) {
-	credID := c.PostForm("credential_id")
 	fileHeader, err := c.FormFile("file")
 	if err != nil {
 		responder.SendError(c, domain.NewError(domain.CodeCredentialVerifyValidation,
 			domain.WithError(err)))
 		return
 	}
-	req := CredentialVerifyRequest{CredentialID: credID, File: fileHeader}
-	if err := req.Validate(); err != nil {
-		responder.SendValidationError(c, err)
-		return
-	}
-
 	fileBytes, mime, filename, err := readUploadedFile(fileHeader)
 	if err != nil {
 		c.Error(err)
@@ -251,8 +244,7 @@ func (h *credentialHandler) Verify(c *gin.Context) {
 			domain.WithMetadata("file_size", len(fileBytes))))
 		return
 	}
-
-	verdict, score, percent, cred, err := h.credSvc.Verify(c.Request.Context(), credID, pyai.ExtractFile{
+	code, cred, score, percent, err := h.credSvc.Verify(c.Request.Context(), pyai.ExtractFile{
 		Filename: filename,
 		MIMEType: mime,
 		Data:     fileBytes,
@@ -262,17 +254,18 @@ func (h *credentialHandler) Verify(c *gin.Context) {
 		responder.SendError(c, err)
 		return
 	}
-
-	responseCred := mapCredentialsToResponse([]domain.Credential{cred})
-	verifyResponse := response.CredentialVerify{
-		Verdict:           verdict,
+	desc := responder.ResolveMessage(c, code)
+	out := response.CredentialVerify{
+		VerdictCode:       code,
 		SimilarityScore:   score,
 		SimilarityPercent: percent,
+		Description:       desc,
 	}
-	if len(responseCred) > 0 {
-		verifyResponse.Credential = responseCred[0]
+	if cred != nil {
+		dto := response.FromDomainCredential(*cred)
+		out.Credential = &dto
 	}
-	responder.Send(c, domain.CodeCredentialVerifySuccess, verifyResponse)
+	responder.Send(c, code, out)
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────
