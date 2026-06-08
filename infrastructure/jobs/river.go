@@ -59,13 +59,24 @@ func NewRiverClient(lc fx.Lifecycle, cfg *config.Config, worker *CredentialExtra
 		pool.Close()
 		return nil, err
 	}
+
+	// runCtx is the long-lived context River uses for its notifier loop and
+	// worker pool. It MUST NOT be derived from the FX OnStart context, which
+	// has a start-phase deadline (default 15s). If River's notifier inherits
+	// that deadline, it spins on context.DeadlineExceeded after expiry —
+	// listenAndWait fails instantly, CancellableSleep returns instantly,
+	// and the reconnect loop floods stderr with millions of identical errors
+	// per second. See River notifier.go: only context.Canceled breaks the
+	// loop, not DeadlineExceeded.
+	runCtx, cancelRun := context.WithCancel(context.Background())
 	started := false
 	lc.Append(fx.Hook{
 		// river.Client.Start is non-blocking: it launches the worker pool in
 		// the background and returns immediately. Call it synchronously so the
 		// "started" flag is set before OnStop can run (no Start/Stop race).
-		OnStart: func(ctx context.Context) error {
-			if startErr := client.Start(ctx); startErr != nil {
+		OnStart: func(_ context.Context) error {
+			if startErr := client.Start(runCtx); startErr != nil {
+				cancelRun()
 				pool.Close()
 				return fmt.Errorf("start river client: %w", startErr)
 			}
@@ -78,6 +89,7 @@ func NewRiverClient(lc fx.Lifecycle, cfg *config.Config, worker *CredentialExtra
 					logger.Error("failed to stop river client", zap.Error(stopErr))
 				}
 			}
+			cancelRun()
 			pool.Close()
 			return nil
 		},
