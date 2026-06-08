@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 )
 
 type testCredentialMocks struct {
@@ -697,4 +698,154 @@ func TestReExtract_NotFailed(t *testing.T) {
 		assert.Equal(t, domain.CodeCredentialReExtractNotFailed, domErr.Code)
 	}
 	enq.AssertNotCalled(t, "EnqueueExtract", mock.Anything, mock.Anything)
+}
+
+func TestFind_NotFound(t *testing.T) {
+	credRepo := &mocks.MockCredentialRepository{}
+	credRepo.On("Find", mock.Anything, "missing", mock.Anything).Return(nil, gorm.ErrRecordNotFound)
+	svc := &credentialService{repo: credRepo, logger: zap.NewNop()}
+	_, err := svc.Find(context.Background(), "missing", nil)
+	var domErr *domain.Error
+	if assert.ErrorAs(t, err, &domErr) {
+		assert.Equal(t, domain.CodeCredentialFetchNotFound, domErr.Code)
+	}
+}
+
+func TestFind_HappyPath(t *testing.T) {
+	credRepo := &mocks.MockCredentialRepository{}
+	credRepo.On("Find", mock.Anything, "cred-1", mock.Anything).Return(&domain.Credential{ID: "cred-1"}, nil)
+	svc := &credentialService{repo: credRepo, logger: zap.NewNop()}
+	got, err := svc.Find(context.Background(), "cred-1", nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, got)
+	assert.Equal(t, "cred-1", got.ID)
+}
+
+func TestFind_RepoError(t *testing.T) {
+	credRepo := &mocks.MockCredentialRepository{}
+	credRepo.On("Find", mock.Anything, "cred-x", mock.Anything).Return(nil, assert.AnError)
+	svc := &credentialService{repo: credRepo, logger: zap.NewNop()}
+	_, err := svc.Find(context.Background(), "cred-x", nil)
+	assert.Error(t, err)
+}
+
+func TestRevoke_HappyPath(t *testing.T) {
+	user := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleIssuer))
+	ctx := ctxWithAuth(&user)
+
+	tokID := "1"
+	targets := []domain.Credential{{ID: "c1", TokenID: &tokID}}
+	innerCredRepo := &mocks.MockCredentialRepository{}
+	innerCredRepo.On("FindByIds", mock.Anything, []string{"c1"}).Return(targets, nil)
+	innerCredRepo.On("Update", mock.Anything, mock.Anything, mock.Anything).Return(targets, nil)
+
+	uow := mocks.NewPropagatingUnitOfWork()
+	uow.On("Credential").Return(innerCredRepo)
+
+	regSvc := &mocks.MockRegistryService{}
+	regSvc.On("RevokeCredentials", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+
+	svc := &credentialService{
+		uow:             uow,
+		registryService: regSvc,
+		policy:          &credentialPolicy{},
+		logger:          zap.NewNop(),
+	}
+	revoked, err := svc.Revoke(ctx, "c1")
+	assert.NoError(t, err)
+	assert.Len(t, revoked, 1)
+}
+
+func TestRevoke_NotFound(t *testing.T) {
+	user := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleIssuer))
+	ctx := ctxWithAuth(&user)
+
+	innerCredRepo := &mocks.MockCredentialRepository{}
+	innerCredRepo.On("FindByIds", mock.Anything, []string{"missing"}).Return([]domain.Credential{}, nil)
+	uow := mocks.NewPropagatingUnitOfWork()
+	uow.On("Credential").Return(innerCredRepo)
+
+	svc := &credentialService{
+		uow:    uow,
+		policy: &credentialPolicy{},
+		logger: zap.NewNop(),
+	}
+	_, err := svc.Revoke(ctx, "missing")
+	var domErr *domain.Error
+	if assert.ErrorAs(t, err, &domErr) {
+		assert.Equal(t, domain.CodeCredentialRevokeNotFound, domErr.Code)
+	}
+}
+
+func TestRevoke_AlreadyRevoked(t *testing.T) {
+	user := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleIssuer))
+	ctx := ctxWithAuth(&user)
+
+	now := time.Now()
+	innerCredRepo := &mocks.MockCredentialRepository{}
+	innerCredRepo.On("FindByIds", mock.Anything, []string{"c1"}).Return(
+		[]domain.Credential{{ID: "c1", RevokedAt: &now}}, nil)
+	uow := mocks.NewPropagatingUnitOfWork()
+	uow.On("Credential").Return(innerCredRepo)
+
+	svc := &credentialService{
+		uow:    uow,
+		policy: &credentialPolicy{},
+		logger: zap.NewNop(),
+	}
+	_, err := svc.Revoke(ctx, "c1")
+	var domErr *domain.Error
+	if assert.ErrorAs(t, err, &domErr) {
+		assert.Equal(t, domain.CodeCredentialRevokeAlreadyRevoked, domErr.Code)
+	}
+}
+
+func TestRevoke_ChainRollback(t *testing.T) {
+	user := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleIssuer))
+	ctx := ctxWithAuth(&user)
+
+	tokID := "1"
+	innerCredRepo := &mocks.MockCredentialRepository{}
+	innerCredRepo.On("FindByIds", mock.Anything, []string{"c1"}).Return(
+		[]domain.Credential{{ID: "c1", TokenID: &tokID}}, nil)
+	innerCredRepo.On("Update", mock.Anything, mock.Anything, mock.Anything).Return(
+		[]domain.Credential{{ID: "c1"}}, nil)
+	uow := mocks.NewPropagatingUnitOfWork()
+	uow.On("Credential").Return(innerCredRepo)
+
+	regSvc := &mocks.MockRegistryService{}
+	regSvc.On("RevokeCredentials", mock.Anything, mock.Anything, mock.Anything).Return(assert.AnError)
+
+	svc := &credentialService{
+		uow:             uow,
+		registryService: regSvc,
+		policy:          &credentialPolicy{},
+		logger:          zap.NewNop(),
+	}
+	_, err := svc.Revoke(ctx, "c1")
+	assert.Error(t, err)
+}
+
+func TestReExtractCompensate_Success(t *testing.T) {
+	credRepo := &mocks.MockCredentialRepository{}
+	credRepo.On("Update", mock.Anything, mock.Anything, mock.Anything).Return(
+		[]domain.Credential{{ID: "c1"}}, nil)
+	svc := &credentialService{repo: credRepo, logger: zap.NewNop()}
+	err := svc.reExtractCompensate(context.Background(), domain.Credential{ID: "c1", ExtractError: lo.ToPtr("orig err")})
+	assert.NoError(t, err)
+}
+
+func TestSyncBlockchainRevoke_EmptyInput(t *testing.T) {
+	svc := &credentialService{logger: zap.NewNop()}
+	err := svc.syncBlockchainRevoke(context.Background(), domain.Wallet{}, []string{})
+	assert.NoError(t, err)
+}
+
+func TestSyncBlockchainRevoke_InvalidTokenID(t *testing.T) {
+	svc := &credentialService{logger: zap.NewNop()}
+	err := svc.syncBlockchainRevoke(context.Background(), domain.Wallet{}, []string{"not-a-number"})
+	var domErr *domain.Error
+	if assert.ErrorAs(t, err, &domErr) {
+		assert.Equal(t, domain.CodeCredentialRevokeBlockchainSyncFailed, domErr.Code)
+	}
 }
