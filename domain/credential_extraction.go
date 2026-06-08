@@ -6,6 +6,11 @@ import (
 )
 
 // ExtractedID is one identifier extracted from a credential document.
+//
+// Distinct from pyai.ExtractedID (the HTTP wire type returned by the Python
+// AI client): this domain copy carries BSON tags for MongoDB persistence.
+// The service/worker layer maps between the two — keep them separate so the
+// domain package stays free of infrastructure dependencies.
 type ExtractedID struct {
 	Type  string `bson:"type"  json:"type"`
 	Value string `bson:"value" json:"value"`
