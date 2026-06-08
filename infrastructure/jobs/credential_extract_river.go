@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,6 +12,7 @@ import (
 	"CredChain_Golang/infrastructure/ai/pyai"
 
 	"github.com/riverqueue/river"
+	"github.com/riverqueue/river/rivertype"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 )
@@ -51,6 +53,39 @@ func NewCredentialExtractWorker(p CredentialExtractWorkerParams) *CredentialExtr
 		extractionRepo: p.ExtractionRepo,
 		aiClient:       p.AIClient,
 		logger:         p.Logger,
+	}
+}
+
+// HandleError implements river.ErrorHandler. On terminal failure (max retries
+// exhausted), stamps the credential extract_status = failed so reextract can act.
+func (w *CredentialExtractWorker) HandleError(ctx context.Context, job *rivertype.JobRow, err error) *river.ErrorHandlerResult {
+	w.handleTerminalFailure(ctx, job, err.Error())
+	return &river.ErrorHandlerResult{}
+}
+
+// HandlePanic implements river.ErrorHandler. Treats a terminal panic the same
+// as a terminal error: stamps the credential failed once retries are exhausted.
+func (w *CredentialExtractWorker) HandlePanic(ctx context.Context, job *rivertype.JobRow, panicVal any, trace string) *river.ErrorHandlerResult {
+	w.handleTerminalFailure(ctx, job, fmt.Sprintf("panic: %v", panicVal))
+	return &river.ErrorHandlerResult{}
+}
+
+// handleTerminalFailure stamps the credential failed only when River has
+// exhausted all retry attempts. The job row is untyped, so decode the args.
+func (w *CredentialExtractWorker) handleTerminalFailure(ctx context.Context, job *rivertype.JobRow, errMsg string) {
+	if job.Kind != (CredentialExtractArgs{}).Kind() || job.Attempt < job.MaxAttempts {
+		return
+	}
+	var args CredentialExtractArgs
+	if decodeErr := json.Unmarshal(job.EncodedArgs, &args); decodeErr != nil {
+		w.logger.Error("failed to decode extract job args on terminal failure", zap.Error(decodeErr))
+		return
+	}
+	w.logger.Error("extraction job permanently failed",
+		zap.String("credential_id", args.CredentialID),
+		zap.String("error", errMsg))
+	if updateErr := w.workMarkFailed(ctx, args.CredentialID, errMsg); updateErr != nil {
+		w.logger.Error("failed to mark credential extract_status=failed", zap.Error(updateErr))
 	}
 }
 
@@ -107,6 +142,17 @@ func (w *CredentialExtractWorker) workExtract(ctx context.Context, args Credenti
 
 	w.logger.Info("extraction job succeeded", zap.String("credential_id", args.CredentialID))
 	return nil
+}
+
+// workMarkFailed stamps the credential as failed with the given error message.
+// Used by HandleError when River permanently discards the job.
+func (w *CredentialExtractWorker) workMarkFailed(ctx context.Context, credentialID string, errMsg string) error {
+	_, updateErr := w.credRepo.Update(ctx, domain.Credential{
+		ID:            credentialID,
+		ExtractStatus: domain.ExtractStatusFailed,
+		ExtractError:  &errMsg,
+	})
+	return updateErr
 }
 
 func workToDomainIDs(ids []pyai.ExtractedID) []domain.ExtractedID {

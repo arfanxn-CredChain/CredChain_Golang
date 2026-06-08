@@ -183,6 +183,7 @@ func (s *credentialService) Issue(ctx context.Context, items []CredentialIssuanc
 	results := make([]domain.Credential, len(items))
 	var survivors []prepared
 	var fileURIs []string
+	claimedHash := map[string]bool{} // hashes claimed by earlier survivors in THIS batch
 
 	for i, it := range items {
 		key := fmt.Sprintf("credentials.%d", i)
@@ -190,7 +191,7 @@ func (s *credentialService) Issue(ctx context.Context, items []CredentialIssuanc
 			errs[key] = append(errs[key], "holder not found")
 			continue
 		}
-		if activeDup[hashes[i]] {
+		if activeDup[hashes[i]] || claimedHash[hashes[i]] {
 			errs[key] = append(errs[key], "duplicate file hash")
 			continue
 		}
@@ -221,6 +222,7 @@ func (s *credentialService) Issue(ctx context.Context, items []CredentialIssuanc
 			ExtractStatus: domain.ExtractStatusPending,
 		}
 		survivors = append(survivors, prepared{idx: i, cred: cred})
+		claimedHash[hashes[i]] = true
 	}
 
 	if len(survivors) == 0 {
@@ -239,6 +241,15 @@ func (s *credentialService) Issue(ctx context.Context, items []CredentialIssuanc
 		stored, err := uow.Credential().Store(ctx, survCreds...)
 		if err != nil {
 			return err
+		}
+		// Invariant check BEFORE the on-chain mint: a credential without a
+		// file_uri is broken. Failing here rolls back the DB Store before any
+		// NFT is minted, avoiding an orphaned on-chain token.
+		for _, c := range stored {
+			if c.FileURI == nil {
+				return domain.NewError(domain.CodeCredentialIssueStorageFailed,
+					domain.WithMetadata("credential_id", c.ID))
+			}
 		}
 		issuances := make([]chain.CredentialIssuance, len(stored))
 		for i, c := range stored {
@@ -262,10 +273,6 @@ func (s *credentialService) Issue(ctx context.Context, items []CredentialIssuanc
 			return err
 		}
 		for _, c := range stored {
-			if c.FileURI == nil {
-				return domain.NewError(domain.CodeCredentialIssueStorageFailed,
-					domain.WithMetadata("credential_id", c.ID))
-			}
 			if err := s.issueEnqueueExtractJob(ctx, c.ID, *c.FileURI); err != nil {
 				return err
 			}

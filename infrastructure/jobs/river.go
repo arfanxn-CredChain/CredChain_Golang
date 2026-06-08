@@ -2,7 +2,7 @@ package jobs
 
 import (
 	"context"
-	"time"
+	"fmt"
 
 	"CredChain_Golang/config"
 
@@ -51,26 +51,33 @@ func NewRiverClient(lc fx.Lifecycle, cfg *config.Config, worker *CredentialExtra
 	workers := river.NewWorkers()
 	river.AddWorker(workers, worker)
 	client, err := river.NewClient(riverpgxv5.New(pool), &river.Config{
-		Queues:  map[string]river.QueueConfig{river.QueueDefault: {MaxWorkers: *cfg.RiverMaxWorkers}},
-		Workers: workers,
+		Queues:       map[string]river.QueueConfig{river.QueueDefault: {MaxWorkers: *cfg.RiverMaxWorkers}},
+		Workers:      workers,
+		ErrorHandler: worker,
 	})
 	if err != nil {
 		pool.Close()
 		return nil, err
 	}
+	started := false
 	lc.Append(fx.Hook{
+		// river.Client.Start is non-blocking: it launches the worker pool in
+		// the background and returns immediately. Call it synchronously so the
+		// "started" flag is set before OnStop can run (no Start/Stop race).
 		OnStart: func(ctx context.Context) error {
-			go func() {
-				// Short delay to let FX app boot fully
-				time.Sleep(1 * time.Second)
-				if startErr := client.Start(ctx); startErr != nil {
-					logger.Error("failed to start river client", zap.Error(startErr))
-				}
-			}()
+			if startErr := client.Start(ctx); startErr != nil {
+				pool.Close()
+				return fmt.Errorf("start river client: %w", startErr)
+			}
+			started = true
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
-			_ = client.Stop(ctx)
+			if started {
+				if stopErr := client.Stop(ctx); stopErr != nil {
+					logger.Error("failed to stop river client", zap.Error(stopErr))
+				}
+			}
 			pool.Close()
 			return nil
 		},
