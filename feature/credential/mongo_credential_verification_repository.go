@@ -2,6 +2,7 @@ package credential
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"CredChain_Golang/domain"
@@ -25,7 +26,7 @@ func NewMongoCredentialVerificationRepository(db *mongo.Database) domain.Credent
 func (r *mongoCredentialVerificationRepository) FindByUploadedFileHash(ctx context.Context, hash string) (*domain.CredentialVerification, error) {
 	var out domain.CredentialVerification
 	err := r.coll.FindOne(ctx, bson.M{"uploaded_file_hash": hash}).Decode(&out)
-	if err == mongo.ErrNoDocuments {
+	if errors.Is(err, mongo.ErrNoDocuments) {
 		return nil, nil
 	}
 	if err != nil {
@@ -35,6 +36,9 @@ func (r *mongoCredentialVerificationRepository) FindByUploadedFileHash(ctx conte
 }
 
 func (r *mongoCredentialVerificationRepository) Store(ctx context.Context, v domain.CredentialVerification) error {
+	// created_at is in $set (not $setOnInsert) intentionally — re-verifying the
+	// same file resets the TTL window (sliding expiry). This bounds storage while
+	// keeping recently-active files cached. See also migrate-mongo's TTL index.
 	if v.CreatedAt.IsZero() {
 		v.CreatedAt = time.Now()
 	}

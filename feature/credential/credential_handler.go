@@ -2,6 +2,7 @@ package credential
 
 import (
 	"encoding/json"
+	"io"
 	"mime"
 	"mime/multipart"
 	"path/filepath"
@@ -315,9 +316,8 @@ func readUploadedFile(fh *multipart.FileHeader) ([]byte, string, string, error) 
 		return nil, "", "", err
 	}
 	defer src.Close()
-	buf := make([]byte, fh.Size)
-	_, err = src.Read(buf)
-	if err != nil && err.Error() != "EOF" {
+	buf, err := io.ReadAll(src)
+	if err != nil {
 		return nil, "", "", err
 	}
 	mimeType := fh.Header.Get("Content-Type")

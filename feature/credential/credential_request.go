@@ -5,7 +5,6 @@ import (
 
 	"CredChain_Golang/domain"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
-	"github.com/go-ozzo/ozzo-validation/v4/is"
 )
 
 var allowedMIMETypes = map[string]bool{
@@ -79,19 +78,6 @@ func (r CredentialRevokeRequest) Validate() error {
 			validation.Required,
 			validation.Length(1, 100),
 		),
-	)
-}
-
-// CredentialVerifyRequest is the parsed multipart body for POST /api/credentials/verify.
-type CredentialVerifyRequest struct {
-	CredentialID string
-	File         *multipart.FileHeader
-}
-
-func (r CredentialVerifyRequest) Validate() error {
-	return validation.ValidateStruct(&r,
-		validation.Field(&r.CredentialID, validation.Required, is.ASCII),
-		validation.Field(&r.File, validation.Required),
 	)
 }
 

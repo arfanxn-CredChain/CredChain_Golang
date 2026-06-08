@@ -2,6 +2,7 @@ package credential
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"CredChain_Golang/domain"
@@ -48,7 +49,7 @@ func (r *mongoCredentialExtractionRepository) Store(ctx context.Context, e domai
 func (r *mongoCredentialExtractionRepository) FindByCredentialId(ctx context.Context, credentialID string) (*domain.CredentialExtraction, error) {
 	var out domain.CredentialExtraction
 	err := r.coll.FindOne(ctx, bson.M{"credential_id": credentialID}).Decode(&out)
-	if err == mongo.ErrNoDocuments {
+	if errors.Is(err, mongo.ErrNoDocuments) {
 		return nil, nil
 	}
 	if err != nil {
