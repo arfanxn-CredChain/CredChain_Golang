@@ -1229,7 +1229,7 @@
                   },
                   "response": [
                     {
-                      "name": "300100 OK — default (page=1, limit=10)",
+                      "name": "300100 OK \u2014 default (page=1, limit=10)",
                       "originalRequest": {},
                       "status": "OK",
                       "code": 200,
@@ -1244,7 +1244,7 @@
                       "body": "{\n    \"code\": 300100,\n    \"message\": \"Pengguna berhasil diambil.\",\n    \"data\": {\n        \"first_page_url\": \"http://localhost:8080/api/users?limit=10&page=1\",\n        \"from\": 1,\n        \"items\": [\n            {\n                \"id\": \"01KRJSS4XF1KJHP1326YMW81CN\",\n                \"name\": \"Arfan\",\n                \"number\": \"2173\",\n                \"phone_number\": \"+6288899991111\",\n                \"email\": \"arfan2173@gmail.com\",\n                \"birth_date\": \"2003-07-21T00:00:00Z\",\n                \"meta\": null,\n                \"role\": \"super_admin\",\n                \"wallet_address\": \"0x70997970C51812dc3A010C7d01b50e0d17dc79C8\",\n                \"created_at\": \"2026-05-14T15:31:18.960366+07:00\",\n                \"updated_at\": \"2026-05-14T15:31:18.960366+07:00\",\n                \"deleted_at\": null\n            }\n        ],\n        \"last_page\": 1,\n        \"last_page_url\": \"http://localhost:8080/api/users?limit=10&page=1\",\n        \"limit\": 10,\n        \"next_page_url\": null,\n        \"page\": 1,\n        \"prev_page_url\": null,\n        \"to\": 1,\n        \"total\": 1\n    }\n}"
                     },
                     {
-                      "name": "300100 OK — page=2, limit=5 (multi-page)",
+                      "name": "300100 OK \u2014 page=2, limit=5 (multi-page)",
                       "originalRequest": {},
                       "status": "OK",
                       "code": 200,
@@ -1259,7 +1259,7 @@
                       "body": "{\n    \"code\": 300100,\n    \"message\": \"Pengguna berhasil diambil.\",\n    \"data\": {\n        \"first_page_url\": \"http://localhost:8080/api/users?limit=5&page=1\",\n        \"from\": 6,\n        \"items\": [\n            {\n                \"id\": \"01KRJSS4XF1KJHP1326YMW81C6\",\n                \"name\": \"Bob\",\n                \"number\": null,\n                \"phone_number\": null,\n                \"email\": \"bob@example.com\",\n                \"birth_date\": null,\n                \"meta\": null,\n                \"role\": \"holder\",\n                \"wallet_address\": \"0xABCDEF1234567890ABCDEF1234567890ABCDEF12\",\n                \"created_at\": \"2026-05-20T10:00:00Z\",\n                \"updated_at\": \"2026-05-20T10:00:00Z\",\n                \"deleted_at\": null\n            }\n        ],\n        \"last_page\": 3,\n        \"last_page_url\": \"http://localhost:8080/api/users?limit=5&page=3\",\n        \"limit\": 5,\n        \"next_page_url\": \"http://localhost:8080/api/users?limit=5&page=3\",\n        \"page\": 2,\n        \"prev_page_url\": \"http://localhost:8080/api/users?limit=5&page=1\",\n        \"to\": 10,\n        \"total\": 13\n    }\n}"
                     },
                     {
-                      "name": "300100 OK — filter role=holder",
+                      "name": "300100 OK \u2014 filter role=holder",
                       "originalRequest": {},
                       "status": "OK",
                       "code": 200,
@@ -1274,7 +1274,7 @@
                       "body": "{\n    \"code\": 300100,\n    \"message\": \"Pengguna berhasil diambil.\",\n    \"data\": {\n        \"first_page_url\": \"http://localhost:8080/api/users?filters=role%3Dholder&limit=10&page=1\",\n        \"from\": 1,\n        \"items\": [\n            {\n                \"id\": \"01KRJSS4XF1KJHP1326YMW81C7\",\n                \"name\": \"Alice\",\n                \"number\": null,\n                \"phone_number\": null,\n                \"email\": \"alice@example.com\",\n                \"birth_date\": null,\n                \"meta\": null,\n                \"role\": \"holder\",\n                \"wallet_address\": \"0x1111111111111111111111111111111111111111\",\n                \"created_at\": \"2026-05-21T08:00:00Z\",\n                \"updated_at\": \"2026-05-21T08:00:00Z\",\n                \"deleted_at\": null\n            }\n        ],\n        \"last_page\": 1,\n        \"last_page_url\": \"http://localhost:8080/api/users?filters=role%3Dholder&limit=10&page=1\",\n        \"limit\": 10,\n        \"next_page_url\": null,\n        \"page\": 1,\n        \"prev_page_url\": null,\n        \"to\": 1,\n        \"total\": 1\n    }\n}"
                     },
                     {
-                      "name": "300100 OK — filter name~ali + sort -created_at",
+                      "name": "300100 OK \u2014 filter name~ali + sort -created_at",
                       "originalRequest": {},
                       "status": "OK",
                       "code": 200,
@@ -1289,7 +1289,7 @@
                       "body": "{\n    \"code\": 300100,\n    \"message\": \"Pengguna berhasil diambil.\",\n    \"data\": {\n        \"first_page_url\": \"http://localhost:8080/api/users?filters=name%7Eali&limit=10&page=1&sorts=-created_at\",\n        \"from\": 1,\n        \"items\": [\n            {\n                \"id\": \"01KRJSS4XF1KJHP1326YMW81C8\",\n                \"name\": \"Alice\",\n                \"number\": null,\n                \"phone_number\": null,\n                \"email\": \"alice@example.com\",\n                \"birth_date\": null,\n                \"meta\": null,\n                \"role\": \"holder\",\n                \"wallet_address\": \"0x2222222222222222222222222222222222222222\",\n                \"created_at\": \"2026-05-28T12:00:00Z\",\n                \"updated_at\": \"2026-05-28T12:00:00Z\",\n                \"deleted_at\": null\n            }\n        ],\n        \"last_page\": 1,\n        \"last_page_url\": \"http://localhost:8080/api/users?filters=name%7Eali&limit=10&page=1&sorts=-created_at\",\n        \"limit\": 10,\n        \"next_page_url\": null,\n        \"page\": 1,\n        \"prev_page_url\": null,\n        \"to\": 1,\n        \"total\": 1\n    }\n}"
                     },
                     {
-                      "name": "300100 OK — empty results (no match)",
+                      "name": "300100 OK \u2014 empty results (no match)",
                       "originalRequest": {},
                       "status": "OK",
                       "code": 200,
@@ -1304,7 +1304,7 @@
                       "body": "{\n    \"code\": 300100,\n    \"message\": \"Pengguna berhasil diambil.\",\n    \"data\": {\n        \"first_page_url\": \"http://localhost:8080/api/users?limit=10&page=1&search=zzznomatch\",\n        \"from\": 0,\n        \"items\": [],\n        \"last_page\": 1,\n        \"last_page_url\": \"http://localhost:8080/api/users?limit=10&page=1&search=zzznomatch\",\n        \"limit\": 10,\n        \"next_page_url\": null,\n        \"page\": 1,\n        \"prev_page_url\": null,\n        \"to\": 0,\n        \"total\": 0\n    }\n}"
                     },
                     {
-                      "name": "300100 OK — only trashed (filter deleted_at!_)",
+                      "name": "300100 OK \u2014 only trashed (filter deleted_at!_)",
                       "originalRequest": {},
                       "status": "OK",
                       "code": 200,
@@ -1319,7 +1319,7 @@
                       "body": "{\n    \"code\": 300100,\n    \"message\": \"Pengguna berhasil diambil.\",\n    \"data\": {\n        \"first_page_url\": \"http://localhost:8080/api/users?filters=deleted_at%21_&limit=10&page=1\",\n        \"from\": 1,\n        \"items\": [\n            {\n                \"id\": \"01KRJSS4XF1KJHP1326YMW81DA\",\n                \"name\": \"Trashed Holder\",\n                \"number\": null,\n                \"phone_number\": null,\n                \"email\": \"trashed-holder@example.com\",\n                \"birth_date\": null,\n                \"meta\": null,\n                \"role\": \"holder\",\n                \"wallet_address\": \"0x3333333333333333333333333333333333333333\",\n                \"created_at\": \"2026-05-10T08:00:00Z\",\n                \"updated_at\": \"2026-05-10T08:00:00Z\",\n                \"deleted_at\": \"2026-05-25T09:30:00Z\"\n            }\n        ],\n        \"last_page\": 1,\n        \"last_page_url\": \"http://localhost:8080/api/users?filters=deleted_at%21_&limit=10&page=1\",\n        \"limit\": 10,\n        \"next_page_url\": null,\n        \"page\": 1,\n        \"prev_page_url\": null,\n        \"to\": 1,\n        \"total\": 1\n    }\n}"
                     },
                     {
-                      "name": "100040 Validation — invalid filter syntax",
+                      "name": "100040 Validation \u2014 invalid filter syntax",
                       "originalRequest": {},
                       "status": "Unprocessable Entity",
                       "code": 422,
@@ -1334,7 +1334,7 @@
                       "body": "{\n    \"code\": 100040,\n    \"message\": \"Validasi gagal.\",\n    \"data\": {\n        \"filters\": \"has invalid syntax\"\n    }\n}"
                     },
                     {
-                      "name": "100040 Validation — limit > 100",
+                      "name": "100040 Validation \u2014 limit > 100",
                       "originalRequest": {},
                       "status": "Unprocessable Entity",
                       "code": 422,
@@ -1349,7 +1349,7 @@
                       "body": "{\n    \"code\": 100040,\n    \"message\": \"Validasi gagal.\",\n    \"data\": {\n        \"limit\": \"must be no greater than 100\"\n    }\n}"
                     },
                     {
-                      "name": "100040 Validation — page < 1",
+                      "name": "100040 Validation \u2014 page < 1",
                       "originalRequest": {},
                       "status": "Unprocessable Entity",
                       "code": 422,
@@ -1451,7 +1451,7 @@
                       "body": "{\n    \"code\": 300100,\n    \"message\": \"Pengguna berhasil diambil.\",\n    \"data\": {\n        \"id\": \"01KRJSS4XF1KJHP1326YMW81CN\",\n        \"name\": \"Arfan\",\n        \"number\": \"2173\",\n        \"phone_number\": \"6288899991111\",\n        \"email\": \"arfan2173@gmail.com\",\n        \"birth_date\": \"2003-07-21T00:00:00Z\",\n        \"meta\": null,\n        \"role\": \"super_admin\",\n        \"wallet_address\": \"0x70997970C51812dc3A010C7d01b50e0d17dc79C8\",\n        \"created_at\": \"2026-05-14T15:31:18.960366+07:00\",\n        \"updated_at\": \"2026-05-14T15:31:18.960366+07:00\",\n        \"deleted_at\": null\n    }\n}"
                     },
                     {
-                      "name": "300100 OK — trashed user",
+                      "name": "300100 OK \u2014 trashed user",
                       "originalRequest": {},
                       "status": "OK",
                       "code": 200,
@@ -2307,170 +2307,245 @@
               ]
             },
             {
-               "name": "Batch Re-extract Credentials",
-               "event": [
-                 {
-                   "listen": "test",
-                   "script": {
-                     "exec": [
-                       "const r = pm.response.json();",
-                       "pm.test('Batch Re-extract Credentials', () => pm.expect(r.code).to.eql(400500));"
-                     ],
-                     "type": "text/javascript"
-                   }
-                 }
-               ],
-               "request": {
-                 "method": "POST",
-                 "header": [
-                   {
-                     "key": "Content-Type",
-                     "value": "application/json"
-                   }
-                 ],
-                 "body": {
-                   "mode": "raw",
-                   "raw": "{\n  \"ids\": [\n    \"{{TARGET_CREDENTIAL_ID}}\"\n  ]\n}"
-                 },
-                 "url": {
-                   "raw": "{{BASE_URL}}/api/credentials/batch/reextract",
-                   "host": [
-                     "{{BASE_URL}}"
-                   ],
-                   "path": [
-                     "api",
-                     "credentials",
-                     "batch",
-                     "reextract"
-                   ]
-                 },
-                 "description": "Re-extract failed credentials by ID. JSON body with ids array."
-               },
-               "response": [
-                 {
-                   "name": "400500 OK (stub)",
-                   "originalRequest": {},
-                   "status": "OK",
-                   "code": 200,
-                   "_postman_previewlanguage": "json",
-                   "header": [
-                     {
-                       "key": "Content-Type",
-                       "value": "application/json"
-                     }
-                   ],
-                   "cookie": [],
-                   "body": "{\n    \"code\": 400500,\n    \"message\": \"stub\",\n    \"data\": null\n}"
-                 }
-               ]
-             },
-             {
-               "name": "Verify Hash",
-               "event": [
-                 {
-                   "listen": "test",
-                   "script": {
-                     "exec": [
-                       "const r = pm.response.json();",
-                       "pm.test('Verify Hash', () => pm.expect(r.code).to.eql(400400));"
-                     ],
-                     "type": "text/javascript"
-                   }
-                 }
-               ],
-               "request": {
-                 "method": "POST",
-                 "header": [
-                   {
-                     "key": "Content-Type",
-                     "value": "multipart/form-data"
-                   }
-                 ],
-                 "body": {
-                   "mode": "formdata",
-                   "formdata": [
-                     {
-                       "key": "file",
-                       "type": "file"
-                     }
-                   ]
-                 },
-                 "url": {
-                   "raw": "{{BASE_URL}}/api/credentials/verify",
-                   "host": [
-                     "{{BASE_URL}}"
-                   ],
-                   "path": [
-                     "api",
-                     "credentials",
-                     "verify"
-                   ]
-                 },
-                 "description": "Verify credential by uploading file. Returns verdict code (400401-400409) + locale description."
-               },
-               "response": [
-                 {
-                   "name": "400401 Authentic",
-                   "originalRequest": {},
-                   "status": "OK",
-                   "code": 200,
-                   "_postman_previewlanguage": "json",
-                   "header": [
-                     {
-                       "key": "Content-Type",
-                       "value": "application/json"
-                     }
-                   ],
-                   "cookie": [],
-                   "body": "{\n    \"code\": 400400,\n    \"message\": \"Kredensial autentik.\",\n    \"data\": {\n        \"verdict\": \"authentic\",\n        \"similarity\": 0.97\n    }\n}"
-                 },
-                 {
-                   "name": "400402 Integrity Warning",
-                   "originalRequest": {},
-                   "status": "Conflict",
-                   "code": 409,
-                   "_postman_previewlanguage": "json",
-                   "header": [
-                     {
-                       "key": "Content-Type",
-                       "value": "application/json"
-                     }
-                   ],
-                   "cookie": [],
-                   "body": "{\n    \"code\": 400400,\n    \"message\": \"Kredensial autentik tetapi ada perubahan pada metadata.\",\n    \"data\": {\n        \"verdict\": \"integrity_warning\",\n        \"similarity\": 0.95\n    }\n}"
-                 },
-                 {
-                   "name": "400408 No Identifiers",
-                   "originalRequest": {},
-                   "status": "OK",
-                   "code": 200,
-                   "_postman_previewlanguage": "json",
-                   "header": [
-                     {
-                       "key": "Content-Type",
-                       "value": "application/json"
-                     }
-                   ],
-                   "cookie": [],
-                   "body": "{\n    \"code\": 400400,\n    \"message\": \"Tidak ditemukan identifier pada kredensial.\",\n    \"data\": {\n        \"verdict\": \"no_identifiers\",\n        \"similarity\": 0.0\n    }\n}"
-                 },
-                 {
-                   "name": "400409 No Match",
-                   "originalRequest": {},
-                   "status": "OK",
-                   "code": 200,
-                   "_postman_previewlanguage": "json",
-                   "header": [
-                     {
-                       "key": "Content-Type",
-                       "value": "application/json"
-                     }
-                   ],
-                   "cookie": [],
-                   "body": "{\n    \"code\": 400400,\n    \"message\": \"Tidak ada kecocokan kredensial yang ditemukan.\",\n    \"data\": {\n        \"verdict\": \"no_match\",\n        \"similarity\": 0.0\n    }\n}"
-                 }
-               ]
-             }
+              "name": "Batch Re-extract Credentials",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const r = pm.response.json();",
+                      "pm.test('Batch Re-extract Credentials', () => pm.expect(r.code).to.eql(400500));"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ids\": [\n    \"{{TARGET_CREDENTIAL_ID}}\"\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/api/credentials/batch/reextract",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "api",
+                    "credentials",
+                    "batch",
+                    "reextract"
+                  ]
+                },
+                "description": "Re-extract failed credentials by ID. JSON body with ids array."
+              },
+              "response": [
+                {
+                  "name": "400500 OK (stub)",
+                  "originalRequest": {},
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n    \"code\": 400500,\n    \"message\": \"stub\",\n    \"data\": null\n}"
+                }
+              ]
+            },
+            {
+              "name": "Verify Hash",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const r = pm.response.json();",
+                      "pm.test('Verify Hash', () => pm.expect(r.code).to.eql(400400));"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "multipart/form-data"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/api/credentials/verify",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "api",
+                    "credentials",
+                    "verify"
+                  ]
+                },
+                "description": "Verify credential by uploading file. Returns verdict code (400401-400409) + locale description."
+              },
+              "response": [
+                {
+                  "name": "400401 Authentic",
+                  "originalRequest": {},
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n    \"code\": 400401,\n    \"message\": \"The document is authentic and matches an issued credential.\",\n    \"data\": {\n        \"verdict_code\": 400401,\n        \"similarity_score\": 0.97,\n        \"similarity_percent\": \"97%\",\n        \"description\": \"The document is authentic and matches an issued credential.\",\n        \"credential\": {\n            \"id\": \"01HWXAMPLE234567890ABCDE\",\n            \"holder_user_id\": \"01HWXAMPLE234567890ABCDF\",\n            \"issuer_user_id\": \"01HWXAMPLE234567890ABCDG\",\n            \"name\": \"Example Credential\",\n            \"meta\": {},\n            \"file_hash\": \"QmXAMPLEHASH1234567890\",\n            \"issued_at\": \"2024-01-15T10:30:00Z\"\n        }\n    }\n}"
+                },
+                {
+                  "name": "400402 Revoked",
+                  "originalRequest": {},
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n    \"code\": 400402,\n    \"message\": \"The document matches an issued credential that has been revoked.\",\n    \"data\": {\n        \"verdict_code\": 400402,\n        \"similarity_score\": 0.95,\n        \"similarity_percent\": \"95%\",\n        \"description\": \"The document matches an issued credential that has been revoked.\",\n        \"credential\": {\n            \"id\": \"01HWXAMPLE234567890ABCDE\",\n            \"holder_user_id\": \"01HWXAMPLE234567890ABCDF\",\n            \"issuer_user_id\": \"01HWXAMPLE234567890ABCDG\",\n            \"revoker_user_id\": \"01HWXAMPLE234567890ABCDH\",\n            \"name\": \"Example Credential\",\n            \"meta\": {},\n            \"file_hash\": \"QmXAMPLEHASH1234567890\",\n            \"issued_at\": \"2024-01-15T10:30:00Z\",\n            \"revoked_at\": \"2024-06-15T14:20:00Z\"\n        }\n    }\n}"
+                },
+                {
+                  "name": "400403 Integrity Warning",
+                  "originalRequest": {},
+                  "status": "Conflict",
+                  "code": 409,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n    \"code\": 400403,\n    \"message\": \"The document matches a credential in the database but not on the blockchain \\u2014 integrity warning.\",\n    \"data\": {\n        \"verdict_code\": 400403,\n        \"similarity_score\": 0.95,\n        \"similarity_percent\": \"95%\",\n        \"description\": \"The document matches a credential in the database but not on the blockchain \\u2014 integrity warning.\",\n        \"credential\": {\n            \"id\": \"01HWXAMPLE234567890ABCDE\",\n            \"holder_user_id\": \"01HWXAMPLE234567890ABCDF\",\n            \"issuer_user_id\": \"01HWXAMPLE234567890ABCDG\",\n            \"name\": \"Example Credential\",\n            \"meta\": {},\n            \"file_hash\": \"QmXAMPLEHASH1234567890\",\n            \"issued_at\": \"2024-01-15T10:30:00Z\"\n        }\n    }\n}"
+                },
+                {
+                  "name": "400404 Tampered",
+                  "originalRequest": {},
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n    \"code\": 400404,\n    \"message\": \"The document is suspiciously similar to an issued credential and may have been tampered.\",\n    \"data\": {\n        \"verdict_code\": 400404,\n        \"similarity_score\": 0.92,\n        \"similarity_percent\": \"92%\",\n        \"description\": \"The document is suspiciously similar to an issued credential and may have been tampered.\",\n        \"credential\": {\n            \"id\": \"01HWXAMPLE234567890ABCDE\",\n            \"holder_user_id\": \"01HWXAMPLE234567890ABCDF\",\n            \"issuer_user_id\": \"01HWXAMPLE234567890ABCDG\",\n            \"name\": \"Example Credential\",\n            \"meta\": {},\n            \"file_hash\": \"QmXAMPLEHASH1234567890\",\n            \"issued_at\": \"2024-01-15T10:30:00Z\"\n        }\n    }\n}"
+                },
+                {
+                  "name": "400405 Suspicious",
+                  "originalRequest": {},
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n    \"code\": 400405,\n    \"message\": \"The document is highly similar to an issued credential.\",\n    \"data\": {\n        \"verdict_code\": 400405,\n        \"similarity_score\": 0.88,\n        \"similarity_percent\": \"88%\",\n        \"description\": \"The document is highly similar to an issued credential.\",\n        \"credential\": {\n            \"id\": \"01HWXAMPLE234567890ABCDE\",\n            \"holder_user_id\": \"01HWXAMPLE234567890ABCDF\",\n            \"issuer_user_id\": \"01HWXAMPLE234567890ABCDG\",\n            \"name\": \"Example Credential\",\n            \"meta\": {},\n            \"file_hash\": \"QmXAMPLEHASH1234567890\",\n            \"issued_at\": \"2024-01-15T10:30:00Z\"\n        }\n    }\n}"
+                },
+                {
+                  "name": "400406 Low Similarity",
+                  "originalRequest": {},
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n    \"code\": 400406,\n    \"message\": \"The document has low similarity to an issued credential.\",\n    \"data\": {\n        \"verdict_code\": 400406,\n        \"similarity_score\": 0.75,\n        \"similarity_percent\": \"75%\",\n        \"description\": \"The document has low similarity to an issued credential.\",\n        \"credential\": {\n            \"id\": \"01HWXAMPLE234567890ABCDE\",\n            \"holder_user_id\": \"01HWXAMPLE234567890ABCDF\",\n            \"issuer_user_id\": \"01HWXAMPLE234567890ABCDG\",\n            \"name\": \"Example Credential\",\n            \"meta\": {},\n            \"file_hash\": \"QmXAMPLEHASH1234567890\",\n            \"issued_at\": \"2024-01-15T10:30:00Z\"\n        }\n    }\n}"
+                },
+                {
+                  "name": "400407 Not Similar",
+                  "originalRequest": {},
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n    \"code\": 400407,\n    \"message\": \"The document is not similar to the matched credential.\",\n    \"data\": {\n        \"verdict_code\": 400407,\n        \"similarity_score\": 0.55,\n        \"similarity_percent\": \"55%\",\n        \"description\": \"The document is not similar to the matched credential.\",\n        \"credential\": {\n            \"id\": \"01HWXAMPLE234567890ABCDE\",\n            \"holder_user_id\": \"01HWXAMPLE234567890ABCDF\",\n            \"issuer_user_id\": \"01HWXAMPLE234567890ABCDG\",\n            \"name\": \"Example Credential\",\n            \"meta\": {},\n            \"file_hash\": \"QmXAMPLEHASH1234567890\",\n            \"issued_at\": \"2024-01-15T10:30:00Z\"\n        }\n    }\n}"
+                },
+                {
+                  "name": "400408 No Identifiers",
+                  "originalRequest": {},
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n    \"code\": 400408,\n    \"message\": \"No identifiable IDs were found in the document.\",\n    \"data\": {\n        \"verdict_code\": 400408,\n        \"similarity_score\": 0.0,\n        \"similarity_percent\": \"0%\",\n        \"description\": \"No identifiable IDs were found in the document.\"\n    }\n}"
+                },
+                {
+                  "name": "400409 No Match",
+                  "originalRequest": {},
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n    \"code\": 400409,\n    \"message\": \"No matching issued credential was found for the IDs in this document.\",\n    \"data\": {\n        \"verdict_code\": 400409,\n        \"similarity_score\": 0.0,\n        \"similarity_percent\": \"0%\",\n        \"description\": \"No matching issued credential was found for the IDs in this document.\"\n    }\n}"
+                }
+              ]
+            }
           ],
           "description": "Credential management endpoints. Issuer+ for issue/revoke/verify, Admin+ for list/get. All currently stubs."
         }
