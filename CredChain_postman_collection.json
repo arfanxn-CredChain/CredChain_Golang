@@ -2307,53 +2307,170 @@
               ]
             },
             {
-              "name": "Verify Hash",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "const r = pm.response.json();",
-                      "pm.test('Verify Hash', () => pm.expect(r.code).to.eql(400400));"
-                    ],
-                    "type": "text/javascript"
-                  }
-                }
-              ],
-              "request": {
-                "method": "POST",
-                "header": [],
-                "url": {
-                  "raw": "{{BASE_URL}}/api/credentials/verify",
-                  "host": [
-                    "{{BASE_URL}}"
-                  ],
-                  "path": [
-                    "api",
-                    "credentials",
-                    "verify"
-                  ]
-                },
-                "description": "Verify Hash. Currently a stub."
-              },
-              "response": [
-                {
-                  "name": "400400 OK (stub)",
-                  "originalRequest": {},
-                  "status": "OK",
-                  "code": 200,
-                  "_postman_previewlanguage": "json",
-                  "header": [
-                    {
-                      "key": "Content-Type",
-                      "value": "application/json"
-                    }
-                  ],
-                  "cookie": [],
-                  "body": "{\n    \"code\": 400400,\n    \"message\": \"stub\",\n    \"data\": {\n        \"status\": \"stub\"\n    }\n}"
-                }
-              ]
-            }
+               "name": "Batch Re-extract Credentials",
+               "event": [
+                 {
+                   "listen": "test",
+                   "script": {
+                     "exec": [
+                       "const r = pm.response.json();",
+                       "pm.test('Batch Re-extract Credentials', () => pm.expect(r.code).to.eql(400500));"
+                     ],
+                     "type": "text/javascript"
+                   }
+                 }
+               ],
+               "request": {
+                 "method": "POST",
+                 "header": [
+                   {
+                     "key": "Content-Type",
+                     "value": "application/json"
+                   }
+                 ],
+                 "body": {
+                   "mode": "raw",
+                   "raw": "{\n  \"ids\": [\n    \"{{TARGET_CREDENTIAL_ID}}\"\n  ]\n}"
+                 },
+                 "url": {
+                   "raw": "{{BASE_URL}}/api/credentials/batch/reextract",
+                   "host": [
+                     "{{BASE_URL}}"
+                   ],
+                   "path": [
+                     "api",
+                     "credentials",
+                     "batch",
+                     "reextract"
+                   ]
+                 },
+                 "description": "Re-extract failed credentials by ID. JSON body with ids array."
+               },
+               "response": [
+                 {
+                   "name": "400500 OK (stub)",
+                   "originalRequest": {},
+                   "status": "OK",
+                   "code": 200,
+                   "_postman_previewlanguage": "json",
+                   "header": [
+                     {
+                       "key": "Content-Type",
+                       "value": "application/json"
+                     }
+                   ],
+                   "cookie": [],
+                   "body": "{\n    \"code\": 400500,\n    \"message\": \"stub\",\n    \"data\": null\n}"
+                 }
+               ]
+             },
+             {
+               "name": "Verify Hash",
+               "event": [
+                 {
+                   "listen": "test",
+                   "script": {
+                     "exec": [
+                       "const r = pm.response.json();",
+                       "pm.test('Verify Hash', () => pm.expect(r.code).to.eql(400400));"
+                     ],
+                     "type": "text/javascript"
+                   }
+                 }
+               ],
+               "request": {
+                 "method": "POST",
+                 "header": [
+                   {
+                     "key": "Content-Type",
+                     "value": "multipart/form-data"
+                   }
+                 ],
+                 "body": {
+                   "mode": "formdata",
+                   "formdata": [
+                     {
+                       "key": "file",
+                       "type": "file"
+                     }
+                   ]
+                 },
+                 "url": {
+                   "raw": "{{BASE_URL}}/api/credentials/verify",
+                   "host": [
+                     "{{BASE_URL}}"
+                   ],
+                   "path": [
+                     "api",
+                     "credentials",
+                     "verify"
+                   ]
+                 },
+                 "description": "Verify credential by uploading file. Returns verdict code (400401-400409) + locale description."
+               },
+               "response": [
+                 {
+                   "name": "400401 Authentic",
+                   "originalRequest": {},
+                   "status": "OK",
+                   "code": 200,
+                   "_postman_previewlanguage": "json",
+                   "header": [
+                     {
+                       "key": "Content-Type",
+                       "value": "application/json"
+                     }
+                   ],
+                   "cookie": [],
+                   "body": "{\n    \"code\": 400400,\n    \"message\": \"Kredensial autentik.\",\n    \"data\": {\n        \"verdict\": \"authentic\",\n        \"similarity\": 0.97\n    }\n}"
+                 },
+                 {
+                   "name": "400402 Integrity Warning",
+                   "originalRequest": {},
+                   "status": "Conflict",
+                   "code": 409,
+                   "_postman_previewlanguage": "json",
+                   "header": [
+                     {
+                       "key": "Content-Type",
+                       "value": "application/json"
+                     }
+                   ],
+                   "cookie": [],
+                   "body": "{\n    \"code\": 400400,\n    \"message\": \"Kredensial autentik tetapi ada perubahan pada metadata.\",\n    \"data\": {\n        \"verdict\": \"integrity_warning\",\n        \"similarity\": 0.95\n    }\n}"
+                 },
+                 {
+                   "name": "400408 No Identifiers",
+                   "originalRequest": {},
+                   "status": "OK",
+                   "code": 200,
+                   "_postman_previewlanguage": "json",
+                   "header": [
+                     {
+                       "key": "Content-Type",
+                       "value": "application/json"
+                     }
+                   ],
+                   "cookie": [],
+                   "body": "{\n    \"code\": 400400,\n    \"message\": \"Tidak ditemukan identifier pada kredensial.\",\n    \"data\": {\n        \"verdict\": \"no_identifiers\",\n        \"similarity\": 0.0\n    }\n}"
+                 },
+                 {
+                   "name": "400409 No Match",
+                   "originalRequest": {},
+                   "status": "OK",
+                   "code": 200,
+                   "_postman_previewlanguage": "json",
+                   "header": [
+                     {
+                       "key": "Content-Type",
+                       "value": "application/json"
+                     }
+                   ],
+                   "cookie": [],
+                   "body": "{\n    \"code\": 400400,\n    \"message\": \"Tidak ada kecocokan kredensial yang ditemukan.\",\n    \"data\": {\n        \"verdict\": \"no_match\",\n        \"similarity\": 0.0\n    }\n}"
+                 }
+               ]
+             }
           ],
           "description": "Credential management endpoints. Issuer+ for issue/revoke/verify, Admin+ for list/get. All currently stubs."
         }
