@@ -8,8 +8,9 @@ import (
 
 // Credential is the GORM model for the credentials table.
 //
-// Meta and Embeddings use serializer:json so SQLite tests round-trip JSONB
-// columns through TEXT (matching model.User.Meta).
+// Meta uses serializer:json so SQLite tests round-trip JSONB columns through
+// TEXT (matching model.User.Meta). Extraction data (text, ids, embedding)
+// lives in MongoDB (credential_extractions), not on this row.
 // ExtractStatus is the credential_extract_status Postgres ENUM stored as
 // TEXT in SQLite.
 //
@@ -27,7 +28,6 @@ type Credential struct {
 	FileHash      string               `gorm:"type:char(66);column:file_hash;index"`
 	FileURI       *string              `gorm:"type:text;column:file_uri"`
 	ExtractStatus domain.ExtractStatus `gorm:"type:credential_extract_status;column:extract_status;not null;default:pending"`
-	Embeddings    []float64            `gorm:"type:jsonb;serializer:json;column:embeddings"`
 	ExtractError  *string              `gorm:"type:text;column:extract_error"`
 	ExtractedAt   *time.Time           `gorm:"column:extracted_at"`
 	IssuedAt      time.Time            `gorm:"column:issued_at;not null;default:CURRENT_TIMESTAMP"`
@@ -59,7 +59,6 @@ func (m Credential) ToDomain() domain.Credential {
 		FileHash:      m.FileHash,
 		FileURI:       m.FileURI,
 		ExtractStatus: m.ExtractStatus,
-		Embeddings:    m.Embeddings,
 		ExtractError:  m.ExtractError,
 		ExtractedAt:   m.ExtractedAt,
 		IssuedAt:      m.IssuedAt,
@@ -98,7 +97,6 @@ func FromDomainCredential(c domain.Credential) Credential {
 		FileHash:      c.FileHash,
 		FileURI:       c.FileURI,
 		ExtractStatus: status,
-		Embeddings:    c.Embeddings,
 		ExtractError:  c.ExtractError,
 		ExtractedAt:   c.ExtractedAt,
 		IssuedAt:      c.IssuedAt,

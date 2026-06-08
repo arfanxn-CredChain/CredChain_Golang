@@ -368,7 +368,8 @@ func (s *credentialService) Verify(ctx context.Context, credentialID string, fil
 			domain.WithMetadata("extract_error", lo.FromPtrOr(cred.ExtractError, "")))
 	}
 
-	result, err := s.aiClient.Verify(ctx, file, cred.Embeddings)
+	// TODO(Task 4.3): Verify is rewritten as a cache→exact→fuzzy pipeline; embedding now comes from MongoDB extraction.
+	result, err := s.aiClient.Verify(ctx, file, nil)
 	if err != nil {
 		return "", 0, "", domain.Credential{}, domain.NewError(domain.CodeCredentialVerifyAiServiceFailed,
 			domain.WithError(err))

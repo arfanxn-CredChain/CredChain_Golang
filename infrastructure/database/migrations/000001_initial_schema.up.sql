@@ -47,7 +47,6 @@ CREATE TABLE credentials (
     file_hash CHAR(66) NOT NULL,
     file_uri TEXT,
     extract_status credential_extract_status NOT NULL DEFAULT 'pending',
-    embeddings JSONB,
     extract_error TEXT,
     extracted_at TIMESTAMP WITH TIME ZONE,
     issued_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,

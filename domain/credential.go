@@ -9,9 +9,10 @@ import (
 
 // ExtractStatus is the lifecycle of the asynchronous Python /extract job
 // attached to a credential. On-chain issuance is synchronous (Go computes
-// keccak256 of raw file bytes immediately), but embeddings (needed by
-// /api/credentials/verify) require a slow Python OCR+EmbeddingGemma round-trip and
-// are computed asynchronously via the CredentialExtractWorker.
+// keccak256 of raw file bytes immediately), but extraction (text, ids, embedding —
+// needed by /api/credentials/verify) requires a slow Python OCR+EmbeddingGemma
+// round-trip and is computed asynchronously via the River worker. Results are
+// stored in MongoDB (credential_extractions collection), not Postgres.
 type ExtractStatus string
 
 const (
@@ -44,7 +45,6 @@ type Credential struct {
 	FileHash      string         `db:"file_hash"       json:"file_hash"`
 	FileURI       *string        `db:"file_uri"        json:"file_uri"`
 	ExtractStatus ExtractStatus  `db:"extract_status"  json:"extract_status"`
-	Embeddings    []float64      `db:"embeddings"      json:"embeddings,omitempty"`
 	ExtractError  *string        `db:"extract_error"   json:"extract_error"`
 	ExtractedAt   *time.Time     `db:"extracted_at"    json:"extracted_at"`
 	IssuedAt      time.Time      `db:"issued_at"       json:"issued_at"`

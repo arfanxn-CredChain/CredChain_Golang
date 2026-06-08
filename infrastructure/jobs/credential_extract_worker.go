@@ -137,10 +137,10 @@ func (w *CredentialExtractWorker) execute(ctx context.Context, job *domain.Crede
 	}
 
 	now := time.Now()
+	// TODO(Task 3.3): this worker is replaced by the River worker; embeddings now persist to MongoDB.
 	cred := domain.Credential{
 		ID:            job.CredentialID,
 		ExtractStatus: domain.ExtractStatusSucceeded,
-		Embeddings:    results[0].Embedding,
 		ExtractedAt:   &now,
 	}
 	if _, err := w.credRepo.Update(ctx, cred); err != nil {

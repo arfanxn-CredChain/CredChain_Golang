@@ -405,16 +405,6 @@ func (r *gormCredentialRepository) updateBatchCase(ctx context.Context, items []
 		}
 		return string(c.ExtractStatus), true
 	})
-	addCaseClause("embeddings", func(c domain.Credential) (interface{}, bool) {
-		if c.Embeddings == nil {
-			return nil, false
-		}
-		b, err := json.Marshal(c.Embeddings)
-		if err != nil {
-			return nil, false
-		}
-		return string(b), true
-	})
 	addCaseClause("extract_error", func(c domain.Credential) (interface{}, bool) {
 		if c.ExtractError == nil {
 			return nil, false
