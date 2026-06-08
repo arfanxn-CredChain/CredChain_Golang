@@ -59,6 +59,7 @@ type RegistryService interface {
 
 	// FindCredentialByHash reads the on-chain credential whose token id is
 	// derived from the file hash. Returns (hashOnChain, found, error).
+	// An unminted token yields a zero-value struct (empty Hash) => found=false.
 	FindCredentialByHash(ctx context.Context, hash string) (string, bool, error)
 }
 
@@ -98,7 +99,7 @@ func (s *registryService) FindCredentialByHash(ctx context.Context, hash string)
 	id := tokenIdFromHash(hash)
 	cred, err := s.client.Registry.FindCredential(&bind.CallOpts{Context: ctx}, id)
 	if err != nil {
-		return "", false, fmt.Errorf("find credential on-chain: %w", err)
+		return "", false, fmt.Errorf("failed to find credential on-chain: %w", err)
 	}
 	if cred.Hash == "" {
 		return "", false, nil
