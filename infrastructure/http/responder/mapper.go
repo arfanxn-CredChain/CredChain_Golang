@@ -108,6 +108,11 @@ var CodeToMessageKey = map[int]string{
 	domain.CodeCredentialVerifyNotSimilar:           "success_credential_verify_not_similar",
 	domain.CodeCredentialVerifyNoIdentifiers:        "success_credential_verify_no_identifiers",
 	domain.CodeCredentialVerifyNoMatch:              "success_credential_verify_no_match",
+
+	// Credential Re-Extract codes
+	domain.CodeCredentialReExtractSuccess:   "success_credential_reextract",
+	domain.CodeCredentialReExtractNotFound:  "error_credential_reextract_not_found",
+	domain.CodeCredentialReExtractNotFailed: "error_credential_reextract_not_failed",
 }
 
 // HttpCodes maps every domain status code to its exact HTTP status code.
@@ -206,6 +211,10 @@ var HttpCodes = map[int]int{
 	domain.CodeCredentialVerifyNotSimilar:           http.StatusOK,
 	domain.CodeCredentialVerifyNoIdentifiers:        http.StatusOK,
 	domain.CodeCredentialVerifyNoMatch:              http.StatusOK,
+
+	domain.CodeCredentialReExtractSuccess:   http.StatusOK,
+	domain.CodeCredentialReExtractNotFound:  http.StatusNotFound,
+	domain.CodeCredentialReExtractNotFailed: http.StatusConflict,
 }
 
 // HttpCodeFromCode looks up the HTTP status for a given domain status code.

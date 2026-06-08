@@ -30,6 +30,7 @@ type CredentialHandler interface {
 	Issue(c *gin.Context)
 	Revoke(c *gin.Context)
 	Verify(c *gin.Context)
+	ReExtract(c *gin.Context)
 }
 
 // ── Implementation & constructor ──────────────────────────────────────────
@@ -266,6 +267,30 @@ func (h *credentialHandler) Verify(c *gin.Context) {
 		out.Credential = &dto
 	}
 	responder.Send(c, code, out)
+}
+
+// ── ReExtract ─────────────────────────────────────────────────────────────
+
+// ReExtract resets failed credential extractions to pending and enqueues new
+// extract jobs via the River worker.
+func (h *credentialHandler) ReExtract(c *gin.Context) {
+	var req CredentialReExtractRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.Error(err)
+		responder.SendError(c, err)
+		return
+	}
+	if err := req.Validate(); err != nil {
+		responder.SendValidationError(c, err)
+		return
+	}
+	updated, err := h.credSvc.ReExtract(c.Request.Context(), req.Ids...)
+	if err != nil {
+		c.Error(err)
+		responder.SendError(c, err)
+		return
+	}
+	responder.Send(c, domain.CodeCredentialReExtractSuccess, mapCredentialsToResponse(updated))
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────

@@ -117,4 +117,9 @@ const (
 	CodeCredentialVerifyNotSimilar       = 400407
 	CodeCredentialVerifyNoIdentifiers    = 400408
 	CodeCredentialVerifyNoMatch          = 400409
+
+	// ── Credential Re-Extract (05) ──────────────────────────────────────────
+	CodeCredentialReExtractSuccess   = 400500
+	CodeCredentialReExtractNotFound  = 400540
+	CodeCredentialReExtractNotFailed = 400541
 )

@@ -107,6 +107,9 @@ var allDomainCodes = []int{
 	domain.CodeCredentialVerifyNotSimilar,
 	domain.CodeCredentialVerifyNoIdentifiers,
 	domain.CodeCredentialVerifyNoMatch,
+	domain.CodeCredentialReExtractSuccess,
+	domain.CodeCredentialReExtractNotFound,
+	domain.CodeCredentialReExtractNotFailed,
 }
 
 func TestHttpCodeFromCode_KnownCodes(t *testing.T) {

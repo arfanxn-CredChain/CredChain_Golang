@@ -40,6 +40,7 @@ type CredentialService interface {
 	Issue(ctx context.Context, items []CredentialIssuance) ([]domain.Credential, map[string][]string, error)
 	Revoke(ctx context.Context, ids ...string) ([]domain.Credential, error)
 	Verify(ctx context.Context, file pyai.ExtractFile) (int, *domain.Credential, *float64, *string, error)
+	ReExtract(ctx context.Context, ids ...string) ([]domain.Credential, error)
 }
 
 // CredentialIssuance is the service-layer input for one credential issuance. File
@@ -537,6 +538,75 @@ func (s *credentialService) verifyCacheVerdict(ctx context.Context, hash string,
 	}); err != nil {
 		s.logger.Warn("failed to cache verification", zap.String("hash", hash), zap.Error(err))
 	}
+}
+
+// ── ReExtract ─────────────────────────────────────────────────────────────
+
+// ReExtract resets failed credentials to pending and enqueues new extract
+// jobs. All-or-nothing within one UoW: validates all exist + are failed with
+// file_uri, resets to pending, then enqueues River jobs after commit.
+func (s *credentialService) ReExtract(ctx context.Context, ids ...string) ([]domain.Credential, error) {
+	if err := s.policy.VerifyPreFetch(ctx); err != nil {
+		return nil, err
+	}
+	var updated []domain.Credential
+	var toEnqueue []domain.Credential
+	err := s.uow.Execute(ctx, func(uow domain.UnitOfWork) error {
+		targets, err := uow.Credential().FindByIds(ctx, ids...)
+		if err != nil {
+			return err
+		}
+		if err := s.reExtractValidate(ids, targets); err != nil {
+			return err
+		}
+		updates := make([]domain.Credential, len(targets))
+		for i, t := range targets {
+			emptyErr := ""
+			updates[i] = domain.Credential{
+				ID:            t.ID,
+				ExtractStatus: domain.ExtractStatusPending,
+				ExtractError:  &emptyErr,
+			}
+		}
+		updated, err = uow.Credential().Update(ctx, updates...)
+		if err != nil {
+			return err
+		}
+		toEnqueue = targets
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	for _, t := range toEnqueue {
+		if err := s.enqueuer.EnqueueExtract(ctx, jobs.CredentialExtractArgs{
+			CredentialID: t.ID, FileURI: *t.FileURI,
+		}); err != nil {
+			return nil, err
+		}
+	}
+	return updated, nil
+}
+
+// reExtractValidate ensures all targets exist and are in failed state with a
+// file URI. Helper prefixed with the method name "reExtract".
+func (s *credentialService) reExtractValidate(ids []string, targets []domain.Credential) error {
+	targetIds := lo.Map(targets, func(c domain.Credential, _ int) string { return c.ID })
+	if missing, _ := lo.Difference(ids, targetIds); len(missing) > 0 {
+		return domain.NewError(domain.CodeCredentialReExtractNotFound,
+			domain.WithMetadata("credential_ids", missing))
+	}
+	notFailed := []string{}
+	for _, t := range targets {
+		if t.ExtractStatus != domain.ExtractStatusFailed || t.FileURI == nil {
+			notFailed = append(notFailed, t.ID)
+		}
+	}
+	if len(notFailed) > 0 {
+		return domain.NewError(domain.CodeCredentialReExtractNotFailed,
+			domain.WithMetadata("credential_ids", notFailed))
+	}
+	return nil
 }
 
 // ── Blockchain sync helpers ───────────────────────────────────────────────

@@ -94,3 +94,14 @@ func (r CredentialVerifyRequest) Validate() error {
 		validation.Field(&r.File, validation.Required),
 	)
 }
+
+// CredentialReExtractRequest is the JSON body for POST /api/credentials/batch/reextract.
+type CredentialReExtractRequest struct {
+	Ids []string `json:"ids"`
+}
+
+func (r CredentialReExtractRequest) Validate() error {
+	return validation.ValidateStruct(&r,
+		validation.Field(&r.Ids, validation.Required, validation.Length(1, 100)),
+	)
+}
