@@ -6,7 +6,7 @@ ifneq (,$(wildcard $(ENV_FILE)))
     export
 endif
 
-.PHONY: help check-env check-env-docker clean build serve dev migrate-up migrate-down init-super-admin get-google-id-token \
+.PHONY: help check-env check-env-docker clean build serve dev migrate-up migrate-down migrate-up-mongo migrate-down-mongo init-super-admin get-google-id-token \
 	docker-migrate-up docker-migrate-down docker-up-build docker-up \
 	docker-down docker-restart docker-logs docker-ps docker-fresh \
 	docker-clean-data docker-check-backend-healthy
@@ -74,6 +74,12 @@ migrate-up:
 
 migrate-down:
 	go run main.go migrate down --env $(ENV_FILE)
+
+migrate-up-mongo:
+	go run main.go migrate-mongo up --env $(ENV_FILE)
+
+migrate-down-mongo:
+	go run main.go migrate-mongo down --env $(ENV_FILE)
 
 init-super-admin:
 	go run main.go init-super-admin --env $(ENV_FILE)
