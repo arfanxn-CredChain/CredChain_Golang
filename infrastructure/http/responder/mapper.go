@@ -99,6 +99,15 @@ var CodeToMessageKey = map[int]string{
 	domain.CodeCredentialVerifyExtractFailed:        "error_credential_verify_extract_failed",
 	domain.CodeCredentialVerifyAiServiceFailed:      "error_credential_verify_ai_service_failed",
 	domain.CodeCredentialVerifyCredentialNotFound:   "error_credential_verify_credential_not_found",
+	domain.CodeCredentialVerifyAuthentic:            "success_credential_verify_authentic",
+	domain.CodeCredentialVerifyRevoked:              "success_credential_verify_revoked",
+	domain.CodeCredentialVerifyIntegrityWarning:     "warning_credential_verify_integrity",
+	domain.CodeCredentialVerifyTampered:             "success_credential_verify_tampered",
+	domain.CodeCredentialVerifySuspicious:           "success_credential_verify_suspicious",
+	domain.CodeCredentialVerifyLowSimilarity:        "success_credential_verify_low_similarity",
+	domain.CodeCredentialVerifyNotSimilar:           "success_credential_verify_not_similar",
+	domain.CodeCredentialVerifyNoIdentifiers:        "success_credential_verify_no_identifiers",
+	domain.CodeCredentialVerifyNoMatch:              "success_credential_verify_no_match",
 }
 
 // HttpCodes maps every domain status code to its exact HTTP status code.
@@ -188,6 +197,15 @@ var HttpCodes = map[int]int{
 	domain.CodeCredentialVerifyExtractFailed:        http.StatusUnprocessableEntity,
 	domain.CodeCredentialVerifyAiServiceFailed:      http.StatusServiceUnavailable,
 	domain.CodeCredentialVerifyCredentialNotFound:   http.StatusNotFound,
+	domain.CodeCredentialVerifyAuthentic:            http.StatusOK,
+	domain.CodeCredentialVerifyRevoked:              http.StatusOK,
+	domain.CodeCredentialVerifyIntegrityWarning:     http.StatusConflict,
+	domain.CodeCredentialVerifyTampered:             http.StatusOK,
+	domain.CodeCredentialVerifySuspicious:           http.StatusOK,
+	domain.CodeCredentialVerifyLowSimilarity:        http.StatusOK,
+	domain.CodeCredentialVerifyNotSimilar:           http.StatusOK,
+	domain.CodeCredentialVerifyNoIdentifiers:        http.StatusOK,
+	domain.CodeCredentialVerifyNoMatch:              http.StatusOK,
 }
 
 // HttpCodeFromCode looks up the HTTP status for a given domain status code.

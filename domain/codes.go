@@ -103,4 +103,14 @@ const (
 	CodeCredentialVerifyExtractFailed      = 400443
 	CodeCredentialVerifyAiServiceFailed    = 400444
 	CodeCredentialVerifyCredentialNotFound = 400445
+
+	CodeCredentialVerifyAuthentic        = 400401
+	CodeCredentialVerifyRevoked          = 400402
+	CodeCredentialVerifyIntegrityWarning = 400403
+	CodeCredentialVerifyTampered         = 400404
+	CodeCredentialVerifySuspicious       = 400405
+	CodeCredentialVerifyLowSimilarity    = 400406
+	CodeCredentialVerifyNotSimilar       = 400407
+	CodeCredentialVerifyNoIdentifiers    = 400408
+	CodeCredentialVerifyNoMatch          = 400409
 )

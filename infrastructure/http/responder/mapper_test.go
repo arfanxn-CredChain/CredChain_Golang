@@ -98,6 +98,15 @@ var allDomainCodes = []int{
 	domain.CodeCredentialVerifyExtractFailed,
 	domain.CodeCredentialVerifyAiServiceFailed,
 	domain.CodeCredentialVerifyCredentialNotFound,
+	domain.CodeCredentialVerifyAuthentic,
+	domain.CodeCredentialVerifyRevoked,
+	domain.CodeCredentialVerifyIntegrityWarning,
+	domain.CodeCredentialVerifyTampered,
+	domain.CodeCredentialVerifySuspicious,
+	domain.CodeCredentialVerifyLowSimilarity,
+	domain.CodeCredentialVerifyNotSimilar,
+	domain.CodeCredentialVerifyNoIdentifiers,
+	domain.CodeCredentialVerifyNoMatch,
 }
 
 func TestHttpCodeFromCode_KnownCodes(t *testing.T) {
