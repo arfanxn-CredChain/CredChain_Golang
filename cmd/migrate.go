@@ -1,9 +1,12 @@
 package cmd
 
 import (
-	"CredChain_Golang/config"
-	infraLogger "CredChain_Golang/infrastructure/logger"
+	"context"
 	"fmt"
+
+	"CredChain_Golang/config"
+	infraJobs "CredChain_Golang/infrastructure/jobs"
+	infraLogger "CredChain_Golang/infrastructure/logger"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -52,6 +55,11 @@ func migrateUp(cfg *config.Config, logger *zap.Logger) error {
 	}
 
 	logger.Info("successfully ran database migrations up")
+
+	if err := infraJobs.MigrateRiver(context.Background(), cfg); err != nil {
+		return fmt.Errorf("river migrate up: %w", err)
+	}
+	logger.Info("successfully ran river migrations up")
 	return nil
 }
 

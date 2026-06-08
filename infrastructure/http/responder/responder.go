@@ -234,3 +234,23 @@ func localize(c *gin.Context, localizer *i18n.Localizer, msgID string, data map[
 	}
 	return text
 }
+
+// SendPartial emits a partial-success envelope: data array + per-field errors.
+func SendPartial(c *gin.Context, code int, data any, fieldErrors map[string][]string) {
+	status := HttpCodeFromCode(code)
+	if status == 0 {
+		status = http.StatusOK
+	}
+	c.JSON(status, gin.H{
+		"code":    code,
+		"message": resolveMessage(c, code),
+		"data":    data,
+		"errors":  fieldErrors,
+	})
+}
+
+func resolveMessage(c *gin.Context, code int) string {
+	localizer := appI18n.GetI18nLocalizer(c)
+	msgKey := getMessageKey(code)
+	return localize(c, localizer, msgKey, nil)
+}

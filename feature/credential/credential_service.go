@@ -17,7 +17,7 @@ import (
 	pyai "CredChain_Golang/infrastructure/ai/pyai"
 	"CredChain_Golang/infrastructure/chain"
 	httpContext "CredChain_Golang/infrastructure/http/context"
-	infraJobs "CredChain_Golang/infrastructure/jobs"
+	"CredChain_Golang/infrastructure/jobs"
 	"CredChain_Golang/infrastructure/storage"
 
 	ethCrypto "github.com/ethereum/go-ethereum/crypto"
@@ -37,7 +37,7 @@ import (
 type CredentialService interface {
 	Paginate(ctx context.Context, query *domainQuery.Query) ([]domain.Credential, int, error)
 	Find(ctx context.Context, id string, query *domainQuery.Query) (*domain.Credential, error)
-	Issue(ctx context.Context, items []CredentialIssuance) ([]domain.Credential, error)
+	Issue(ctx context.Context, items []CredentialIssuance) ([]domain.Credential, map[string][]string, error)
 	Revoke(ctx context.Context, ids ...string) ([]domain.Credential, error)
 	Verify(ctx context.Context, credentialID string, file pyai.ExtractFile) (string, float64, string, domain.Credential, error)
 }
@@ -66,6 +66,7 @@ type credentialService struct {
 	policy          CredentialPolicy
 	userRepo        domain.UserRepository
 	logger          *zap.Logger
+	enqueuer        jobs.Enqueuer
 }
 
 type CredentialServiceParams struct {
@@ -79,6 +80,7 @@ type CredentialServiceParams struct {
 	Policy          CredentialPolicy
 	UserRepo        domain.UserRepository
 	Logger          *zap.Logger
+	Enqueuer        jobs.Enqueuer
 }
 
 // NewCredentialService is the exported factory for FX injection.
@@ -93,6 +95,7 @@ func NewCredentialService(p CredentialServiceParams) CredentialService {
 		policy:          p.Policy,
 		userRepo:        p.UserRepo,
 		logger:          p.Logger,
+		enqueuer:        p.Enqueuer,
 	}
 }
 
@@ -136,136 +139,161 @@ func (s *credentialService) Find(ctx context.Context, id string, query *domainQu
 //  9. UPDATE credentials SET token_id = ...
 //
 // 10. Enqueue one credential_extract_jobs row per credential in the same tx
-func (s *credentialService) Issue(ctx context.Context, items []CredentialIssuance) ([]domain.Credential, error) {
+func (s *credentialService) Issue(ctx context.Context, items []CredentialIssuance) ([]domain.Credential, map[string][]string, error) {
 	if len(items) == 0 {
-		return []domain.Credential{}, nil
+		return []domain.Credential{}, nil, nil
 	}
-
 	authUser := httpContext.MustGetUser(ctx)
 
-	domainItems := make([]domain.Credential, len(items))
-	hashes := make([]string, len(items))
-	fileURIs := make([]string, len(items))
-	holderIDs := make([]string, len(items))
-	for i, it := range items {
-		domainItems[i] = domain.Credential{
-			ID:            ulid.Make().String(),
-			HolderUserID:  it.HolderUserID,
-			IssuerUserID:  authUser.Id,
-			Name:          it.Name,
-			Meta:          it.Meta,
-			ExtractStatus: domain.ExtractStatusPending,
-		}
-		hashes[i] = "0x" + hex.EncodeToString(ethCrypto.Keccak256(it.FileBytes))
-		domainItems[i].FileHash = hashes[i]
-		holderIDs[i] = it.HolderUserID
+	if err := s.policy.IssuePreFetch(ctx, lo.Map(items, func(it CredentialIssuance, _ int) domain.Credential {
+		return domain.Credential{HolderUserID: it.HolderUserID}
+	})); err != nil {
+		return nil, nil, err
+	}
 
+	// Single IN-query for all holders — NO per-item lookup.
+	holderIDs := lo.Map(items, func(it CredentialIssuance, _ int) string { return it.HolderUserID })
+	holders, err := s.userRepo.FindByIds(ctx, holderIDs...)
+	if err != nil {
+		return nil, nil, err
+	}
+	holderByID := lo.SliceToMap(holders, func(h domain.User) (string, domain.User) { return h.Id, h })
+
+	// Single batch dup-hash lookup.
+	hashes := make([]string, len(items))
+	for i, it := range items {
+		hashes[i] = "0x" + hex.EncodeToString(ethCrypto.Keccak256(it.FileBytes))
+	}
+	existing, err := s.repo.FindByFileHashes(ctx, hashes...)
+	if err != nil {
+		return nil, nil, err
+	}
+	activeDup := map[string]bool{}
+	for _, e := range existing {
+		if e.RevokedAt == nil {
+			activeDup[e.FileHash] = true
+		}
+	}
+
+	type prepared struct {
+		idx  int
+		cred domain.Credential
+	}
+	errs := map[string][]string{}
+	results := make([]domain.Credential, len(items))
+	var survivors []prepared
+	var fileURIs []string
+
+	for i, it := range items {
+		key := fmt.Sprintf("credentials.%d", i)
+		if _, ok := holderByID[it.HolderUserID]; !ok {
+			errs[key] = append(errs[key], "holder not found")
+			continue
+		}
+		if activeDup[hashes[i]] {
+			errs[key] = append(errs[key], "duplicate file hash")
+			continue
+		}
 		ext := strings.ToLower(filepath.Ext(it.Filename))
 		if ext == "" {
 			ext = ".bin"
 		}
 		path, err := s.storage.SaveBytes(it.FileBytes, ext)
 		if err != nil {
-			s.cleanupOrphanFiles(fileURIs[:i])
-			return nil, domain.NewError(domain.CodeCredentialIssueStorageFailed,
-				domain.WithError(err))
+			errs[key] = append(errs[key], "storage failed")
+			continue
 		}
-		fileURIs[i] = path
-		domainItems[i].FileURI = &path
-	}
-
-	if err := s.policy.IssuePreFetch(ctx, domainItems); err != nil {
-		s.cleanupOrphanFiles(fileURIs)
-		return nil, err
-	}
-
-	holders, err := s.userRepo.FindByIds(ctx, holderIDs...)
-	if err != nil {
-		s.cleanupOrphanFiles(fileURIs)
-		return nil, err
-	}
-	holderIds := lo.Map(holders, func(h domain.User, _ int) string { return h.Id })
-	missing, _ := lo.Difference(holderIDs, holderIds)
-	if len(missing) > 0 {
-		s.cleanupOrphanFiles(fileURIs)
-		return nil, domain.NewError(domain.CodeCredentialIssueHolderNotFound,
-			domain.WithMetadata("holder_user_ids", missing))
-	}
-
-	if err := s.policy.IssuePostFetch(ctx, domainItems, holders); err != nil {
-		s.cleanupOrphanFiles(fileURIs)
-		return nil, err
-	}
-
-	existing, err := s.repo.FindByFileHashes(ctx, hashes...)
-	if err != nil {
-		s.cleanupOrphanFiles(fileURIs)
-		return nil, err
-	}
-	dupHashes := []string{}
-	for _, e := range existing {
-		if e.RevokedAt == nil {
-			dupHashes = append(dupHashes, e.FileHash)
+		if path == "" {
+			s.cleanupOrphanFiles(fileURIs)
+			return nil, nil, domain.NewError(domain.CodeCredentialIssueStorageFailed,
+				domain.WithError(errors.New("storage returned empty path")))
 		}
-	}
-	if len(dupHashes) > 0 {
-		s.cleanupOrphanFiles(fileURIs)
-		return nil, domain.NewError(domain.CodeCredentialIssueDuplicateFileHash,
-			domain.WithMetadata("file_hashes", dupHashes))
+		fileURIs = append(fileURIs, path)
+		id := ulid.Make().String()
+		cred := domain.Credential{
+			ID:            id,
+			HolderUserID:  it.HolderUserID,
+			IssuerUserID:  authUser.Id,
+			Name:          it.Name,
+			Meta:          it.Meta,
+			FileHash:      hashes[i],
+			FileURI:       &path,
+			ExtractStatus: domain.ExtractStatusPending,
+		}
+		survivors = append(survivors, prepared{idx: i, cred: cred})
 	}
 
-	holderAddr := lo.SliceToMap(holders, func(h domain.User) (string, string) { return h.Id, h.WalletAddress })
+	if len(survivors) == 0 {
+		return results, errs, nil
+	}
+
+	survCreds := lo.Map(survivors, func(p prepared, _ int) domain.Credential { return p.cred })
+	if err := s.policy.IssuePostFetch(ctx, survCreds, holders); err != nil {
+		s.cleanupOrphanFiles(fileURIs)
+		return nil, nil, err
+	}
 
 	signerWallet := domain.WalletFromUser(*authUser)
-
-	var stored []domain.Credential
+	var committed []domain.Credential
 	err = s.uow.Execute(ctx, func(uow domain.UnitOfWork) error {
-		s2, err := uow.Credential().Store(ctx, domainItems...)
+		stored, err := uow.Credential().Store(ctx, survCreds...)
 		if err != nil {
 			return err
 		}
-		stored = s2
-
 		issuances := make([]chain.CredentialIssuance, len(stored))
 		for i, c := range stored {
 			issuances[i] = chain.CredentialIssuance{
-				HolderAddress: holderAddr[c.HolderUserID],
+				HolderAddress: holderByID[c.HolderUserID].WalletAddress,
 				Hash:          c.FileHash,
-				URI:           lo.FromPtrOr(c.FileURI, ""),
+				URI:           c.ID,
 			}
 		}
-
 		tokenIds, err := s.syncBlockchainIssue(ctx, signerWallet, issuances)
 		if err != nil {
 			return err
 		}
-
 		updates := make([]domain.Credential, len(stored))
 		for i, c := range stored {
-			tokIDStr := tokenIds[i].String()
-			updates[i] = domain.Credential{ID: c.ID, TokenID: &tokIDStr}
-			stored[i].TokenID = &tokIDStr
+			tok := tokenIds[i].String()
+			updates[i] = domain.Credential{ID: c.ID, TokenID: &tok}
+			stored[i].TokenID = &tok
 		}
 		if _, err := uow.Credential().Update(ctx, updates...); err != nil {
 			return err
 		}
-
 		for _, c := range stored {
 			if c.FileURI == nil {
-				continue
+				return domain.NewError(domain.CodeCredentialIssueStorageFailed,
+					domain.WithMetadata("credential_id", c.ID))
 			}
-			if err := infraJobs.EnqueueExtractJob(ctx, uow.CredentialExtractJob(), c.ID, *c.FileURI); err != nil {
+			if err := s.issueEnqueueExtractJob(ctx, c.ID, *c.FileURI); err != nil {
 				return err
 			}
 		}
+		committed = stored
 		return nil
 	})
 	if err != nil {
 		s.cleanupOrphanFiles(fileURIs)
-		return nil, err
+		return nil, nil, err
 	}
 
-	return stored, nil
+	for i, p := range survivors {
+		results[p.idx] = committed[i]
+	}
+	if len(errs) == 0 {
+		errs = nil
+	}
+	return results, errs, nil
+}
+
+// issueEnqueueExtractJob enqueues an extraction job via the River enqueuer.
+// Unexported internal helper, prefixed with the method name "issue".
+func (s *credentialService) issueEnqueueExtractJob(ctx context.Context, credentialID, fileURI string) error {
+	return s.enqueuer.EnqueueExtract(ctx, jobs.CredentialExtractArgs{
+		CredentialID: credentialID,
+		FileURI:      fileURI,
+	})
 }
 
 // ── Revoke ────────────────────────────────────────────────────────────────

@@ -62,6 +62,7 @@ var serverCmd = &cobra.Command{
 				credential.NewCredentialService,
 				credential.NewCredentialHandler,
 				infraJobs.NewCredentialExtractWorker,
+				infraJobs.NewRiverClient,
 				func(db *gorm.DB) domain.UnitOfWork {
 					return gormInfra.NewGormUnitOfWork(db,
 						user.NewGormUserRepository,
@@ -88,14 +89,6 @@ var serverCmd = &cobra.Command{
 				apphttp.NewGinRouter,
 			),
 			fx.Invoke(apphttp.RegisterRoutes),
-			fx.Invoke(func(lc fx.Lifecycle, ctx context.Context, w *infraJobs.CredentialExtractWorker) {
-				lc.Append(fx.Hook{
-					OnStart: func(context.Context) error {
-						w.Start(ctx)
-						return nil
-					},
-				})
-			}),
 		).Run()
 	},
 }
