@@ -2,17 +2,23 @@ package credential
 
 import (
 	"context"
+	"math/big"
+	"os"
 	"testing"
 	"time"
 
 	"CredChain_Golang/domain"
 	pyai "CredChain_Golang/infrastructure/ai/pyai"
 	httpContext "CredChain_Golang/infrastructure/http/context"
+	"CredChain_Golang/infrastructure/jobs"
+	"CredChain_Golang/infrastructure/storage"
 	"CredChain_Golang/infrastructure/testutil/fixtures"
 	"CredChain_Golang/infrastructure/testutil/mocks"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
 
@@ -38,6 +44,14 @@ func newTestCredentialService(m *testCredentialMocks) *credentialService {
 
 func ctxWithAuth(u *domain.User) context.Context {
 	return context.WithValue(context.Background(), httpContext.UserKey, u)
+}
+
+// localMockEnqueuer is a test-only mock for jobs.Enqueuer defined inline here
+// to avoid an import cycle (jobs imports testutil/mocks for its own tests).
+type localMockEnqueuer struct{ mock.Mock }
+
+func (m *localMockEnqueuer) EnqueueExtract(ctx context.Context, args jobs.CredentialExtractArgs) error {
+	return m.Called(ctx, args).Error(0)
 }
 
 func TestVerify_CacheHit(t *testing.T) {
@@ -474,4 +488,144 @@ func TestVerify_TieBreakNewestIssuedAt(t *testing.T) {
 	assert.NotNil(t, cred)
 	assert.Equal(t, "cred-new", cred.ID)
 	assert.Equal(t, []float64{3.0, 0.0}, actualEmbedding)
+}
+
+func TestIssue_PartialSuccess(t *testing.T) {
+	user := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleIssuer))
+	ctx := ctxWithAuth(&user)
+	m := &testCredentialMocks{
+		credRepo: &mocks.MockCredentialRepository{},
+		verRepo:  &mocks.MockCredentialVerificationRepository{},
+		extRepo:  &mocks.MockCredentialExtractionRepository{},
+		aiClient: &mocks.MockPythonAIClient{},
+		regSvc:   &mocks.MockRegistryService{},
+	}
+	enq := &localMockEnqueuer{}
+
+	tmpDir, err := os.MkdirTemp("", "credchain-issue-test")
+	require.NoError(t, err)
+	t.Cleanup(func() { os.RemoveAll(tmpDir) })
+	stor := &storage.Storage{BaseDir: tmpDir}
+
+	userRepo := &mocks.MockUserRepository{}
+	userRepo.On("FindByIds", mock.Anything, mock.Anything).Return(
+		[]domain.User{{Id: "holder-valid"}}, nil)
+	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything).Return(nil, nil)
+
+	uow := mocks.NewPropagatingUnitOfWork()
+	innerCredRepo := &mocks.MockCredentialRepository{}
+	innerCredRepo.On("Store", mock.Anything, mock.Anything, mock.Anything).Return(
+		[]domain.Credential{{ID: "stored-1", FileURI: lo.ToPtr("up/test.pdf")}}, nil)
+	innerCredRepo.On("Update", mock.Anything, mock.Anything, mock.Anything).Return(
+		[]domain.Credential{{ID: "stored-1", TokenID: lo.ToPtr("1")}}, nil)
+	uow.On("Credential").Return(innerCredRepo)
+	uow.On("CredentialExtractJob").Return(&mocks.MockCredentialExtractJobRepository{})
+	m.regSvc.On("IssueCredentials", mock.Anything, mock.Anything, mock.Anything).
+		Return([]*big.Int{big.NewInt(1)}, nil)
+	enq.On("EnqueueExtract", mock.Anything, mock.Anything).Return(nil)
+
+	svc := &credentialService{
+		repo:            m.credRepo,
+		uow:             uow,
+		registryService: m.regSvc,
+		aiClient:        m.aiClient,
+		storage:         stor,
+		policy:          &credentialPolicy{},
+		userRepo:        userRepo,
+		logger:          zap.NewNop(),
+		enqueuer:        enq,
+	}
+
+	items := []CredentialIssuance{
+		{HolderUserID: "holder-valid", Name: "doc", Filename: "x.pdf", FileBytes: []byte("test-content")},
+	}
+	results, errs, err := svc.Issue(ctx, items)
+	assert.NoError(t, err)
+	assert.Len(t, results, 1)
+	assert.Nil(t, errs)
+	assert.Equal(t, "stored-1", results[0].ID)
+}
+
+func TestReExtract_HappyPath(t *testing.T) {
+	user := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleIssuer))
+	ctx := ctxWithAuth(&user)
+	enq := &localMockEnqueuer{}
+	uow := &mocks.MockUnitOfWork{}
+
+	fileURI := "uploads/test.pdf"
+	targets := []domain.Credential{
+		{ID: "cred-1", ExtractStatus: domain.ExtractStatusFailed, FileURI: &fileURI},
+		{ID: "cred-2", ExtractStatus: domain.ExtractStatusFailed, FileURI: &fileURI},
+	}
+	innerCredRepo := &mocks.MockCredentialRepository{}
+	innerCredRepo.On("FindByIds", mock.Anything, mock.Anything).Return(targets, nil)
+	innerCredRepo.On("Update", mock.Anything, mock.Anything).Return(targets, nil)
+	uow.On("Credential").Return(innerCredRepo)
+	uow.On("CredentialExtractJob").Return(&mocks.MockCredentialExtractJobRepository{})
+	mocks.RunUnitOfWorkFn(uow, uow)
+	enq.On("EnqueueExtract", mock.Anything, mock.Anything).Return(nil)
+
+	svc := &credentialService{
+		uow:     uow,
+		policy:  &credentialPolicy{},
+		logger:  zap.NewNop(),
+		enqueuer: enq,
+	}
+	updated, err := svc.ReExtract(ctx, "cred-1", "cred-2")
+	assert.NoError(t, err)
+	assert.Len(t, updated, 2)
+	enq.AssertNumberOfCalls(t, "EnqueueExtract", 2)
+}
+
+func TestReExtract_NotFound(t *testing.T) {
+	user := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleIssuer))
+	ctx := ctxWithAuth(&user)
+	enq := &localMockEnqueuer{}
+	uow := mocks.NewPropagatingUnitOfWork()
+	innerCredRepo := &mocks.MockCredentialRepository{}
+	innerCredRepo.On("FindByIds", mock.Anything, []string{"cred-1", "cred-2"}).Return(
+		[]domain.Credential{{ID: "cred-1"}}, nil)
+	uow.On("Credential").Return(innerCredRepo)
+	uow.On("CredentialExtractJob").Return(&mocks.MockCredentialExtractJobRepository{})
+
+	svc := &credentialService{
+		uow:     uow,
+		policy:  &credentialPolicy{},
+		logger:  zap.NewNop(),
+		enqueuer: enq,
+	}
+	_, err := svc.ReExtract(ctx, "cred-1", "cred-2")
+	assert.Error(t, err)
+	var domErr *domain.Error
+	if assert.ErrorAs(t, err, &domErr) {
+		assert.Equal(t, domain.CodeCredentialReExtractNotFound, domErr.Code)
+	}
+	enq.AssertNotCalled(t, "EnqueueExtract", mock.Anything, mock.Anything)
+}
+
+func TestReExtract_NotFailed(t *testing.T) {
+	user := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleIssuer))
+	ctx := ctxWithAuth(&user)
+	enq := &localMockEnqueuer{}
+	uow := mocks.NewPropagatingUnitOfWork()
+	fileURI := "uploads/test.pdf"
+	innerCredRepo := &mocks.MockCredentialRepository{}
+	innerCredRepo.On("FindByIds", mock.Anything, []string{"cred-1"}).Return(
+		[]domain.Credential{{ID: "cred-1", ExtractStatus: domain.ExtractStatusSucceeded, FileURI: &fileURI}}, nil)
+	uow.On("Credential").Return(innerCredRepo)
+	uow.On("CredentialExtractJob").Return(&mocks.MockCredentialExtractJobRepository{})
+
+	svc := &credentialService{
+		uow:     uow,
+		policy:  &credentialPolicy{},
+		logger:  zap.NewNop(),
+		enqueuer: enq,
+	}
+	_, err := svc.ReExtract(ctx, "cred-1")
+	assert.Error(t, err)
+	var domErr *domain.Error
+	if assert.ErrorAs(t, err, &domErr) {
+		assert.Equal(t, domain.CodeCredentialReExtractNotFailed, domErr.Code)
+	}
+	enq.AssertNotCalled(t, "EnqueueExtract", mock.Anything, mock.Anything)
 }
