@@ -20,8 +20,10 @@ cd CredChain_Golang
 make serve                          # Start server (requires PostgreSQL + MongoDB)
 make dev                            # Hot reload via Air (requires `go install github.com/cosmtrek/air@latest`)
 make serve ENV=.env.docker          # Start with Docker env overrides
-make migrate-up                     # Run DB migrations
+make migrate-up                     # Run DB migrations (also provisions River tables via `jobs.MigrateRiver`)
 make migrate-down                   # Rollback ONE migration step (not all)
+make migrate-up-mongo               # Run MongoDB index migrations
+make migrate-down-mongo             # Rollback MongoDB index migrations
 make init-super-admin               # Create super admin (CLI only, not via API)
 make get-google-id-token            # Obtain Google ID token via OAuth (for Postman)
 make build                          # Build binary to bin/credchain
@@ -310,6 +312,8 @@ Service methods contain zero role/rank comparisons — all authorization lives i
 - `UpdateUserRole` calls `bind.WaitMined` after the relayer tx and verifies `receipt.Status == 1` before returning, ensuring on-chain nonce has incremented before the next call
 - `waitMined` is a struct field (`waitMinedFunc` type) initialized in `NewAuthorityService` to `bind.WaitMined`; tests can substitute their own stub via type assertion to `*authorityService`
 
+**Verify verdicts (400401-400409):** authentic, revoked, integrity_warning, tampered, suspicious, low_similarity, not_similar, no_identifiers, no_match. `integrity_warning` returns HTTP 409, all others 200.
+
 **RoleNone:** `domain.RoleNone` (Solidity enum value 0) is the on-chain revocation target. Used by `userService.Delete` to revoke roles via `AuthorityService.UpdateUserRole`. **Never persisted to the Postgres `role` ENUM** — in-memory only for chain calls.
 
 **`syncBlockchainRoles` helper:** shared helper used by `Store`, `UpdateRole`, `Delete`, and `Update` flows. Calls `authorityService.UpdateUserRole(ctx, wallet, users)` and translates raw chain errors into a caller-supplied domain code. Caller is responsible for transactional context.
@@ -361,7 +365,8 @@ All under `/api` prefix. Middleware order: `ErrorLoggerMiddleware` → `I18nMidd
 | GET | `/api/credentials/:id` | Admin+ | Single credential |
 | POST | `/api/credentials/batch/issue` | Issuer+ | Issue credentials |
 | POST | `/api/credentials/batch/revoke` | Issuer+ | Revoke credentials |
-| POST | `/api/credentials/verify` | Issuer+ | Verify hash |
+| POST | `/api/credentials/batch/reextract` | Issuer+ | Re-extract failed credentials |
+| POST | `/api/credentials/verify` | Issuer+ | Returns verdict code (400401-400409) + locale description |
 
 ### Database
 
@@ -375,7 +380,9 @@ All under `/api` prefix. Middleware order: `ErrorLoggerMiddleware` → `I18nMidd
 
 **SQLite (testing only):** GORM repository tests run against in-memory SQLite via `github.com/glebarez/sqlite` (pure Go, no CGO). Not used in production.
 
-**MongoDB:** Driver v2 installed (`go.mongodb.org/mongo-driver/v2`). Config and connection wired via Uber FX. Usage patterns are emerging — check `infrastructure/storage/` for current usage.
+**Credentials schema note:** the `credentials.embeddings` column is removed. Extraction data (text, ids, embedding) now lives in MongoDB `credential_extractions`.
+
+**MongoDB:** Actively used. Two collections: `credential_extractions` (text, ids, embedding, file_hash) and `credential_verifications` (TTL-bounded verify cache keyed by uploaded_file_hash). Migration via `make migrate-up-mongo` / `make migrate-down-mongo`. `infrastructure/database/mongo/client.go` provides FX providers.
 
 **Repository Store error translation:** `gormUserRepository.Store` catches Postgres `*pgconn.PgError` with code `23505` (unique_violation) and translates to `CodeUserStoreEmailDuplicateInDatabase` with input emails as metadata. Handles concurrent batch creates that race past the pre-check in `userService.storeValidateEmails`.
 
@@ -450,6 +457,10 @@ All Config fields are pointers (`*T`); `nil` = not provided, non-nil = provided 
 | `INITIAL_SUPER_ADMIN_BIRTH_DATE` | no | — | ISO 8601 `YYYY-MM-DD` |
 | `INITIAL_SUPER_ADMIN_GENDER` | no | — | `male`, `female`, or `other` |
 | `INITIAL_SUPER_ADMIN_META` | no | — | JSON object string |
+| `PYTHON_AI_API_KEY` | no | — | Python AI service API key (empty = auth disabled) |
+| `MONGO_DATABASE` | no | `credchain` | MongoDB database name |
+| `AI_VERIFICATION_CACHE_TTL_HOURS` | no | `24` | Verify cache TTL hours before auto-expiry |
+| `RIVER_MAX_WORKERS` | no | `10` | River job worker pool size |
 
 ## Testing
 
@@ -540,6 +551,19 @@ When adding a new endpoint or service method, add at least: one happy-path test,
 - **Repository search** is dialect-agnostic via `LOWER(...) LIKE LOWER(...)` — works on Postgres and SQLite.
 - **`model.Meta`** uses `serializer:json` — required for SQLite test compatibility.
 - **Locale message templates:** any `{{.X}}` placeholder must be backed by either an auto-injected key or a `WithMetadata("X", ...)` call in Go source (enforced by `locale_keys_test.go`).
+
+### Strict NO-N+1 Rule
+
+All batch repository operations (Postgres and MongoDB) MUST execute a single
+query/aggregation regardless of batch size. NEVER issue queries inside a loop
+over input items.
+
+- Postgres batch updates use CASE statements (`updateBatchCase`).
+- Mongo id-search uses ONE aggregation pipeline (`FindRankedByIds`).
+- Relation/tie-break lookups use a single `IN`-clause / `$in` query.
+- Verify fuzzy path: 1 extract-ids call + 1 aggregation + 1 verify call + 1 cache write.
+
+Reviewers MUST reject any code path that issues queries inside a loop.
 
 ## Deployment
 
