@@ -1,9 +1,4 @@
 -- Drop credentials first (FKs reference users)
-DROP INDEX IF EXISTS idx_credential_extract_jobs_credential_id;
-DROP INDEX IF EXISTS idx_credential_extract_jobs_status_available;
-ALTER TABLE credential_extract_jobs DROP CONSTRAINT IF EXISTS fk_credential_extract_jobs_cid;
-DROP TABLE IF EXISTS credential_extract_jobs;
-DROP TYPE IF EXISTS credential_extract_job_status;
 DROP INDEX IF EXISTS idx_credentials_file_hash;
 DROP INDEX IF EXISTS idx_credentials_extract_status;
 DROP INDEX IF EXISTS idx_credentials_revoked_at;

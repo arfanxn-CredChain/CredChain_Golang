@@ -57,7 +57,6 @@ var serverCmd = &cobra.Command{
 				user.NewGormUserRepository,
 				user.NewGormUserTokenRepository,
 				credential.NewGormCredentialRepository,
-				credential.NewGormCredentialExtractJobRepository,
 				credential.NewCredentialPolicy,
 				credential.NewCredentialService,
 				credential.NewCredentialHandler,
@@ -68,7 +67,6 @@ var serverCmd = &cobra.Command{
 						user.NewGormUserRepository,
 						credential.NewGormCredentialRepository,
 						user.NewGormUserTokenRepository,
-						credential.NewGormCredentialExtractJobRepository,
 					)
 				},
 				user.NewUserPolicy,

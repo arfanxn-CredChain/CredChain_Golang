@@ -18,20 +18,15 @@ type CredentialRepositoryFactory = RepositoryFactory[domain.CredentialRepository
 // UserTokenRepositoryFactory creates a UserTokenRepository from a GORM DB connection
 type UserTokenRepositoryFactory = RepositoryFactory[domain.UserTokenRepository]
 
-// CredentialExtractJobRepositoryFactory creates a CredentialExtractJobRepository from a GORM DB connection
-type CredentialExtractJobRepositoryFactory = RepositoryFactory[domain.CredentialExtractJobRepository]
-
 // GormUnitOfWork implements domain.UnitOfWork using GORM transactions
 type GormUnitOfWork struct {
-	db                          *gorm.DB
-	userRepository              domain.UserRepository
-	credentialRepository        domain.CredentialRepository
-	userTokenRepository         domain.UserTokenRepository
-	credentialExtractJobRepo    domain.CredentialExtractJobRepository
-	newUserRepository           UserRepositoryFactory
-	newCredentialRepository     CredentialRepositoryFactory
-	newUserTokenRepository      UserTokenRepositoryFactory
-	newCredentialExtractJobRepo CredentialExtractJobRepositoryFactory
+	db                      *gorm.DB
+	userRepository          domain.UserRepository
+	credentialRepository    domain.CredentialRepository
+	userTokenRepository     domain.UserTokenRepository
+	newUserRepository       UserRepositoryFactory
+	newCredentialRepository CredentialRepositoryFactory
+	newUserTokenRepository  UserTokenRepositoryFactory
 }
 
 // NewGormUnitOfWork creates a new UnitOfWork instance with repository factories
@@ -40,14 +35,12 @@ func NewGormUnitOfWork(
 	newUserRepository UserRepositoryFactory,
 	newCredentialRepository CredentialRepositoryFactory,
 	newUserTokenRepository UserTokenRepositoryFactory,
-	newCredentialExtractJobRepo CredentialExtractJobRepositoryFactory,
 ) domain.UnitOfWork {
 	return &GormUnitOfWork{
-		db:                          db,
-		newUserRepository:           newUserRepository,
-		newCredentialRepository:     newCredentialRepository,
-		newUserTokenRepository:      newUserTokenRepository,
-		newCredentialExtractJobRepo: newCredentialExtractJobRepo,
+		db:                      db,
+		newUserRepository:       newUserRepository,
+		newCredentialRepository: newCredentialRepository,
+		newUserTokenRepository:  newUserTokenRepository,
 	}
 }
 
@@ -58,14 +51,12 @@ func (uow *GormUnitOfWork) Execute(ctx context.Context, fn func(uow domain.UnitO
 		txUserRepo := uow.newUserRepository(tx)
 		txCredRepo := uow.newCredentialRepository(tx)
 		txTokenRepo := uow.newUserTokenRepository(tx)
-		txCredExtractJobRepo := uow.newCredentialExtractJobRepo(tx)
 
 		txUow := &GormUnitOfWork{
-			db:                       tx,
-			userRepository:           txUserRepo,
-			credentialRepository:     txCredRepo,
-			userTokenRepository:      txTokenRepo,
-			credentialExtractJobRepo: txCredExtractJobRepo,
+			db:                   tx,
+			userRepository:       txUserRepo,
+			credentialRepository: txCredRepo,
+			userTokenRepository:  txTokenRepo,
 		}
 
 		return fn(txUow)
@@ -85,9 +76,4 @@ func (uow *GormUnitOfWork) Credential() domain.CredentialRepository {
 // UserToken returns the UserTokenRepository for this transaction
 func (uow *GormUnitOfWork) UserToken() domain.UserTokenRepository {
 	return uow.userTokenRepository
-}
-
-// CredentialExtractJob returns the CredentialExtractJobRepository for this transaction
-func (uow *GormUnitOfWork) CredentialExtractJob() domain.CredentialExtractJobRepository {
-	return uow.credentialExtractJobRepo
 }

@@ -62,29 +62,6 @@ CREATE INDEX idx_credentials_revoked_at     ON credentials(revoked_at);
 CREATE INDEX idx_credentials_extract_status ON credentials(extract_status);
 CREATE INDEX idx_credentials_file_hash      ON credentials(file_hash);
 
-CREATE TYPE credential_extract_job_status AS ENUM (
-    'pending',
-    'running',
-    'succeeded',
-    'failed'
-);
-
-CREATE TABLE credential_extract_jobs (
-    id              CHAR(26) PRIMARY KEY,
-    credential_id   CHAR(26) NOT NULL,
-    file_uri        TEXT NOT NULL,
-    status          credential_extract_job_status NOT NULL DEFAULT 'pending',
-    attempt_count   INT NOT NULL DEFAULT 0,
-    errors          TEXT[] DEFAULT '{}',
-    available_at    TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    reserved_at     TIMESTAMP WITH TIME ZONE,
-    created_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_credential_extract_jobs_cid FOREIGN KEY (credential_id) REFERENCES credentials(id)
-);
-
-CREATE INDEX idx_credential_extract_jobs_status_available ON credential_extract_jobs(status, available_at);
-CREATE INDEX idx_credential_extract_jobs_credential_id      ON credential_extract_jobs(credential_id);
-
 -- Token types for user refresh tokens
 CREATE TYPE user_token_type AS ENUM ('refresh');
 

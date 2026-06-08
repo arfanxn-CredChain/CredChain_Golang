@@ -541,7 +541,6 @@ func TestIssue_ChainRollback(t *testing.T) {
 	innerCredRepo.On("Store", mock.Anything, mock.Anything, mock.Anything).Return(
 		[]domain.Credential{{ID: "stored-1", FileURI: lo.ToPtr("up/test.pdf")}}, nil)
 	uow.On("Credential").Return(innerCredRepo)
-	uow.On("CredentialExtractJob").Return(&mocks.MockCredentialExtractJobRepository{})
 
 	credRepo := &mocks.MockCredentialRepository{}
 	credRepo.On("FindByFileHashes", mock.Anything, mock.Anything).Return(nil, nil)
@@ -590,7 +589,6 @@ func TestIssue_PartialSuccess(t *testing.T) {
 	innerCredRepo.On("Update", mock.Anything, mock.Anything, mock.Anything).Return(
 		[]domain.Credential{{ID: "stored-2", TokenID: lo.ToPtr("1")}}, nil)
 	uow.On("Credential").Return(innerCredRepo)
-	uow.On("CredentialExtractJob").Return(&mocks.MockCredentialExtractJobRepository{})
 	m.regSvc.On("IssueCredentials", mock.Anything, mock.Anything, mock.Anything).
 		Return([]*big.Int{big.NewInt(1)}, nil)
 	enq.On("EnqueueExtract", mock.Anything, mock.Anything).Return(nil)
@@ -635,7 +633,6 @@ func TestReExtract_HappyPath(t *testing.T) {
 	innerCredRepo.On("FindByIds", mock.Anything, mock.Anything).Return(targets, nil)
 	innerCredRepo.On("Update", mock.Anything, mock.Anything).Return(targets, nil)
 	uow.On("Credential").Return(innerCredRepo)
-	uow.On("CredentialExtractJob").Return(&mocks.MockCredentialExtractJobRepository{})
 	mocks.RunUnitOfWorkFn(uow, uow)
 	enq.On("EnqueueExtract", mock.Anything, mock.Anything).Return(nil)
 
@@ -660,7 +657,6 @@ func TestReExtract_NotFound(t *testing.T) {
 	innerCredRepo.On("FindByIds", mock.Anything, []string{"cred-1", "cred-2"}).Return(
 		[]domain.Credential{{ID: "cred-1"}}, nil)
 	uow.On("Credential").Return(innerCredRepo)
-	uow.On("CredentialExtractJob").Return(&mocks.MockCredentialExtractJobRepository{})
 
 	svc := &credentialService{
 		uow:      uow,
@@ -687,7 +683,6 @@ func TestReExtract_NotFailed(t *testing.T) {
 	innerCredRepo.On("FindByIds", mock.Anything, []string{"cred-1"}).Return(
 		[]domain.Credential{{ID: "cred-1", ExtractStatus: domain.ExtractStatusSucceeded, FileURI: &fileURI}}, nil)
 	uow.On("Credential").Return(innerCredRepo)
-	uow.On("CredentialExtractJob").Return(&mocks.MockCredentialExtractJobRepository{})
 
 	svc := &credentialService{
 		uow:      uow,

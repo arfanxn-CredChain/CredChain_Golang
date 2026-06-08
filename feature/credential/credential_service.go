@@ -145,7 +145,7 @@ func (s *credentialService) Find(ctx context.Context, id string, query *domainQu
 //  8. Sync to chain via RegistryService.IssueCredentials → token IDs
 //  9. UPDATE credentials SET token_id = ...
 //
-// 10. Enqueue one credential_extract_jobs row per credential in the same tx
+// 10. Enqueue one River extraction job per credential
 func (s *credentialService) Issue(ctx context.Context, items []CredentialIssuance) ([]domain.Credential, map[string][]string, error) {
 	if len(items) == 0 {
 		return []domain.Credential{}, nil, nil
