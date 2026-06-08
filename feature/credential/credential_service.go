@@ -279,6 +279,8 @@ func (s *credentialService) Issue(ctx context.Context, items []CredentialIssuanc
 		if _, err := uow.Credential().Update(ctx, updates...); err != nil {
 			return err
 		}
+		// Enqueue is inside the UoW closure but uses a separate pgx pool — see
+		// issueEnqueueExtractJob doc for the cross-pool tradeoff.
 		for _, c := range stored {
 			if err := s.issueEnqueueExtractJob(ctx, c.ID, *c.FileURI); err != nil {
 				return err
@@ -301,8 +303,12 @@ func (s *credentialService) Issue(ctx context.Context, items []CredentialIssuanc
 	return results, errs, nil
 }
 
-// issueEnqueueExtractJob enqueues an extraction job via the River enqueuer.
-// Unexported internal helper, prefixed with the method name "issue".
+// issueEnqueueExtractJob enqueues a River extraction job.
+// River jobs live in Postgres (river_jobs table) but use a separate connection
+// pool (pgx) from GORM's (database/sql + pgx). They cannot share a transaction.
+// This means a credential can be committed without its extraction job (rare:
+// server crash between Update and Insert). Mitigation: the credential stays in
+// extract_status=pending and the reextract endpoint can recover it.
 func (s *credentialService) issueEnqueueExtractJob(ctx context.Context, credentialID, fileURI string) error {
 	return s.enqueuer.EnqueueExtract(ctx, jobs.CredentialExtractArgs{
 		CredentialID: credentialID,
