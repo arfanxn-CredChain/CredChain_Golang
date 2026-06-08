@@ -2,7 +2,9 @@ package credential
 
 import (
 	"encoding/json"
+	"mime"
 	"mime/multipart"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -238,7 +240,7 @@ func (h *credentialHandler) Verify(c *gin.Context) {
 		return
 	}
 
-	verdict, score, percent, desc, cred, err := h.credSvc.Verify(c.Request.Context(), credID, pyai.ExtractFile{
+	verdict, score, percent, cred, err := h.credSvc.Verify(c.Request.Context(), credID, pyai.ExtractFile{
 		Filename: filename,
 		MIMEType: mime,
 		Data:     fileBytes,
@@ -254,7 +256,6 @@ func (h *credentialHandler) Verify(c *gin.Context) {
 		Verdict:           verdict,
 		SimilarityScore:   score,
 		SimilarityPercent: percent,
-		Description:       desc.EN,
 	}
 	if len(responseCred) > 0 {
 		verifyResponse.Credential = responseCred[0]
@@ -289,11 +290,15 @@ func readUploadedFile(fh *multipart.FileHeader) ([]byte, string, string, error) 
 	if err != nil && err.Error() != "EOF" {
 		return nil, "", "", err
 	}
-	mime := fh.Header.Get("Content-Type")
-	if mime == "" {
-		mime = pyai.FileExtToMIME(fh.Filename)
+	mimeType := fh.Header.Get("Content-Type")
+	if mimeType == "" {
+		if t := mime.TypeByExtension(strings.ToLower(filepath.Ext(fh.Filename))); t != "" {
+			mimeType = t
+		} else {
+			mimeType = "application/octet-stream"
+		}
 	}
-	return buf, mime, fh.Filename, nil
+	return buf, mimeType, fh.Filename, nil
 }
 
 // ── Multipart parsing ─────────────────────────────────────────────────────

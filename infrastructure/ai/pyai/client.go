@@ -6,16 +6,26 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime"
 	"mime/multipart"
 	"net/http"
+	"net/textproto"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
 	"CredChain_Golang/config"
 )
 
-// ExtractFile is a single file to send to the Python /extract or /verify endpoint.
+// ExtractedID is one identifier extracted from a credential document by Python.
+type ExtractedID struct {
+	Type  string `json:"type"`
+	Value string `json:"value"`
+}
+
+// ExtractFile is a single file to send to Python /extract, /verify, or /extract-ids.
+// If MIMEType is empty, the client derives it from Filename.
 type ExtractFile struct {
 	Filename string
 	MIMEType string
@@ -23,10 +33,11 @@ type ExtractFile struct {
 }
 
 // PythonExtractResult is the per-file result from Python /extract.
-// nil Embeddings means the file failed OCR on the Python side.
+// nil Embedding means the file failed extraction on the Python side.
 type PythonExtractResult struct {
-	RawText    string
-	Embeddings []float64
+	Text      string
+	IDs       []ExtractedID
+	Embedding []float64
 }
 
 // VerifyResult is the result from Python /verify for a single file.
@@ -34,25 +45,20 @@ type VerifyResult struct {
 	Verdict           string
 	SimilarityScore   float64
 	SimilarityPercent string
-	Description       VerifyDescription
-}
-
-// VerifyDescription is the bilingual description block from Python /verify.
-type VerifyDescription struct {
-	ID string `json:"id"`
-	EN string `json:"en"`
 }
 
 // PythonAIClient is the interface for calling the CredChain Python AI service.
 // Calls are serialized via an internal mutex because the Python service runs a
-// single uvicorn worker and LaBSE is not thread-safe.
+// single uvicorn worker and EmbeddingGemma is not thread-safe.
 type PythonAIClient interface {
 	Extract(ctx context.Context, files ...ExtractFile) ([]PythonExtractResult, error)
-	Verify(ctx context.Context, file ExtractFile, storedEmbeddings []float64) (*VerifyResult, error)
+	Verify(ctx context.Context, file ExtractFile, storedEmbedding []float64) (*VerifyResult, error)
+	ExtractIDs(ctx context.Context, file ExtractFile) ([]ExtractedID, error)
 }
 
 type pythonAIClient struct {
 	baseURL    string
+	apiKey     string
 	httpClient *http.Client
 	mu         sync.Mutex
 }
@@ -62,18 +68,36 @@ type PythonAIClientParams struct {
 }
 
 func NewPythonAIClient(cfg *config.Config) PythonAIClient {
-	timeout := 120 * time.Second
-	if cfg.PythonAITimeoutSeconds != nil {
-		timeout = time.Duration(*cfg.PythonAITimeoutSeconds) * time.Second
-	}
-	baseURL := "http://localhost:8081"
-	if cfg.PythonAIBaseURL != nil {
-		baseURL = *cfg.PythonAIBaseURL
-	}
 	return &pythonAIClient{
-		baseURL:    baseURL,
-		httpClient: &http.Client{Timeout: timeout},
+		baseURL:    *cfg.PythonAIBaseURL,
+		apiKey:     derefOrEmpty(cfg.PythonAIAPIKey),
+		httpClient: &http.Client{Timeout: time.Duration(*cfg.PythonAITimeoutSeconds) * time.Second},
 	}
+}
+
+func derefOrEmpty(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
+func (c *pythonAIClient) setAuthHeader(req *http.Request) {
+	if c.apiKey != "" {
+		req.Header.Set("X-Api-Key", c.apiKey)
+	}
+}
+
+// resolveMIME derives the MIME type from the filename when not provided,
+// using Go stdlib (mime.TypeByExtension) — no custom MIME table.
+func (f ExtractFile) resolveMIME() string {
+	if f.MIMEType != "" {
+		return f.MIMEType
+	}
+	if t := mime.TypeByExtension(strings.ToLower(filepath.Ext(f.Filename))); t != "" {
+		return t
+	}
+	return "application/octet-stream"
 }
 
 // pythonResponse is the generic envelope returned by the Python service.
@@ -85,74 +109,69 @@ type pythonResponse[T any] struct {
 }
 
 type extractData struct {
-	RawText    string    `json:"raw_text"`
-	Embeddings []float64 `json:"embeddings"`
+	Text      string        `json:"text"`
+	IDs       []ExtractedID `json:"ids"`
+	Embedding []float64     `json:"embedding"`
 }
 
 type verifyData struct {
-	SimilarityScore   float64           `json:"similarity_score"`
-	SimilarityPercent string            `json:"similarity_percent"`
-	Verdict           string            `json:"verdict"`
-	Description       VerifyDescription `json:"description"`
+	SimilarityScore   float64 `json:"similarity_score"`
+	SimilarityPercent string  `json:"similarity_percent"`
+	Verdict           string  `json:"verdict"`
+}
+
+type extractIdsData struct {
+	IDs []ExtractedID `json:"ids"`
 }
 
 func (c *pythonAIClient) Extract(ctx context.Context, files ...ExtractFile) ([]PythonExtractResult, error) {
 	if len(files) == 0 {
 		return nil, nil
 	}
-
 	body, contentType, err := buildMultipartFiles(files)
 	if err != nil {
 		return nil, fmt.Errorf("python extract: build multipart: %w", err)
 	}
-
 	c.mu.Lock()
 	defer c.mu.Unlock()
-
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/extract", body)
 	if err != nil {
 		return nil, fmt.Errorf("python extract: build request: %w", err)
 	}
 	req.Header.Set("Content-Type", contentType)
-
+	c.setAuthHeader(req)
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("python extract: http: %w", err)
 	}
 	defer resp.Body.Close()
-
 	raw, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("python extract: read body: %w", err)
 	}
-
 	var parsed pythonResponse[*extractData]
 	if err := json.Unmarshal(raw, &parsed); err != nil {
 		return nil, fmt.Errorf("python extract: decode: %w", err)
 	}
-
-	if parsed.Code == 500140 {
-		return nil, fmt.Errorf("python extract: all files failed OCR (code %d)", parsed.Code)
+	if parsed.Code == 500150 {
+		return nil, fmt.Errorf("python extract: all files failed (code %d)", parsed.Code)
 	}
-
 	results := make([]PythonExtractResult, len(parsed.Data))
 	for i, d := range parsed.Data {
 		if d != nil {
-			results[i] = PythonExtractResult{RawText: d.RawText, Embeddings: d.Embeddings}
+			results[i] = PythonExtractResult{Text: d.Text, IDs: d.IDs, Embedding: d.Embedding}
 		}
 	}
 	return results, nil
 }
 
-func (c *pythonAIClient) Verify(ctx context.Context, file ExtractFile, storedEmbeddings []float64) (*VerifyResult, error) {
-	embJSON, err := json.Marshal([]map[string]any{{"stored_embeddings": storedEmbeddings}})
+func (c *pythonAIClient) Verify(ctx context.Context, file ExtractFile, storedEmbedding []float64) (*VerifyResult, error) {
+	embJSON, err := json.Marshal([][]float64{storedEmbedding})
 	if err != nil {
 		return nil, fmt.Errorf("python verify: marshal embeddings: %w", err)
 	}
-
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
-
 	part, err := writer.CreateFormFile("files", file.Filename)
 	if err != nil {
 		return nil, fmt.Errorf("python verify: create form file: %w", err)
@@ -160,54 +179,83 @@ func (c *pythonAIClient) Verify(ctx context.Context, file ExtractFile, storedEmb
 	if _, err := part.Write(file.Data); err != nil {
 		return nil, fmt.Errorf("python verify: write file: %w", err)
 	}
-	if err := writer.WriteField("metadata", string(embJSON)); err != nil {
-		return nil, fmt.Errorf("python verify: write metadata: %w", err)
+	if err := writer.WriteField("embeddings", string(embJSON)); err != nil {
+		return nil, fmt.Errorf("python verify: write embeddings: %w", err)
 	}
 	writer.Close()
-
 	c.mu.Lock()
 	defer c.mu.Unlock()
-
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/verify", body)
 	if err != nil {
 		return nil, fmt.Errorf("python verify: build request: %w", err)
 	}
 	req.Header.Set("Content-Type", writer.FormDataContentType())
-
+	c.setAuthHeader(req)
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("python verify: http: %w", err)
 	}
 	defer resp.Body.Close()
-
 	raw, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("python verify: read body: %w", err)
 	}
-
 	var parsed pythonResponse[*verifyData]
 	if err := json.Unmarshal(raw, &parsed); err != nil {
 		return nil, fmt.Errorf("python verify: decode: %w", err)
 	}
-
 	if len(parsed.Data) == 0 || parsed.Data[0] == nil {
 		return nil, fmt.Errorf("python verify: empty result (code %d)", parsed.Code)
 	}
-
 	d := parsed.Data[0]
 	return &VerifyResult{
 		Verdict:           d.Verdict,
 		SimilarityScore:   d.SimilarityScore,
 		SimilarityPercent: d.SimilarityPercent,
-		Description:       d.Description,
 	}, nil
+}
+
+func (c *pythonAIClient) ExtractIDs(ctx context.Context, file ExtractFile) ([]ExtractedID, error) {
+	body, contentType, err := buildMultipartFiles([]ExtractFile{file})
+	if err != nil {
+		return nil, fmt.Errorf("python extract-ids: build multipart: %w", err)
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/extract-ids", body)
+	if err != nil {
+		return nil, fmt.Errorf("python extract-ids: build request: %w", err)
+	}
+	req.Header.Set("Content-Type", contentType)
+	c.setAuthHeader(req)
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("python extract-ids: http: %w", err)
+	}
+	defer resp.Body.Close()
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("python extract-ids: read body: %w", err)
+	}
+	var parsed pythonResponse[*extractIdsData]
+	if err := json.Unmarshal(raw, &parsed); err != nil {
+		return nil, fmt.Errorf("python extract-ids: decode: %w", err)
+	}
+	if len(parsed.Data) == 0 || parsed.Data[0] == nil {
+		return []ExtractedID{}, nil
+	}
+	return parsed.Data[0].IDs, nil
 }
 
 func buildMultipartFiles(files []ExtractFile) (*bytes.Buffer, string, error) {
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 	for _, f := range files {
-		part, err := writer.CreateFormFile("files", f.Filename)
+		mime := f.resolveMIME()
+		h := make(textproto.MIMEHeader)
+		h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="files"; filename="%s"`, f.Filename))
+		h.Set("Content-Type", mime)
+		part, err := writer.CreatePart(h)
 		if err != nil {
 			return nil, "", err
 		}
@@ -217,22 +265,4 @@ func buildMultipartFiles(files []ExtractFile) (*bytes.Buffer, string, error) {
 	}
 	writer.Close()
 	return body, writer.FormDataContentType(), nil
-}
-
-// FileExtToMIME returns the MIME type for common credential file extensions.
-func FileExtToMIME(filename string) string {
-	switch filepath.Ext(filename) {
-	case ".pdf":
-		return "application/pdf"
-	case ".jpg", ".jpeg":
-		return "image/jpeg"
-	case ".png":
-		return "image/png"
-	case ".webp":
-		return "image/webp"
-	case ".tiff", ".tif":
-		return "image/tiff"
-	default:
-		return "application/octet-stream"
-	}
 }

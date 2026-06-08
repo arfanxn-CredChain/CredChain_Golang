@@ -39,7 +39,7 @@ type CredentialService interface {
 	Find(ctx context.Context, id string, query *domainQuery.Query) (*domain.Credential, error)
 	Issue(ctx context.Context, items []CredentialIssuance) ([]domain.Credential, error)
 	Revoke(ctx context.Context, ids ...string) ([]domain.Credential, error)
-	Verify(ctx context.Context, credentialID string, file pyai.ExtractFile) (string, float64, string, pyai.VerifyDescription, domain.Credential, error)
+	Verify(ctx context.Context, credentialID string, file pyai.ExtractFile) (string, float64, string, domain.Credential, error)
 }
 
 // CredentialIssuance is the service-layer input for one credential issuance. File
@@ -345,36 +345,36 @@ func (s *credentialService) Revoke(ctx context.Context, ids ...string) ([]domain
 // Verify calls Python /verify with the uploaded file and the credential's
 // stored embeddings. It gates on the credential's extract_status:
 // pending → 409, failed → 422, succeeded → proceed.
-func (s *credentialService) Verify(ctx context.Context, credentialID string, file pyai.ExtractFile) (string, float64, string, pyai.VerifyDescription, domain.Credential, error) {
+func (s *credentialService) Verify(ctx context.Context, credentialID string, file pyai.ExtractFile) (string, float64, string, domain.Credential, error) {
 	if err := s.policy.VerifyPreFetch(ctx); err != nil {
-		return "", 0, "", pyai.VerifyDescription{}, domain.Credential{}, err
+		return "", 0, "", domain.Credential{}, err
 	}
 
 	query := &domainQuery.Query{}
 	cred, err := s.repo.Find(ctx, credentialID, query)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return "", 0, "", pyai.VerifyDescription{}, domain.Credential{}, domain.NewError(domain.CodeCredentialVerifyCredentialNotFound,
+			return "", 0, "", domain.Credential{}, domain.NewError(domain.CodeCredentialVerifyCredentialNotFound,
 				domain.WithMetadata("credential_id", credentialID))
 		}
-		return "", 0, "", pyai.VerifyDescription{}, domain.Credential{}, err
+		return "", 0, "", domain.Credential{}, err
 	}
 
 	switch cred.ExtractStatus {
 	case domain.ExtractStatusPending:
-		return "", 0, "", pyai.VerifyDescription{}, domain.Credential{}, domain.NewError(domain.CodeCredentialVerifyExtractNotReady)
+		return "", 0, "", domain.Credential{}, domain.NewError(domain.CodeCredentialVerifyExtractNotReady)
 	case domain.ExtractStatusFailed:
-		return "", 0, "", pyai.VerifyDescription{}, domain.Credential{}, domain.NewError(domain.CodeCredentialVerifyExtractFailed,
+		return "", 0, "", domain.Credential{}, domain.NewError(domain.CodeCredentialVerifyExtractFailed,
 			domain.WithMetadata("extract_error", lo.FromPtrOr(cred.ExtractError, "")))
 	}
 
 	result, err := s.aiClient.Verify(ctx, file, cred.Embeddings)
 	if err != nil {
-		return "", 0, "", pyai.VerifyDescription{}, domain.Credential{}, domain.NewError(domain.CodeCredentialVerifyAiServiceFailed,
+		return "", 0, "", domain.Credential{}, domain.NewError(domain.CodeCredentialVerifyAiServiceFailed,
 			domain.WithError(err))
 	}
 
-	return result.Verdict, result.SimilarityScore, result.SimilarityPercent, result.Description, *cred, nil
+	return result.Verdict, result.SimilarityScore, result.SimilarityPercent, *cred, nil
 }
 
 // ── Blockchain sync helpers ───────────────────────────────────────────────

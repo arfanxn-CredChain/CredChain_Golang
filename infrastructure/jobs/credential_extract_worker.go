@@ -125,14 +125,13 @@ func (w *CredentialExtractWorker) execute(ctx context.Context, job *domain.Crede
 	filename := filepath.Base(job.FileURI)
 	results, err := w.aiClient.Extract(ctx, pyai.ExtractFile{
 		Filename: filename,
-		MIMEType: pyai.FileExtToMIME(filename),
 		Data:     data,
 	})
 	if err != nil {
 		w.markFailed(ctx, job.ID, err.Error())
 		return
 	}
-	if len(results) == 0 || len(results[0].Embeddings) == 0 {
+	if len(results) == 0 || len(results[0].Embedding) == 0 {
 		w.markFailed(ctx, job.ID, "python extract returned empty embeddings")
 		return
 	}
@@ -141,7 +140,7 @@ func (w *CredentialExtractWorker) execute(ctx context.Context, job *domain.Crede
 	cred := domain.Credential{
 		ID:            job.CredentialID,
 		ExtractStatus: domain.ExtractStatusSucceeded,
-		Embeddings:    results[0].Embeddings,
+		Embeddings:    results[0].Embedding,
 		ExtractedAt:   &now,
 	}
 	if _, err := w.credRepo.Update(ctx, cred); err != nil {

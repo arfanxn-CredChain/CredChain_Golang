@@ -10,7 +10,7 @@ import (
 // ExtractStatus is the lifecycle of the asynchronous Python /extract job
 // attached to a credential. On-chain issuance is synchronous (Go computes
 // keccak256 of raw file bytes immediately), but embeddings (needed by
-// /api/credentials/verify) require a slow Python OCR+LaBSE round-trip and
+// /api/credentials/verify) require a slow Python OCR+EmbeddingGemma round-trip and
 // are computed asynchronously via the CredentialExtractWorker.
 type ExtractStatus string
 
