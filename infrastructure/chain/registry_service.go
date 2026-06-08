@@ -56,6 +56,10 @@ type RegistryService interface {
 
 	// FindNonce retrieves the nonce for the given address from the Registry contract.
 	FindNonce(ctx context.Context, addr string) (*big.Int, error)
+
+	// FindCredentialByHash reads the on-chain credential whose token id is
+	// derived from the file hash. Returns (hashOnChain, found, error).
+	FindCredentialByHash(ctx context.Context, hash string) (string, bool, error)
 }
 
 // CredentialIssuance is the input struct for credential issuance.
@@ -88,6 +92,18 @@ func (s *registryService) FindNonce(ctx context.Context, addr string) (*big.Int,
 		return nil, fmt.Errorf("failed to fetch nonce from registry: %w", err)
 	}
 	return nonce, nil
+}
+
+func (s *registryService) FindCredentialByHash(ctx context.Context, hash string) (string, bool, error) {
+	id := tokenIdFromHash(hash)
+	cred, err := s.client.Registry.FindCredential(&bind.CallOpts{Context: ctx}, id)
+	if err != nil {
+		return "", false, fmt.Errorf("find credential on-chain: %w", err)
+	}
+	if cred.Hash == "" {
+		return "", false, nil
+	}
+	return cred.Hash, true, nil
 }
 
 func (s *registryService) IssueCredentials(ctx context.Context, signer domain.Wallet, credentials ...CredentialIssuance) ([]*big.Int, error) {
