@@ -40,6 +40,9 @@ type Config struct {
 	MongoInitDBUsername                *string
 	MongoInitPassword                  *string
 	MongoURI                           *string
+	MongoDatabase                      *string
+	AIVerificationCacheTTLHours        *int
+	RiverMaxWorkers                    *int
 	GoogleClientID                     *string
 	GoogleClientSecret                 *string
 	GoogleRedirectURI                  *string
@@ -117,6 +120,9 @@ func NewConfig(envPath string) (*Config, error) {
 	defaultCookieSameSite := "strict"
 	defaultCookieAccessPath := "/api"
 	defaultCookieRefreshPath := "/api/auth"
+	defaultMongoDatabase := "credchain"
+	defaultAIVerificationCacheTTLHours := 24
+	defaultRiverMaxWorkers := 10
 	defaultPythonAIBaseURL := "http://localhost:8081"
 	defaultPythonAITimeout := 120
 	defaultCredentialExtractWorkerCount := 1
@@ -152,6 +158,9 @@ func NewConfig(envPath string) (*Config, error) {
 		MongoInitDBUsername:                getEnv("MONGO_INIT_DB_USERNAME", nil),
 		MongoInitPassword:                  getEnv("MONGO_INITDB_ROOT_PASSWORD", nil),
 		MongoURI:                           getEnv("MONGO_URI", nil),
+		MongoDatabase:                      getEnv("MONGO_DATABASE", &defaultMongoDatabase),
+		AIVerificationCacheTTLHours:        getIntEnv("AI_VERIFICATION_CACHE_TTL_HOURS", &defaultAIVerificationCacheTTLHours),
+		RiverMaxWorkers:                    getIntEnv("RIVER_MAX_WORKERS", &defaultRiverMaxWorkers),
 		GoogleClientID:                     getEnv("GOOGLE_CLIENT_ID", nil),
 		GoogleClientSecret:                 getEnv("GOOGLE_CLIENT_SECRET", nil),
 		GoogleRedirectURI:                  getEnv("GOOGLE_REDIRECT_URI", &defaultGoogleRedirectURI),
