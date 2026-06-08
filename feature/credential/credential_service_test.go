@@ -3,7 +3,6 @@ package credential
 import (
 	"context"
 	"math/big"
-	"os"
 	"testing"
 	"time"
 
@@ -18,7 +17,6 @@ import (
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
 
@@ -490,6 +488,82 @@ func TestVerify_TieBreakNewestIssuedAt(t *testing.T) {
 	assert.Equal(t, []float64{3.0, 0.0}, actualEmbedding)
 }
 
+func TestIssue_AllFailed(t *testing.T) {
+	user := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleIssuer))
+	ctx := ctxWithAuth(&user)
+	enq := &localMockEnqueuer{}
+	userRepo := &mocks.MockUserRepository{}
+	stor := &storage.Storage{BaseDir: t.TempDir()}
+
+	userRepo.On("FindByIds", mock.Anything, mock.Anything).Return([]domain.User{}, nil)
+
+	credRepo := &mocks.MockCredentialRepository{}
+	credRepo.On("FindByFileHashes", mock.Anything, mock.Anything).Return(nil, nil)
+
+	svc := &credentialService{
+		repo:     credRepo,
+		storage:  stor,
+		policy:   &credentialPolicy{},
+		userRepo: userRepo,
+		logger:   zap.NewNop(),
+		enqueuer: enq,
+	}
+	items := []CredentialIssuance{
+		{HolderUserID: "holder-1", Name: "a", Filename: "x.pdf", FileBytes: []byte("x")},
+		{HolderUserID: "holder-2", Name: "b", Filename: "x.pdf", FileBytes: []byte("y")},
+	}
+	results, errs, err := svc.Issue(ctx, items)
+	assert.NoError(t, err)
+	assert.Len(t, results, 2)
+	assert.Equal(t, "", results[0].ID)
+	assert.Equal(t, "", results[1].ID)
+	assert.Contains(t, errs, "credentials.0")
+	assert.Contains(t, errs, "credentials.1")
+	enq.AssertNotCalled(t, "EnqueueExtract", mock.Anything, mock.Anything)
+}
+
+func TestIssue_ChainRollback(t *testing.T) {
+	user := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleIssuer))
+	ctx := ctxWithAuth(&user)
+	enq := &localMockEnqueuer{}
+	userRepo := &mocks.MockUserRepository{}
+	stor := &storage.Storage{BaseDir: t.TempDir()}
+
+	userRepo.On("FindByIds", mock.Anything, mock.Anything).Return(
+		[]domain.User{{Id: "holder-valid"}}, nil)
+
+	regSvc := &mocks.MockRegistryService{}
+	regSvc.On("IssueCredentials", mock.Anything, mock.Anything, mock.Anything).
+		Return(nil, assert.AnError)
+
+	uow := mocks.NewPropagatingUnitOfWork()
+	innerCredRepo := &mocks.MockCredentialRepository{}
+	innerCredRepo.On("Store", mock.Anything, mock.Anything, mock.Anything).Return(
+		[]domain.Credential{{ID: "stored-1", FileURI: lo.ToPtr("up/test.pdf")}}, nil)
+	uow.On("Credential").Return(innerCredRepo)
+	uow.On("CredentialExtractJob").Return(&mocks.MockCredentialExtractJobRepository{})
+
+	credRepo := &mocks.MockCredentialRepository{}
+	credRepo.On("FindByFileHashes", mock.Anything, mock.Anything).Return(nil, nil)
+
+	svc := &credentialService{
+		repo:            credRepo,
+		uow:             uow,
+		registryService: regSvc,
+		storage:         stor,
+		policy:          &credentialPolicy{},
+		userRepo:        userRepo,
+		logger:          zap.NewNop(),
+		enqueuer:        enq,
+	}
+	items := []CredentialIssuance{
+		{HolderUserID: "holder-valid", Name: "doc", Filename: "x.pdf", FileBytes: []byte("test")},
+	}
+	_, _, err := svc.Issue(ctx, items)
+	_ = enq
+	assert.Error(t, err)
+}
+
 func TestIssue_PartialSuccess(t *testing.T) {
 	user := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleIssuer))
 	ctx := ctxWithAuth(&user)
@@ -502,22 +576,19 @@ func TestIssue_PartialSuccess(t *testing.T) {
 	}
 	enq := &localMockEnqueuer{}
 
-	tmpDir, err := os.MkdirTemp("", "credchain-issue-test")
-	require.NoError(t, err)
-	t.Cleanup(func() { os.RemoveAll(tmpDir) })
-	stor := &storage.Storage{BaseDir: tmpDir}
+	stor := &storage.Storage{BaseDir: t.TempDir()}
 
 	userRepo := &mocks.MockUserRepository{}
-	userRepo.On("FindByIds", mock.Anything, mock.Anything).Return(
-		[]domain.User{{Id: "holder-valid"}}, nil)
+	userRepo.On("FindByIds", mock.Anything, mock.Anything).
+		Return([]domain.User{{Id: "holder-2"}}, nil)
 	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything).Return(nil, nil)
 
 	uow := mocks.NewPropagatingUnitOfWork()
 	innerCredRepo := &mocks.MockCredentialRepository{}
 	innerCredRepo.On("Store", mock.Anything, mock.Anything, mock.Anything).Return(
-		[]domain.Credential{{ID: "stored-1", FileURI: lo.ToPtr("up/test.pdf")}}, nil)
+		[]domain.Credential{{ID: "stored-2", FileURI: lo.ToPtr("up/test.pdf")}}, nil)
 	innerCredRepo.On("Update", mock.Anything, mock.Anything, mock.Anything).Return(
-		[]domain.Credential{{ID: "stored-1", TokenID: lo.ToPtr("1")}}, nil)
+		[]domain.Credential{{ID: "stored-2", TokenID: lo.ToPtr("1")}}, nil)
 	uow.On("Credential").Return(innerCredRepo)
 	uow.On("CredentialExtractJob").Return(&mocks.MockCredentialExtractJobRepository{})
 	m.regSvc.On("IssueCredentials", mock.Anything, mock.Anything, mock.Anything).
@@ -537,13 +608,16 @@ func TestIssue_PartialSuccess(t *testing.T) {
 	}
 
 	items := []CredentialIssuance{
-		{HolderUserID: "holder-valid", Name: "doc", Filename: "x.pdf", FileBytes: []byte("test-content")},
+		{HolderUserID: "holder-1", Name: "bad", Filename: "x.pdf", FileBytes: []byte("x")},
+		{HolderUserID: "holder-2", Name: "valid", Filename: "x.pdf", FileBytes: []byte("b")},
 	}
 	results, errs, err := svc.Issue(ctx, items)
 	assert.NoError(t, err)
-	assert.Len(t, results, 1)
-	assert.Nil(t, errs)
-	assert.Equal(t, "stored-1", results[0].ID)
+	assert.Len(t, results, 2)
+	assert.Contains(t, errs, "credentials.0")
+	assert.Equal(t, "", results[0].ID)
+	assert.Equal(t, "stored-2", results[1].ID)
+	enq.AssertNumberOfCalls(t, "EnqueueExtract", 1)
 }
 
 func TestReExtract_HappyPath(t *testing.T) {
