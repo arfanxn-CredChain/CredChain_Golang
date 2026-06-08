@@ -28,7 +28,7 @@ var migrateMongoCmd = &cobra.Command{
 
 var migrateMongoUpCmd = &cobra.Command{
 	Use:   "up",
-	Short: "Creates Mongo collections and indexes (idempotent)",
+	Short: "Creates Mongo collections and indexes (idempotent for unchanged options; re-run after changing AI_VERIFICATION_CACHE_TTL_HOURS requires dropping and recreating the TTL index)",
 	Run: func(cmd *cobra.Command, args []string) {
 		fx.New(
 			infraLogger.Module,
