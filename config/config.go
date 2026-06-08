@@ -58,6 +58,7 @@ type Config struct {
 	CookieAccessPath                   *string
 	CookieRefreshPath                  *string
 	PythonAIBaseURL                    *string
+	PythonAIAPIKey                     *string
 	PythonAITimeoutSeconds             *int
 	CredentialExtractWorkerCount       *int
 	CredentialExtractWorkerPollSeconds *int
@@ -169,6 +170,7 @@ func NewConfig(envPath string) (*Config, error) {
 		CookieAccessPath:                   getEnv("COOKIE_ACCESS_PATH", &defaultCookieAccessPath),
 		CookieRefreshPath:                  getEnv("COOKIE_REFRESH_PATH", &defaultCookieRefreshPath),
 		PythonAIBaseURL:                    getEnv("PYTHON_AI_BASE_URL", &defaultPythonAIBaseURL),
+		PythonAIAPIKey:                     getEnv("PYTHON_AI_API_KEY", nil),
 		PythonAITimeoutSeconds:             getIntEnv("PYTHON_AI_TIMEOUT_SECONDS", &defaultPythonAITimeout),
 		CredentialExtractWorkerCount:       getIntEnv("CREDENTIAL_EXTRACT_WORKER_COUNT", &defaultCredentialExtractWorkerCount),
 		CredentialExtractWorkerPollSeconds: getIntEnv("CREDENTIAL_EXTRACT_WORKER_POLL_SECONDS", &defaultCredentialExtractWorkerPoll),
