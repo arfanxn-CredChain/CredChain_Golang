@@ -89,6 +89,8 @@ func RegisterRoutes(p RouteParams) {
 				users.GET("/self", p.UserHandler.Self)
 				users.PUT("/self/profile", p.UserHandler.UpdateSelfProfile)
 				users.PUT("/self/email", p.UserHandler.UpdateSelfEmail)
+				users.GET("/self/credentials", p.CredentialHandler.SelfPaginate)
+				users.GET("/self/credentials/:id", p.CredentialHandler.SelfFind)
 				users.POST("/self/transfer-super-admin", gin.HandlerFunc(p.SuperAdminRoleMiddleware), p.UserHandler.TransferSuperAdmin)
 				users.GET("/:id", gin.HandlerFunc(p.IssuerRoleMiddleware), p.UserHandler.Find)
 				users.POST("/batch", gin.HandlerFunc(p.AdminRoleMiddleware), p.UserHandler.Store)

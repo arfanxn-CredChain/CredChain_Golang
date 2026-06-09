@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"CredChain_Golang/domain"
+	domainQuery "CredChain_Golang/domain/query"
 	pyai "CredChain_Golang/infrastructure/ai/pyai"
 	httpContext "CredChain_Golang/infrastructure/http/context"
 	"CredChain_Golang/infrastructure/jobs"
@@ -847,5 +848,97 @@ func TestSyncBlockchainRevoke_InvalidTokenID(t *testing.T) {
 	var domErr *domain.Error
 	if assert.ErrorAs(t, err, &domErr) {
 		assert.Equal(t, domain.CodeCredentialRevokeBlockchainSyncFailed, domErr.Code)
+	}
+}
+
+func TestSelfPaginate_InjectsHolderFilter(t *testing.T) {
+	user := fixtures.NewDomainUser(fixtures.WithID("holder-1"), fixtures.WithRole(domain.RoleHolder))
+	ctx := ctxWithAuth(&user)
+
+	m := &testCredentialMocks{credRepo: &mocks.MockCredentialRepository{}}
+	var captured *domainQuery.Query
+	m.credRepo.On("Get", mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			captured = args.Get(1).(*domainQuery.Query)
+		}).
+		Return([]domain.Credential{{ID: "c1", HolderUserID: "holder-1"}}, 1, nil)
+
+	svc := newTestCredentialService(m)
+	creds, total, err := svc.SelfPaginate(ctx, &domainQuery.Query{})
+
+	assert.NoError(t, err)
+	assert.Equal(t, 1, total)
+	assert.Len(t, creds, 1)
+	if assert.NotNil(t, captured) {
+		found := lo.ContainsBy(captured.Filters, func(f domainQuery.Filter) bool {
+			return f.Column == "holder_user_id" &&
+				f.Operator == domainQuery.OperatorEqual &&
+				f.GetValue() == "holder-1"
+		})
+		assert.True(t, found, "SelfPaginate must inject holder_user_id filter scoped to the auth user")
+	}
+}
+
+func TestSelfPaginate_NilQuery(t *testing.T) {
+	user := fixtures.NewDomainUser(fixtures.WithID("holder-2"), fixtures.WithRole(domain.RoleHolder))
+	ctx := ctxWithAuth(&user)
+
+	m := &testCredentialMocks{credRepo: &mocks.MockCredentialRepository{}}
+	m.credRepo.On("Get", mock.Anything, mock.Anything).
+		Return([]domain.Credential{}, 0, nil)
+
+	svc := newTestCredentialService(m)
+	_, _, err := svc.SelfPaginate(ctx, nil)
+	assert.NoError(t, err)
+}
+
+func TestSelfFind_OwnedReturnsCredential(t *testing.T) {
+	user := fixtures.NewDomainUser(fixtures.WithID("holder-1"), fixtures.WithRole(domain.RoleHolder))
+	ctx := ctxWithAuth(&user)
+
+	m := &testCredentialMocks{credRepo: &mocks.MockCredentialRepository{}}
+	m.credRepo.On("Find", mock.Anything, "c1", mock.Anything).
+		Return(&domain.Credential{ID: "c1", HolderUserID: "holder-1"}, nil)
+
+	svc := newTestCredentialService(m)
+	cred, err := svc.SelfFind(ctx, "c1", &domainQuery.Query{})
+	assert.NoError(t, err)
+	if assert.NotNil(t, cred) {
+		assert.Equal(t, "c1", cred.ID)
+	}
+}
+
+func TestSelfFind_NotOwnedReturnsNotFound(t *testing.T) {
+	user := fixtures.NewDomainUser(fixtures.WithID("holder-1"), fixtures.WithRole(domain.RoleHolder))
+	ctx := ctxWithAuth(&user)
+
+	m := &testCredentialMocks{credRepo: &mocks.MockCredentialRepository{}}
+	m.credRepo.On("Find", mock.Anything, "c2", mock.Anything).
+		Return(&domain.Credential{ID: "c2", HolderUserID: "other-holder"}, nil)
+
+	svc := newTestCredentialService(m)
+	cred, err := svc.SelfFind(ctx, "c2", &domainQuery.Query{})
+	assert.Nil(t, cred)
+	var domErr *domain.Error
+	if assert.ErrorAs(t, err, &domErr) {
+		assert.Equal(t, domain.CodeCredentialFetchNotFound, domErr.Code,
+			"ownership mismatch must be reported as 404, not leaked")
+	}
+}
+
+func TestSelfFind_MissingReturnsNotFound(t *testing.T) {
+	user := fixtures.NewDomainUser(fixtures.WithID("holder-1"), fixtures.WithRole(domain.RoleHolder))
+	ctx := ctxWithAuth(&user)
+
+	m := &testCredentialMocks{credRepo: &mocks.MockCredentialRepository{}}
+	m.credRepo.On("Find", mock.Anything, "missing", mock.Anything).
+		Return((*domain.Credential)(nil), gorm.ErrRecordNotFound)
+
+	svc := newTestCredentialService(m)
+	cred, err := svc.SelfFind(ctx, "missing", &domainQuery.Query{})
+	assert.Nil(t, cred)
+	var domErr *domain.Error
+	if assert.ErrorAs(t, err, &domErr) {
+		assert.Equal(t, domain.CodeCredentialFetchNotFound, domErr.Code)
 	}
 }

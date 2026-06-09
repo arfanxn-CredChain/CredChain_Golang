@@ -356,6 +356,8 @@ All under `/api` prefix. Middleware order: `ErrorLoggerMiddleware` → `I18nMidd
 | PUT | `/api/users/self/profile` | Authenticated | Update own phone number only (handler `UpdateSelfProfile`); name/number/birth_date/meta are admin-managed |
 | PUT | `/api/users/self/email` | Authenticated | Update own email; requires fresh Google ID token |
 | POST | `/api/users/self/transfer-super-admin` | SuperAdmin | Transfer SuperAdmin role (handler `TransferSuperAdmin`); caller → Admin, target → SuperAdmin, both refresh tokens revoked |
+| GET | `/api/users/self/credentials` | Authenticated | Paginated list of own credentials (handler `SelfPaginate`); same query DSL as `GET /api/credentials`, scoped to `holder_user_id == auth_user.id` |
+| GET | `/api/users/self/credentials/:id` | Authenticated | Single own credential (handler `SelfFind`); returns 404 (`CodeCredentialFetchNotFound`) when not found OR not owned — never leaks IDs across holders |
 | GET | `/api/users/:id` | Issuer+ | Single user lookup (handler `Find`); read-only for Issuer/Admin |
 | POST | `/api/users/batch` | Admin+ | Batch create users (optional: number, phone_number, birth_date, gender, meta) |
 | PUT | `/api/users/batch` | Admin+ | Batch update users (handler `Update`); same-role updates silently skipped; email changes revoke target's refresh tokens; role changes sync to blockchain |

@@ -37,6 +37,8 @@ import (
 type CredentialService interface {
 	Paginate(ctx context.Context, query *domainQuery.Query) ([]domain.Credential, int, error)
 	Find(ctx context.Context, id string, query *domainQuery.Query) (*domain.Credential, error)
+	SelfPaginate(ctx context.Context, query *domainQuery.Query) ([]domain.Credential, int, error)
+	SelfFind(ctx context.Context, id string, query *domainQuery.Query) (*domain.Credential, error)
 	Issue(ctx context.Context, items []CredentialIssuance) ([]domain.Credential, map[string][]string, error)
 	Revoke(ctx context.Context, ids ...string) ([]domain.Credential, error)
 	Verify(ctx context.Context, file pyai.ExtractFile) (int, *domain.Credential, *float64, *string, error)
@@ -126,6 +128,42 @@ func (s *credentialService) Find(ctx context.Context, id string, query *domainQu
 				domain.WithMetadata("credential_id", id))
 		}
 		return nil, err
+	}
+	return c, nil
+}
+
+// ── Self (Holder) ───────────────────────────────────────────────────────────
+
+// SelfPaginate returns a paginated list of credentials owned by the
+// authenticated user. It injects a holder_user_id filter scoped to the auth
+// user before delegating to the repository (single query; no N+1).
+func (s *credentialService) SelfPaginate(ctx context.Context, query *domainQuery.Query) ([]domain.Credential, int, error) {
+	authUser := httpContext.MustGetUser(ctx)
+	if query == nil {
+		query = &domainQuery.Query{}
+	}
+	query.Filters = append(query.Filters,
+		domainQuery.NewFilter("holder_user_id", domainQuery.OperatorEqual, authUser.Id))
+	return s.repo.Get(ctx, query)
+}
+
+// SelfFind retrieves a single credential by ID, scoped to the authenticated
+// user. Returns CodeCredentialFetchNotFound (404) when the credential does not
+// exist OR when it is owned by another user — ownership mismatch is reported
+// as not-found so credential IDs are not leaked across holders.
+func (s *credentialService) SelfFind(ctx context.Context, id string, query *domainQuery.Query) (*domain.Credential, error) {
+	authUser := httpContext.MustGetUser(ctx)
+	c, err := s.repo.Find(ctx, id, query)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, domain.NewError(domain.CodeCredentialFetchNotFound,
+				domain.WithMetadata("credential_id", id))
+		}
+		return nil, err
+	}
+	if c.HolderUserID != authUser.Id {
+		return nil, domain.NewError(domain.CodeCredentialFetchNotFound,
+			domain.WithMetadata("credential_id", id))
 	}
 	return c, nil
 }

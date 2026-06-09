@@ -141,10 +141,11 @@ All tests green; `go vet` clean; `gofmt -l .` prints nothing.
 
 ## Part B — Deferred TODOs
 
-These are documented now but NOT implemented in this session. Each is a
-standalone future implementation plan.
+B1 and B2 (holder self-credentials endpoints) were **implemented 2026-06-09**
+(handler `SelfPaginate`/`SelfFind` + service + routes + tests). B3–B6 remain
+deferred — documented below as standalone future implementation plans.
 
-### B1. `GET /api/users/self/credentials` — Holder lists own credentials
+### B1. `GET /api/users/self/credentials` — Holder lists own credentials *(DONE)*
 
 **Objective:** Allow any authenticated user (regardless of role) to list their
 own credentials. Frontend uses this on the Holder dashboard / profile page.
@@ -172,7 +173,7 @@ own credentials. Frontend uses this on the Holder dashboard / profile page.
 
 **Dependencies:** None — uses existing `CredentialRepository.Find`.
 
-### B2. `GET /api/users/self/credentials/:id` — Holder fetches own credential
+### B2. `GET /api/users/self/credentials/:id` — Holder fetches own credential *(DONE)*
 
 **Objective:** Fetch a single credential, scoped to the auth user.
 

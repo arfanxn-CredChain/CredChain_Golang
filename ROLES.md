@@ -64,8 +64,8 @@ Middleware chain: `ErrorLoggerMiddleware` → `I18nMiddleware` → `ApiRateLimit
 | `/api/users/self/profile` | PUT | Authenticated | Any |
 | `/api/users/self/email` | PUT | Authenticated | Any |
 | `/api/users/self/transfer-super-admin` | POST | Authenticated | SuperAdmin |
-| `/api/users/self/credentials` | GET | Authenticated | Any *(planned — see plan doc)* |
-| `/api/users/self/credentials/:id` | GET | Authenticated | Any *(planned — see plan doc)* |
+| `/api/users/self/credentials` | GET | Authenticated | Any — lists own credentials (handler `SelfPaginate`) |
+| `/api/users/self/credentials/:id` | GET | Authenticated | Any — fetch own credential; 404 if not owned (handler `SelfFind`) |
 | `/api/users` | GET | Authenticated | **Issuer+** (read-only) |
 | `/api/users/:id` | GET | Authenticated | **Issuer+** (read-only) |
 | `/api/users/batch` | POST | Authenticated | Admin+ |
@@ -205,8 +205,8 @@ Logout                          —      ✓       ✓       ✓       ✓
 View own profile                —      ✓       ✓       ✓       ✓
 Update own phone                —      ✓       ✓       ✓       ✓
 Update own email                —      ✓       ✓       ✓       ✓
-List own credentials (planned)  —      ✓       ✓       ✓       ✓
-Find own credential (planned)   —      ✓       ✓       ✓       ✓
+List own credentials             —      ✓       ✓       ✓       ✓
+Find own credential              —      ✓       ✓       ✓       ✓
 ──
 Transfer SuperAdmin             —      —       —       —       ✓
 ──

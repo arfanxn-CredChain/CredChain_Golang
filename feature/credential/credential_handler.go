@@ -25,6 +25,7 @@ import (
 
 // CredentialHandler is the HTTP layer for credential operations. Method names
 // follow the user feature pattern: Paginate, Find, Issue, Revoke, Verify.
+// SelfPaginate / SelfFind serve the Holder dashboard at /api/users/self/credentials.
 type CredentialHandler interface {
 	Paginate(c *gin.Context)
 	Find(c *gin.Context)
@@ -32,6 +33,8 @@ type CredentialHandler interface {
 	Revoke(c *gin.Context)
 	Verify(c *gin.Context)
 	ReExtract(c *gin.Context)
+	SelfPaginate(c *gin.Context)
+	SelfFind(c *gin.Context)
 }
 
 // ── Implementation & constructor ──────────────────────────────────────────
@@ -98,6 +101,66 @@ func (h *credentialHandler) Find(c *gin.Context) {
 	}
 
 	cred, err := h.credSvc.Find(c.Request.Context(), id, query)
+	if err != nil {
+		c.Error(err)
+		responder.SendError(c, err)
+		return
+	}
+	out := mapCredentialsToResponse([]domain.Credential{*cred})
+	if len(out) == 0 {
+		responder.Send(c, domain.CodeCredentialFetchSuccess, gin.H{})
+		return
+	}
+	responder.Send(c, domain.CodeCredentialFetchSuccess, out[0])
+}
+
+// ── Self (Holder) ─────────────────────────────────────────────────────────
+
+// SelfPaginate returns a paginated list of credentials owned by the
+// authenticated user (holder_user_id == auth_user.id). Same query DSL as
+// Paginate; the holder filter is injected by the service.
+func (h *credentialHandler) SelfPaginate(c *gin.Context) {
+	var req queryRequest.QueryRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.Error(err)
+		responder.SendError(c, err)
+		return
+	}
+	if err := req.Validate(); err != nil {
+		responder.SendValidationError(c, err)
+		return
+	}
+	query, err := req.ToDomain()
+	if err != nil {
+		c.Error(err)
+		responder.SendError(c, err)
+		return
+	}
+	credentials, total, err := h.credSvc.SelfPaginate(c.Request.Context(), query)
+	if err != nil {
+		c.Error(err)
+		responder.SendError(c, err)
+		return
+	}
+	out := mapCredentialsToResponse(credentials)
+	responder.SendPagination(c, domain.CodeCredentialFetchSuccess, out, total)
+}
+
+// SelfFind returns one credential by ID, scoped to the authenticated user.
+// Returns 404 (CodeCredentialFetchNotFound) when the credential does not
+// exist OR when it exists but is owned by another user — never leaks which
+// IDs exist.
+func (h *credentialHandler) SelfFind(c *gin.Context) {
+	id := c.Param("id")
+
+	var req queryRequest.QueryRequest
+	c.ShouldBindQuery(&req)
+	query, _ := req.ToDomain()
+	if query == nil {
+		query = &domainQuery.Query{}
+	}
+
+	cred, err := h.credSvc.SelfFind(c.Request.Context(), id, query)
 	if err != nil {
 		c.Error(err)
 		responder.SendError(c, err)
