@@ -56,8 +56,6 @@ func (p *credentialPolicy) RevokePreFetch(ctx context.Context, ids []string) err
 }
 
 func (p *credentialPolicy) RevokePostFetch(ctx context.Context, targets []domain.Credential) error {
-	// Future rule: revoker must be the original issuer or rank above. For now,
-	// any Issuer+ can revoke any credential (matches the contract's onlyRoleOrAbove).
 	return nil
 }
 

@@ -193,36 +193,6 @@ own credentials. Frontend uses this on the Holder dashboard / profile page.
 
 **Dependencies:** B1 (uses same concepts).
 
-### B3. `RevokePostFetch` issuer-ownership rule
-
-**Objective:** A credential should only be revocable by its original issuer or
-an authority strictly above the issuer's rank.
-
-**Current state** (`feature/credential/credential_policy.go:58-62`):
-
-```go
-func (p *credentialPolicy) RevokePostFetch(ctx context.Context,
-    targets []domain.Credential) error {
-    // Future rule: revoker must be the original issuer or rank above.
-    return nil // currently any Issuer+ can revoke any credential
-}
-```
-
-**Proposed rule:**
-- If `revoker.Rank() == issuer.Rank()` (i.e. both Issuers): revoker must be
-  the exact same user (`issuer_user_id == revoker_user_id`).
-- If `revoker.Rank() > issuer.Rank()`: allowed (Admin/SA revoking anything).
-- If `revoker.Rank() < issuer.Rank()`: denied (already blocked by
-  `RevokePreFetch` which requires Issuer+).
-
-**Files:**
-- `feature/credential/credential_policy.go` — populate `RevokePostFetch`.
-- `feature/credential/credential_service.go` — `Revoke` passes fetched targets
-  to `policy.RevokePostFetch(targets)`.
-- Tests: same-issuer allowed, different-issuer blocked, higher-rank override.
-
-**Depends on:** B1/B2 (same credential feature, but orthogonal).
-
 ### B4. User credential revocation on delete
 
 **Objective:** When a user is soft-deleted (via `DELETE /api/users/batch`), all
