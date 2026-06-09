@@ -343,34 +343,30 @@ func (s *userService) updateRoleValidateAndPrepare(ctx context.Context, updates 
 	return usersToUpdate, nil
 }
 
-func (s *userService) updateRoleAndSyncBlockchainRoles(ctx context.Context, usersToUpdate []domain.User) ([]domain.User, int64, error) {
+func (s *userService) UpdateRole(ctx context.Context, updates ...domain.UserRoleUpdate) ([]domain.User, int64, error) {
+	if err := s.policy.UpdateRolePreFetch(ctx, updates...); err != nil {
+		return nil, 0, err
+	}
+	// Single UoW: fetch + post-fetch policy + DB update + chain sync all run in
+	// one transaction so a chain-sync failure rolls back the DB write and there
+	// is no read-then-write race window. Mirrors the Update flow.
 	var updatedUsers []domain.User
 	var rowsAffected int64
 	err := s.uow.Execute(ctx, func(uow domain.UnitOfWork) error {
-		var err error
+		usersToUpdate, err := s.updateRoleValidateAndPrepare(ctx, updates, uow)
+		if err != nil {
+			return err
+		}
 		updatedUsers, rowsAffected, err = uow.User().UpdateRole(ctx, usersToUpdate...)
 		if err != nil {
 			return err
 		}
 		return s.syncBlockchainRoles(ctx, usersToUpdate, domain.CodeUserRoleBlockchainSyncFailed)
 	})
-	return updatedUsers, rowsAffected, err
-}
-
-func (s *userService) UpdateRole(ctx context.Context, updates ...domain.UserRoleUpdate) ([]domain.User, int64, error) {
-	if err := s.policy.UpdateRolePreFetch(ctx, updates...); err != nil {
-		return nil, 0, err
-	}
-	var usersToUpdate []domain.User
-	err := s.uow.Execute(ctx, func(uow domain.UnitOfWork) error {
-		var err error
-		usersToUpdate, err = s.updateRoleValidateAndPrepare(ctx, updates, uow)
-		return err
-	})
 	if err != nil {
 		return nil, 0, err
 	}
-	return s.updateRoleAndSyncBlockchainRoles(ctx, usersToUpdate)
+	return updatedUsers, rowsAffected, err
 }
 
 func (s *userService) deleteUserAndSyncBlockchain(ctx context.Context, ids []string, targetUsers []domain.User) (int64, error) {

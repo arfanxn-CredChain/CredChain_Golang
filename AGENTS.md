@@ -291,6 +291,8 @@ Adding a new `domain.Code*` constant requires updating: `mapper.go` (both `CodeT
 
 Service methods contain zero role/rank comparisons — all authorization lives in policy. `UpdatePostFetch` signature: `(ctx, targets []domain.User, updates []domain.User)` — receives both the fetched targets and the proposed updates so role-hierarchy rules apply to both current and requested roles.
 
+**UoW consistency:** `UpdateRole` uses a single `s.uow.Execute` call (fetch + validate + DB update + chain sync in one transaction), mirroring the `Update` flow. `Delete` is planned to follow the same pattern (currently split into two UoW calls).
+
 **Self-target codes:** `UpdateRolePreFetch` returns `CodeUserRoleSelfTargetForbidden` (300546); `DeletePreFetch` returns `CodeUserDeleteSelfTargetForbidden` (300743). Both map to HTTP 403. Do NOT use `CodeAuthForbidden` — wrong locale message.
 
 ### Chain Infrastructure

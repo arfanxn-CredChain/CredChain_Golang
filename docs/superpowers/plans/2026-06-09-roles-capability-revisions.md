@@ -218,19 +218,24 @@ on-chain revocation is already done via `syncBlockchainRoles` in user service).
 
 ### B5. UoW pattern unification
 
-**Objective:** `UpdateRole` and `Delete` use two `uow.Execute()` calls (read
-phase then write phase) while `Update` uses a single call. Unify to a single
-UoW to eliminate the small race window between read and write.
+**Objective:** `UpdateRole` and `Delete` originally used two `uow.Execute()`
+calls (read phase then write phase) while `Update` uses a single call. Unify
+to a single UoW to eliminate the small race window between read and write.
 
-**Files:**
-- `feature/user/user_service.go` — refactor `UpdateRole` and `Delete` so the
-  target fetch happens inside the same `uow.Execute` as the mutation + chain
-  sync.
+**Status:**
+- `UpdateRole` — **DONE 2026-06-09**: collapsed into one `s.uow.Execute` call.
+  Fetch + post-fetch policy + DB update + chain sync now run inside a single
+  transaction. Chain-sync failure rolls back the DB write atomically.
+  `updateRoleAndSyncBlockchainRoles` helper removed; `updateRoleValidateAndPrepare`
+  retained (still called from inside the unified UoW).
+- `Delete` — **PENDING**: still split into two UoW calls. Will be unified in a
+  follow-up to mirror the `UpdateRole` pattern.
 
-**Depends on:** The service code passes the `uow` into validation/policy
-methods so they can call `uow.User()` instead of direct repo calls. This is
-already the pattern used by `UpdateRole` UoW #1 (the read call) — it just
-needs to be merged with UoW #2.
+**Files (Delete refactor, future):**
+- `feature/user/user_service.go` — collapse `Delete` + `deleteUserAndSyncBlockchain`
+  into a single `s.uow.Execute` call. Existing chain-failure rollback test
+  (`TestUserService_Delete_BlockchainRevokeFailure_RollsBack` via
+  `mocks.NewPropagatingUnitOfWork`) covers atomicity.
 
 ### B6. `POST /api/credentials/verify` — optional audit-log (if needed in future)
 
