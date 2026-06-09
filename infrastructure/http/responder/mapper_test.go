@@ -69,6 +69,7 @@ var allDomainCodes = []int{
 	domain.CodeUserUpdateSelfForbidden,
 	domain.CodeUserUpdateBlockchainSyncFailed,
 	domain.CodeUserUpdateTrashedForbidden,
+	domain.CodeUserUpdateSelfEmailForbidden,
 	domain.CodeUserTransferSuperAdminSuccess,
 	domain.CodeUserTransferSuperAdminSelfTargetForbidden,
 	domain.CodeUserTransferSuperAdminTargetNotFound,

@@ -351,12 +351,12 @@ All under `/api` prefix. Middleware order: `ErrorLoggerMiddleware` → `I18nMidd
 | POST | `/api/auth/google` | None | Google OAuth login |
 | POST | `/api/auth/refresh` | None | Refresh token (rotates) |
 | POST | `/api/auth/logout` | Authenticated | Revoke all refresh tokens |
-| GET | `/api/users` | Admin+ | Paginated user list (handler `Paginate`) |
+| GET | `/api/users` | Issuer+ | Paginated user list (handler `Paginate`); read-only for Issuer/Admin |
 | GET | `/api/users/self` | Authenticated | Current user (handler `Self`) |
 | PUT | `/api/users/self/profile` | Authenticated | Update own phone number only (handler `UpdateSelfProfile`); name/number/birth_date/meta are admin-managed |
 | PUT | `/api/users/self/email` | Authenticated | Update own email; requires fresh Google ID token |
 | POST | `/api/users/self/transfer-super-admin` | SuperAdmin | Transfer SuperAdmin role (handler `TransferSuperAdmin`); caller → Admin, target → SuperAdmin, both refresh tokens revoked |
-| GET | `/api/users/:id` | Admin+ | Single user lookup (handler `Find`) |
+| GET | `/api/users/:id` | Issuer+ | Single user lookup (handler `Find`); read-only for Issuer/Admin |
 | POST | `/api/users/batch` | Admin+ | Batch create users (optional: number, phone_number, birth_date, gender, meta) |
 | PUT | `/api/users/batch` | Admin+ | Batch update users (handler `Update`); same-role updates silently skipped; email changes revoke target's refresh tokens; role changes sync to blockchain |
 | PUT | `/api/users/batch/role` | Admin+ | Batch role update (handler `UpdateRole`); syncs DB and on-chain |
@@ -366,7 +366,7 @@ All under `/api` prefix. Middleware order: `ErrorLoggerMiddleware` → `I18nMidd
 | POST | `/api/credentials/batch/issue` | Issuer+ | Issue credentials |
 | POST | `/api/credentials/batch/revoke` | Issuer+ | Revoke credentials |
 | POST | `/api/credentials/batch/reextract` | Issuer+ | Re-extract failed credentials |
-| POST | `/api/credentials/verify` | Issuer+ | Returns verdict code (400401-400409) + locale description |
+| POST | `/api/credentials/verify` | None (public) | Returns verdict code (400401-400409) + locale description; used by external verifiers (HR, employers) — no auth required |
 
 ### Database
 
@@ -537,7 +537,7 @@ When adding a new endpoint or service method, add at least: one happy-path test,
 - **`WALLET_ENCRYPTION_KEY`** must be exactly 32 bytes (AES-256 key). Validated at startup in `config.NewConfig` — app fails fast with clear error if length is wrong.
 - **SuperAdmin** can only be created via `make init-super-admin` CLI, never via API.
 - **Transfer Super Admin**: Only the current SuperAdmin can transfer their role via `POST /api/users/self/transfer-super-admin`. Caller is downgraded to Admin, target promoted to SuperAdmin. Refresh tokens for both users are revoked.
-- **Self-profile lockdown**: `PUT /api/users/self/profile` only accepts `phone_number`. Name, number, birth_date, and meta are admin-managed via `PUT /api/users/batch`.
+- **Self-profile lockdown**: `PUT /api/users/self/profile` only accepts `phone_number`. Name, number, birth_date, and meta are admin-managed via `PUT /api/users/batch`. **SuperAdmin** may include their own ID in `PUT /api/users/batch` to self-edit profile fields (other roles cannot self-target via batch — `CodeUserUpdateSelfForbidden`). However, **no role can change their own email via batch** (`CodeUserUpdateSelfEmailForbidden` 300847, 403) — email changes must go through `PUT /api/users/self/email` which requires a fresh Google ID token. This prevents accidentally locking the account out with an inaccessible email.
 - **`init-super-admin`** validates wallet has SuperAdmin role on-chain before database initialization; checks for existing SuperAdmin by role using `FindByRole`, not by email. Filters out trashed users from the existence check.
 - **Auth is Google OAuth only** — no email/password login exists.
 - **Soulbound tokens:** `CredentialRegistry._update()` blocks all transfers and burns (reverts with `CredentialTransferError`) — Solidity-side enforcement; backend should not attempt transfer flows.

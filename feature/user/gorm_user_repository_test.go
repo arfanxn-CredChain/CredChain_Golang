@@ -300,7 +300,7 @@ func TestGormUserRepository_Delete_SoftDelete_FindByRoleReturnsTrashed(t *testin
 	_, _ = repo.Delete(context.Background(), "sd6")
 	found, err := repo.FindByRole(context.Background(), domain.RoleHolder)
 	assert.NoError(t, err)
-	assert.Len(t, found, 1, "FindByRole is unscoped: trashed users must be returned")
+	assert.Len(t, found, 1, "FindByRole is unscoped: trashed users must be returned (role preserved on delete)")
 	assert.NotNil(t, found[0].DeletedAt)
 }
 

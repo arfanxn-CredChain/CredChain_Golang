@@ -93,6 +93,7 @@
   "error_users_update_self_forbidden": "Cannot update yourself via this endpoint.",
   "error_users_update_blockchain_sync_failed": "Failed to sync user update to blockchain.",
   "error_users_update_trashed_forbidden": "Cannot update a deleted user (id={{.user_id}}).",
+  "error_users_update_self_email_forbidden": "You cannot change your own email via batch update. Use the self email endpoint instead.",
   "error_credential_not_found": "Credential not found.",
   "error_credential_fetch_validation": "Invalid credential fetch parameters.",
   "error_credential_issue_failed": "Failed to issue credential.",

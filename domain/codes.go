@@ -69,6 +69,7 @@ const (
 	CodeUserUpdateSelfForbidden              = 300844
 	CodeUserUpdateBlockchainSyncFailed       = 300845
 	CodeUserUpdateTrashedForbidden           = 300846
+	CodeUserUpdateSelfEmailForbidden         = 300847
 
 	CodeUserTransferSuperAdminSuccess              = 300600
 	CodeUserTransferSuperAdminSelfTargetForbidden  = 300641

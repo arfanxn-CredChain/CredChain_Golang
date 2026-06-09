@@ -43,7 +43,7 @@ func (p *userPolicy) UpdatePreFetch(ctx context.Context, users ...domain.User) e
 		return domain.NewError(domain.CodeUserRoleSignerAdminRequiredForbidden)
 	}
 	for _, u := range users {
-		if u.Id == authUser.Id {
+		if u.Id == authUser.Id && authUser.Role != domain.RoleSuperAdmin {
 			return domain.NewError(domain.CodeUserUpdateSelfForbidden, domain.WithMetadata("user_id", authUser.Id))
 		}
 	}
@@ -57,7 +57,7 @@ func (p *userPolicy) UpdatePostFetch(ctx context.Context, targets []domain.User,
 			return domain.NewError(domain.CodeUserUpdateTrashedForbidden,
 				domain.WithMetadata("user_id", t.Id))
 		}
-		if t.Role == domain.RoleSuperAdmin {
+		if t.Role == domain.RoleSuperAdmin && t.Id != authUser.Id {
 			return domain.NewError(domain.CodeUserUpdateSuperAdminForbidden, domain.WithMetadata("user_id", t.Id))
 		}
 		if authUser.Role == domain.RoleAdmin && t.Role.Rank() >= domain.RoleAdmin.Rank() {
@@ -67,6 +67,10 @@ func (p *userPolicy) UpdatePostFetch(ctx context.Context, targets []domain.User,
 		}
 	}
 	for _, u := range updates {
+		if u.Id == authUser.Id && u.Email != "" {
+			return domain.NewError(domain.CodeUserUpdateSelfEmailForbidden,
+				domain.WithMetadata("user_id", authUser.Id))
+		}
 		if u.Role == "" {
 			continue
 		}

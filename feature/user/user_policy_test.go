@@ -207,6 +207,26 @@ func TestUserPolicy_UpdatePreFetch_Self(t *testing.T) {
 	assert.Equal(t, domain.CodeUserUpdateSelfForbidden, de.Code)
 }
 
+func TestUserPolicy_UpdatePreFetch_SelfAllowedForSuperAdmin(t *testing.T) {
+	p := NewUserPolicy()
+	auth := fixtures.NewDomainUser(fixtures.WithID("sa"), fixtures.WithRole(domain.RoleSuperAdmin))
+	err := p.UpdatePreFetch(ctxWithUser(&auth), domain.User{Id: "sa"})
+	assert.NoError(t, err, "SuperAdmin must be allowed to self-edit profile via batch")
+}
+
+func TestUserPolicy_UpdatePostFetch_SelfEmailForbidden(t *testing.T) {
+	p := NewUserPolicy()
+	auth := fixtures.NewDomainUser(fixtures.WithID("sa"), fixtures.WithRole(domain.RoleSuperAdmin))
+	target := fixtures.NewDomainUser(fixtures.WithID("sa"), fixtures.WithRole(domain.RoleSuperAdmin))
+	err := p.UpdatePostFetch(ctxWithUser(&auth),
+		[]domain.User{target},
+		[]domain.User{{Id: "sa", Email: "new@example.com"}})
+	var de *domain.Error
+	assert.ErrorAs(t, err, &de)
+	assert.Equal(t, domain.CodeUserUpdateSelfEmailForbidden, de.Code,
+		"SuperAdmin must be blocked from changing own email via batch — use /users/self/email")
+}
+
 func TestUserPolicy_UpdatePostFetch_SuperAdmin(t *testing.T) {
 	p := NewUserPolicy()
 	auth := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleAdmin))

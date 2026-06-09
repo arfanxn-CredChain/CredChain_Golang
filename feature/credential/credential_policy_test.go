@@ -22,10 +22,13 @@ func TestCredentialPolicy_IssuePreFetch_Forbidden(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestCredentialPolicy_VerifyPreFetch_Forbidden(t *testing.T) {
+func TestCredentialPolicy_VerifyPreFetch_PublicAllowed(t *testing.T) {
 	p := &credentialPolicy{}
+	// Public endpoint — must succeed regardless of role (incl. nil/anonymous user).
 	err := p.VerifyPreFetch(ctxWithRole(domain.RoleHolder))
-	assert.Error(t, err)
+	assert.NoError(t, err, "verify is public; Holder must be allowed")
+	err = p.VerifyPreFetch(context.Background())
+	assert.NoError(t, err, "verify is public; anonymous (no auth user) must be allowed")
 }
 
 func TestCredentialPolicy_ReExtractPreFetch_Forbidden(t *testing.T) {

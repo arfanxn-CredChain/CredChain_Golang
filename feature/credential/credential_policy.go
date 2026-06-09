@@ -62,10 +62,7 @@ func (p *credentialPolicy) RevokePostFetch(ctx context.Context, targets []domain
 }
 
 func (p *credentialPolicy) VerifyPreFetch(ctx context.Context) error {
-	if !signerIsIssuerOrAbove(ctx) {
-		return domain.NewError(domain.CodeAuthForbidden)
-	}
-	return nil
+	return nil // public endpoint — external verifiers (HR, employers) need no auth
 }
 
 func (p *credentialPolicy) ReExtractPreFetch(ctx context.Context) error {

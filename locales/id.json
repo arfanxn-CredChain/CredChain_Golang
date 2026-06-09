@@ -93,6 +93,7 @@
   "error_users_update_self_forbidden": "Tidak dapat memperbarui diri sendiri melalui endpoint ini.",
   "error_users_update_blockchain_sync_failed": "Gagal menyinkronkan pembaruan pengguna ke blockchain.",
   "error_users_update_trashed_forbidden": "Tidak dapat memperbarui pengguna yang telah dihapus (id={{.user_id}}).",
+  "error_users_update_self_email_forbidden": "Anda tidak dapat mengubah email sendiri melalui pembaruan batch. Gunakan endpoint email mandiri.",
   "error_credential_not_found": "Kredensial tidak ditemukan.",
   "error_credential_fetch_validation": "Parameter pengambilan kredensial tidak valid.",
   "error_credential_issue_failed": "Gagal menerbitkan kredensial.",

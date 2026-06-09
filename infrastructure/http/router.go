@@ -76,18 +76,21 @@ func RegisterRoutes(p RouteParams) {
 		})
 		api.POST("/auth/google", gin.HandlerFunc(p.LoginRateLimitMiddleware), p.AuthHandler.GoogleLogin)
 		api.POST("/auth/refresh", gin.HandlerFunc(p.RefreshRateLimitMiddleware), p.AuthHandler.Refresh)
+		// Public credential verification — used by external verifiers (HR, employers).
+		// No auth required; rate-limited by the global ApiRateLimitMiddleware.
+		api.POST("/credentials/verify", p.CredentialHandler.Verify)
 		secure := api.Group("/")
 		secure.Use(p.AuthMiddleware)
 		{
 			secure.POST("/auth/logout", gin.HandlerFunc(p.LogoutRateLimitMiddleware), p.AuthHandler.Logout)
 			users := secure.Group("/users")
 			{
-				users.GET("", gin.HandlerFunc(p.AdminRoleMiddleware), p.UserHandler.Paginate)
+				users.GET("", gin.HandlerFunc(p.IssuerRoleMiddleware), p.UserHandler.Paginate)
 				users.GET("/self", p.UserHandler.Self)
 				users.PUT("/self/profile", p.UserHandler.UpdateSelfProfile)
 				users.PUT("/self/email", p.UserHandler.UpdateSelfEmail)
 				users.POST("/self/transfer-super-admin", gin.HandlerFunc(p.SuperAdminRoleMiddleware), p.UserHandler.TransferSuperAdmin)
-				users.GET("/:id", gin.HandlerFunc(p.AdminRoleMiddleware), p.UserHandler.Find)
+				users.GET("/:id", gin.HandlerFunc(p.IssuerRoleMiddleware), p.UserHandler.Find)
 				users.POST("/batch", gin.HandlerFunc(p.AdminRoleMiddleware), p.UserHandler.Store)
 				users.PUT("/batch", gin.HandlerFunc(p.AdminRoleMiddleware), p.UserHandler.Update)
 				users.PUT("/batch/role", gin.HandlerFunc(p.AdminRoleMiddleware), p.UserHandler.UpdateRole)
@@ -100,7 +103,6 @@ func RegisterRoutes(p RouteParams) {
 				creds.POST("/batch/issue", gin.HandlerFunc(p.IssuerRoleMiddleware), p.CredentialHandler.Issue)
 				creds.POST("/batch/revoke", gin.HandlerFunc(p.IssuerRoleMiddleware), p.CredentialHandler.Revoke)
 				creds.POST("/batch/reextract", gin.HandlerFunc(p.IssuerRoleMiddleware), p.CredentialHandler.ReExtract)
-				creds.POST("/verify", gin.HandlerFunc(p.IssuerRoleMiddleware), p.CredentialHandler.Verify)
 			}
 		}
 	}

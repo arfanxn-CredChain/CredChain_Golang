@@ -447,7 +447,11 @@ func (r *gormUserRepository) Store(ctx context.Context, users ...domain.User) ([
 	return created, nil
 }
 
-// Delete deletes multiple users by IDs (batch operation)
+// Delete deletes multiple users by IDs (batch operation).
+// Pure soft-delete: GORM stamps `deleted_at`; the `role` column is preserved
+// (last role before delete). On-chain role is set to RoleNone separately by
+// userService.Delete via AuthorityService.UpdateUserRole. AuthMiddleware
+// rejects trashed users at 401, so the preserved DB role cannot be exploited.
 // Returns: (int64, error) - rows affected count, error
 func (r *gormUserRepository) Delete(ctx context.Context, ids ...string) (int64, error) {
 	if len(ids) == 0 {

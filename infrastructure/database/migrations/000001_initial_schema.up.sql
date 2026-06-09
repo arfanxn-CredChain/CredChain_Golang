@@ -20,7 +20,7 @@ CREATE TABLE users (
     birth_date DATE,
     gender gender,
     meta JSONB,
-    role role NOT NULL,
+    role role NOT NULL DEFAULT 'none',
     wallet_address CHAR(42) UNIQUE NOT NULL,
     encrypted_wallet_private_key VARCHAR(256) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
