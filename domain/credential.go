@@ -69,15 +69,18 @@ type CredentialRepository interface {
 	// Preload of holder/issuer/revoker user relations.
 	Find(ctx context.Context, id string, query *domainQuery.Query) (*Credential, error)
 
-	// FindByIds retrieves credentials by ID list (batch lookup).
-	FindByIds(ctx context.Context, ids ...string) ([]Credential, error)
+	// FindByIds retrieves credentials by ID list (batch lookup). When query is
+	// non-nil it may carry Includes for preloading holder/issuer/revoker relations.
+	FindByIds(ctx context.Context, ids []string, query *domainQuery.Query) ([]Credential, error)
 
-	// FindByHolderId retrieves all credentials owned by a given holder.
-	FindByHolderId(ctx context.Context, holderID string) ([]Credential, error)
+	// FindByHolderId retrieves all credentials owned by a given holder. When
+	// query is non-nil it may carry Includes for preloading relations.
+	FindByHolderId(ctx context.Context, holderID string, query *domainQuery.Query) ([]Credential, error)
 
 	// FindByFileHashes retrieves credentials whose file_hash matches any of
-	// the given hashes. Used during issue to detect duplicate uploads.
-	FindByFileHashes(ctx context.Context, hashes ...string) ([]Credential, error)
+	// the given hashes. Used during issue to detect duplicate uploads. When
+	// query is non-nil it may carry Includes for preloading relations.
+	FindByFileHashes(ctx context.Context, hashes []string, query *domainQuery.Query) ([]Credential, error)
 
 	// Store batch-inserts credentials. Generates ULIDs for any missing IDs.
 	Store(ctx context.Context, credentials ...Credential) ([]Credential, error)
