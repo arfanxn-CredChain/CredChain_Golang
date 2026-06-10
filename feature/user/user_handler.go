@@ -22,6 +22,7 @@ type UserHandler interface {
 	UpdateRole(c *gin.Context)
 	Delete(c *gin.Context)
 	TransferSuperAdmin(c *gin.Context)
+	Restore(c *gin.Context)
 }
 
 type userHandler struct {
@@ -250,4 +251,31 @@ func (h *userHandler) Update(c *gin.Context) {
 		out[i] = response.FromDomainUser(u)
 	}
 	responder.Send(c, domain.CodeUserUpdateSuccess, out)
+}
+
+func (h *userHandler) Restore(c *gin.Context) {
+	var req UserRestoreRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.Error(err)
+		responder.SendError(c, err)
+		return
+	}
+	if err := req.Validate(); err != nil {
+		responder.SendValidationError(c, err)
+		return
+	}
+	users, count, err := h.userSvc.Restore(c.Request.Context(), req.IDs)
+	if err != nil {
+		c.Error(err)
+		responder.SendError(c, err)
+		return
+	}
+	responseUsers := make([]response.User, len(users))
+	for i, u := range users {
+		responseUsers[i] = response.FromDomainUser(u)
+	}
+	responder.Send(c, domain.CodeUserRestoreSuccess, gin.H{
+		"users":          responseUsers,
+		"restored_count": count,
+	})
 }

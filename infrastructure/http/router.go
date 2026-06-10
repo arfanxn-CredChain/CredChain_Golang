@@ -97,6 +97,7 @@ func RegisterRoutes(p RouteParams) {
 				users.PUT("/batch", gin.HandlerFunc(p.AdminRoleMiddleware), p.UserHandler.Update)
 				users.PUT("/batch/role", gin.HandlerFunc(p.AdminRoleMiddleware), p.UserHandler.UpdateRole)
 				users.DELETE("/batch", gin.HandlerFunc(p.AdminRoleMiddleware), p.UserHandler.Delete)
+				users.PUT("/batch/restore", gin.HandlerFunc(p.AdminRoleMiddleware), p.UserHandler.Restore)
 			}
 			creds := secure.Group("/credentials")
 			{
