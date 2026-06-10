@@ -77,6 +77,14 @@ const (
 	CodeUserTransferSuperAdminTrashedForbidden     = 300643
 	CodeUserTransferSuperAdminBlockchainSyncFailed = 300645
 
+	// ── Restore (09) ─────────────────────────────────────────────────────────
+	CodeUserRestoreSuccess                       = 300900
+	CodeUserRestoreSignerAdminRequiredForbidden  = 300941
+	CodeUserRestoreSelfTargetForbidden           = 300942
+	CodeUserRestoreSuperAdminTargetForbidden     = 300943
+	CodeUserRestoreNotTrashedForbidden           = 300944
+	CodeUserRestoreBlockchainSyncFailed          = 300945
+
 	// ── Credential (40) ──────────────────────────────────────────────────────
 	CodeCredentialFetchSuccess    = 400100
 	CodeCredentialFetchNotFound   = 400140
@@ -118,6 +126,10 @@ const (
 	CodeCredentialVerifyNotSimilar       = 400407
 	CodeCredentialVerifyNoIdentifiers    = 400408
 	CodeCredentialVerifyNoMatch          = 400409
+
+	CodeCredentialVerifyHolderDisabled = 400410
+	CodeCredentialVerifyIssuerDisabled = 400411
+	CodeCredentialVerifyPartyDisabled  = 400412
 
 	// ── Credential Re-Extract (05) ──────────────────────────────────────────
 	CodeCredentialReExtractSuccess   = 400500
