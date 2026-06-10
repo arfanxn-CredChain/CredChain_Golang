@@ -437,6 +437,8 @@ func (s *credentialService) Verify(ctx context.Context, file pyai.ExtractFile) (
 
 	uploadedHash := "0x" + hex.EncodeToString(ethCrypto.Keccak256(file.Data))
 
+	verifyQuery := &domainQuery.Query{Includes: []string{"holder", "issuer"}}
+
 	// CACHE LOOKUP
 	cached, err := s.verificationRepo.FindByUploadedFileHash(ctx, uploadedHash)
 	if err != nil {
@@ -445,13 +447,25 @@ func (s *credentialService) Verify(ctx context.Context, file pyai.ExtractFile) (
 	if cached != nil {
 		var cred *domain.Credential
 		if cached.MatchedCredentialID != nil {
-			cred, _ = s.repo.Find(ctx, *cached.MatchedCredentialID, nil)
+			cred, _ = s.repo.Find(ctx, *cached.MatchedCredentialID, verifyQuery)
 		}
-		return cached.VerdictCode, cred, cached.SimilarityScore, cached.SimilarityPercent, nil
+		code := cached.VerdictCode
+		if code == domain.CodeCredentialVerifyAuthentic && cred != nil {
+			holderGone := cred.Holder == nil || cred.Holder.DeletedAt != nil
+			issuerGone := cred.Issuer == nil || cred.Issuer.DeletedAt != nil
+			if holderGone && issuerGone {
+				code = domain.CodeCredentialVerifyPartyDisabled
+			} else if holderGone {
+				code = domain.CodeCredentialVerifyHolderDisabled
+			} else if issuerGone {
+				code = domain.CodeCredentialVerifyIssuerDisabled
+			}
+		}
+		return code, cred, cached.SimilarityScore, cached.SimilarityPercent, nil
 	}
 
 	// EXACT-HASH PATH
-	existing, err := s.repo.FindByFileHashes(ctx, []string{uploadedHash}, nil)
+	existing, err := s.repo.FindByFileHashes(ctx, []string{uploadedHash}, verifyQuery)
 	if err != nil {
 		return 0, nil, nil, nil, err
 	}
@@ -463,6 +477,17 @@ func (s *credentialService) Verify(ctx context.Context, file pyai.ExtractFile) (
 			code = domain.CodeCredentialVerifyIntegrityWarning
 		} else if cred.RevokedAt != nil {
 			code = domain.CodeCredentialVerifyRevoked
+		}
+		if code == domain.CodeCredentialVerifyAuthentic {
+			holderGone := cred.Holder == nil || cred.Holder.DeletedAt != nil
+			issuerGone := cred.Issuer == nil || cred.Issuer.DeletedAt != nil
+			if holderGone && issuerGone {
+				code = domain.CodeCredentialVerifyPartyDisabled
+			} else if holderGone {
+				code = domain.CodeCredentialVerifyHolderDisabled
+			} else if issuerGone {
+				code = domain.CodeCredentialVerifyIssuerDisabled
+			}
 		}
 		s.verifyCacheVerdict(ctx, uploadedHash, code, &cred.ID, nil, nil)
 		return code, &cred, nil, nil, nil
@@ -497,7 +522,18 @@ func (s *credentialService) Verify(ctx context.Context, file pyai.ExtractFile) (
 	}
 
 	code := s.verifyVerdictToCode(result.Verdict)
-	cred, _ := s.repo.Find(ctx, best.CredentialID, nil)
+	cred, _ := s.repo.Find(ctx, best.CredentialID, verifyQuery)
+	if code == domain.CodeCredentialVerifyAuthentic && cred != nil {
+		holderGone := cred.Holder == nil || cred.Holder.DeletedAt != nil
+		issuerGone := cred.Issuer == nil || cred.Issuer.DeletedAt != nil
+		if holderGone && issuerGone {
+			code = domain.CodeCredentialVerifyPartyDisabled
+		} else if holderGone {
+			code = domain.CodeCredentialVerifyHolderDisabled
+		} else if issuerGone {
+			code = domain.CodeCredentialVerifyIssuerDisabled
+		}
+	}
 	s.verifyCacheVerdict(ctx, uploadedHash, code, &best.CredentialID, &result.SimilarityScore, &result.SimilarityPercent)
 	return code, cred, &result.SimilarityScore, &result.SimilarityPercent, nil
 }

@@ -72,7 +72,11 @@ func TestVerify_CacheHit(t *testing.T) {
 		MatchedCredentialID: &credID,
 	}
 	m.verRepo.On("FindByUploadedFileHash", mock.Anything, mock.Anything).Return(cached, nil)
-	m.credRepo.On("Find", mock.Anything, credID, mock.Anything).Return(&domain.Credential{ID: credID}, nil)
+	m.credRepo.On("Find", mock.Anything, credID, mock.Anything).Return(&domain.Credential{
+		ID:     credID,
+		Holder: &domain.User{},
+		Issuer: &domain.User{},
+	}, nil)
 
 	svc := newTestCredentialService(m)
 	code, cred, score, percent, err := svc.Verify(ctx, pyai.ExtractFile{Data: []byte("test-file")})
@@ -103,7 +107,7 @@ func TestVerify_ExactAuthentic(t *testing.T) {
 
 	m.verRepo.On("FindByUploadedFileHash", mock.Anything, mock.Anything).Return(nil, nil)
 	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything, mock.Anything).Return([]domain.Credential{
-		{ID: "cred-1", FileHash: "0xabc", RevokedAt: nil},
+		{ID: "cred-1", FileHash: "0xabc", RevokedAt: nil, Holder: &domain.User{}, Issuer: &domain.User{}},
 	}, nil)
 	m.regSvc.On("FindCredentialByHash", mock.Anything, mock.Anything).Return("0xtokenid", true, nil)
 	m.verRepo.On("Store", mock.Anything, mock.Anything).Return(nil)
