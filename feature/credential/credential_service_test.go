@@ -946,3 +946,220 @@ func TestSelfFind_MissingReturnsNotFound(t *testing.T) {
 		assert.Equal(t, domain.CodeCredentialFetchNotFound, domErr.Code)
 	}
 }
+
+func TestVerify_HolderDisabled_OverridesAuthentic(t *testing.T) {
+	user := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleIssuer))
+	ctx := ctxWithAuth(&user)
+
+	delTime := time.Now().Add(-1 * time.Hour)
+	holder := fixtures.NewDomainUser(fixtures.WithID("holder-1"), fixtures.WithRole(domain.RoleHolder))
+	holder.DeletedAt = &delTime
+	issuer := fixtures.NewDomainUser(fixtures.WithID("issuer-1"), fixtures.WithRole(domain.RoleIssuer))
+
+	cred := domain.Credential{
+		ID:           "c1",
+		HolderUserID: "holder-1",
+		IssuerUserID: "issuer-1",
+		Holder:       &holder,
+		Issuer:       &issuer,
+	}
+	m := &testCredentialMocks{
+		credRepo: &mocks.MockCredentialRepository{},
+		verRepo:  &mocks.MockCredentialVerificationRepository{},
+		extRepo:  &mocks.MockCredentialExtractionRepository{},
+		aiClient: &mocks.MockPythonAIClient{},
+		regSvc:   &mocks.MockRegistryService{},
+	}
+	m.verRepo.On("FindByUploadedFileHash", mock.Anything, mock.Anything).Return((*domain.CredentialVerification)(nil), nil)
+	m.regSvc.On("FindCredentialByHash", mock.Anything, mock.Anything).Return("0xtokenid", true, nil)
+	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything, mock.Anything).Return([]domain.Credential{cred}, nil)
+	m.verRepo.On("Store", mock.Anything, mock.Anything).Return(nil)
+
+	svc := newTestCredentialService(m)
+	code, _, _, _, err := svc.Verify(ctx, pyai.ExtractFile{Data: []byte("test")})
+	assert.NoError(t, err)
+	assert.Equal(t, domain.CodeCredentialVerifyHolderDisabled, code)
+}
+
+func TestVerify_IssuerDisabled_OverridesAuthentic(t *testing.T) {
+	user := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleIssuer))
+	ctx := ctxWithAuth(&user)
+
+	delTime := time.Now().Add(-1 * time.Hour)
+	holder := fixtures.NewDomainUser(fixtures.WithID("holder-1"), fixtures.WithRole(domain.RoleHolder))
+	issuer := fixtures.NewDomainUser(fixtures.WithID("issuer-1"), fixtures.WithRole(domain.RoleIssuer))
+	issuer.DeletedAt = &delTime
+
+	cred := domain.Credential{
+		ID:           "c1",
+		HolderUserID: "holder-1",
+		IssuerUserID: "issuer-1",
+		Holder:       &holder,
+		Issuer:       &issuer,
+	}
+	m := &testCredentialMocks{
+		credRepo: &mocks.MockCredentialRepository{},
+		verRepo:  &mocks.MockCredentialVerificationRepository{},
+		extRepo:  &mocks.MockCredentialExtractionRepository{},
+		aiClient: &mocks.MockPythonAIClient{},
+		regSvc:   &mocks.MockRegistryService{},
+	}
+	m.verRepo.On("FindByUploadedFileHash", mock.Anything, mock.Anything).Return((*domain.CredentialVerification)(nil), nil)
+	m.regSvc.On("FindCredentialByHash", mock.Anything, mock.Anything).Return("0xtokenid", true, nil)
+	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything, mock.Anything).Return([]domain.Credential{cred}, nil)
+	m.verRepo.On("Store", mock.Anything, mock.Anything).Return(nil)
+
+	svc := newTestCredentialService(m)
+	code, _, _, _, err := svc.Verify(ctx, pyai.ExtractFile{Data: []byte("test")})
+	assert.NoError(t, err)
+	assert.Equal(t, domain.CodeCredentialVerifyIssuerDisabled, code)
+}
+
+func TestVerify_PartyDisabled_BothDeleted(t *testing.T) {
+	user := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleIssuer))
+	ctx := ctxWithAuth(&user)
+
+	delTime := time.Now().Add(-1 * time.Hour)
+	holder := fixtures.NewDomainUser(fixtures.WithID("holder-1"), fixtures.WithRole(domain.RoleHolder))
+	holder.DeletedAt = &delTime
+	issuer := fixtures.NewDomainUser(fixtures.WithID("issuer-1"), fixtures.WithRole(domain.RoleIssuer))
+	issuer.DeletedAt = &delTime
+
+	cred := domain.Credential{
+		ID:           "c1",
+		HolderUserID: "holder-1",
+		IssuerUserID: "issuer-1",
+		Holder:       &holder,
+		Issuer:       &issuer,
+	}
+	m := &testCredentialMocks{
+		credRepo: &mocks.MockCredentialRepository{},
+		verRepo:  &mocks.MockCredentialVerificationRepository{},
+		extRepo:  &mocks.MockCredentialExtractionRepository{},
+		aiClient: &mocks.MockPythonAIClient{},
+		regSvc:   &mocks.MockRegistryService{},
+	}
+	m.verRepo.On("FindByUploadedFileHash", mock.Anything, mock.Anything).Return((*domain.CredentialVerification)(nil), nil)
+	m.regSvc.On("FindCredentialByHash", mock.Anything, mock.Anything).Return("0xtokenid", true, nil)
+	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything, mock.Anything).Return([]domain.Credential{cred}, nil)
+	m.verRepo.On("Store", mock.Anything, mock.Anything).Return(nil)
+
+	svc := newTestCredentialService(m)
+	code, _, _, _, err := svc.Verify(ctx, pyai.ExtractFile{Data: []byte("test")})
+	assert.NoError(t, err)
+	assert.Equal(t, domain.CodeCredentialVerifyPartyDisabled, code)
+}
+
+func TestVerify_DoesNotOverrideRevoked_WhenHolderDeleted(t *testing.T) {
+	user := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleIssuer))
+	ctx := ctxWithAuth(&user)
+
+	delTime := time.Now().Add(-1 * time.Hour)
+	holder := fixtures.NewDomainUser(fixtures.WithID("holder-1"), fixtures.WithRole(domain.RoleHolder))
+	holder.DeletedAt = &delTime
+	issuer := fixtures.NewDomainUser(fixtures.WithID("issuer-1"), fixtures.WithRole(domain.RoleIssuer))
+
+	now := time.Now()
+	cred := domain.Credential{
+		ID:           "c1",
+		HolderUserID: "holder-1",
+		IssuerUserID: "issuer-1",
+		Holder:       &holder,
+		Issuer:       &issuer,
+		RevokedAt:    &now,
+	}
+	m := &testCredentialMocks{
+		credRepo: &mocks.MockCredentialRepository{},
+		verRepo:  &mocks.MockCredentialVerificationRepository{},
+		extRepo:  &mocks.MockCredentialExtractionRepository{},
+		aiClient: &mocks.MockPythonAIClient{},
+		regSvc:   &mocks.MockRegistryService{},
+	}
+	m.verRepo.On("FindByUploadedFileHash", mock.Anything, mock.Anything).Return((*domain.CredentialVerification)(nil), nil)
+	m.regSvc.On("FindCredentialByHash", mock.Anything, mock.Anything).Return("0xtokenid", true, nil)
+	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything, mock.Anything).Return([]domain.Credential{cred}, nil)
+	m.verRepo.On("Store", mock.Anything, mock.Anything).Return(nil)
+
+	svc := newTestCredentialService(m)
+	code, _, _, _, err := svc.Verify(ctx, pyai.ExtractFile{Data: []byte("test")})
+	assert.NoError(t, err)
+	assert.Equal(t, domain.CodeCredentialVerifyRevoked, code)
+}
+
+func TestVerify_PartyDisabled_MissingHolderTreatedAsDisabled(t *testing.T) {
+	user := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleIssuer))
+	ctx := ctxWithAuth(&user)
+
+	issuer := fixtures.NewDomainUser(fixtures.WithID("issuer-1"), fixtures.WithRole(domain.RoleIssuer))
+	cred := domain.Credential{
+		ID:           "c1",
+		HolderUserID: "holder-1",
+		IssuerUserID: "issuer-1",
+		Holder:       nil,
+		Issuer:       &issuer,
+	}
+	m := &testCredentialMocks{
+		credRepo: &mocks.MockCredentialRepository{},
+		verRepo:  &mocks.MockCredentialVerificationRepository{},
+		extRepo:  &mocks.MockCredentialExtractionRepository{},
+		aiClient: &mocks.MockPythonAIClient{},
+		regSvc:   &mocks.MockRegistryService{},
+	}
+	m.verRepo.On("FindByUploadedFileHash", mock.Anything, mock.Anything).Return((*domain.CredentialVerification)(nil), nil)
+	m.regSvc.On("FindCredentialByHash", mock.Anything, mock.Anything).Return("0xtokenid", true, nil)
+	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything, mock.Anything).Return([]domain.Credential{cred}, nil)
+	m.verRepo.On("Store", mock.Anything, mock.Anything).Return(nil)
+
+	svc := newTestCredentialService(m)
+	code, _, _, _, err := svc.Verify(ctx, pyai.ExtractFile{Data: []byte("test")})
+	assert.NoError(t, err)
+	assert.Equal(t, domain.CodeCredentialVerifyHolderDisabled, code)
+}
+
+func TestVerify_DoesNotOverrideTampered_WhenHolderDeleted(t *testing.T) {
+	user := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleIssuer))
+	ctx := ctxWithAuth(&user)
+
+	delTime := time.Now().Add(-1 * time.Hour)
+	holder := fixtures.NewDomainUser(fixtures.WithID("holder-1"), fixtures.WithRole(domain.RoleHolder))
+	holder.DeletedAt = &delTime
+	issuer := fixtures.NewDomainUser(fixtures.WithID("issuer-1"), fixtures.WithRole(domain.RoleIssuer))
+
+	m := &testCredentialMocks{
+		credRepo: &mocks.MockCredentialRepository{},
+		verRepo:  &mocks.MockCredentialVerificationRepository{},
+		extRepo:  &mocks.MockCredentialExtractionRepository{},
+		aiClient: &mocks.MockPythonAIClient{},
+		regSvc:   &mocks.MockRegistryService{},
+	}
+	m.verRepo.On("FindByUploadedFileHash", mock.Anything, mock.Anything).Return((*domain.CredentialVerification)(nil), nil)
+	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
+	m.aiClient.On("ExtractIDs", mock.Anything, mock.Anything).Return([]pyai.ExtractedID{
+		{Type: "student_id", Value: "12345"},
+	}, nil)
+	m.extRepo.On("FindRankedByIds", mock.Anything, mock.Anything, 10).Return([]domain.CredentialExtraction{
+		{CredentialID: "cred-1", IDs: []domain.ExtractedID{{Value: "12345"}}, Embedding: []float64{0.1, 0.2}},
+	}, nil)
+	m.aiClient.On("Verify", mock.Anything, mock.Anything, mock.Anything).Return(&pyai.VerifyResult{
+		Verdict: "tampered", SimilarityScore: 0.3, SimilarityPercent: "30%",
+	}, nil)
+	m.credRepo.On("Find", mock.Anything, "cred-1", mock.Anything).Return(&domain.Credential{
+		ID:           "cred-1",
+		HolderUserID: "holder-1",
+		IssuerUserID: "issuer-1",
+		Holder:       &holder,
+		Issuer:       &issuer,
+	}, nil)
+	m.verRepo.On("Store", mock.Anything, mock.Anything).Return(nil)
+
+	svc := newTestCredentialService(m)
+	code, cred, score, percent, err := svc.Verify(ctx, pyai.ExtractFile{Data: []byte("test")})
+	assert.NoError(t, err)
+	assert.Equal(t, domain.CodeCredentialVerifyTampered, code)
+	assert.NotNil(t, cred)
+	assert.Equal(t, "cred-1", cred.ID)
+	assert.NotNil(t, score)
+	assert.Equal(t, 0.3, *score)
+	assert.NotNil(t, percent)
+	assert.Equal(t, "30%", *percent)
+}
