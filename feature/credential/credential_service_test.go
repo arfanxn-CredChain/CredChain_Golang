@@ -102,7 +102,7 @@ func TestVerify_ExactAuthentic(t *testing.T) {
 	}
 
 	m.verRepo.On("FindByUploadedFileHash", mock.Anything, mock.Anything).Return(nil, nil)
-	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything).Return([]domain.Credential{
+	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything, mock.Anything).Return([]domain.Credential{
 		{ID: "cred-1", FileHash: "0xabc", RevokedAt: nil},
 	}, nil)
 	m.regSvc.On("FindCredentialByHash", mock.Anything, mock.Anything).Return("0xtokenid", true, nil)
@@ -134,7 +134,7 @@ func TestVerify_ExactRevoked(t *testing.T) {
 
 	now := time.Now()
 	m.verRepo.On("FindByUploadedFileHash", mock.Anything, mock.Anything).Return(nil, nil)
-	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything).Return([]domain.Credential{
+	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything, mock.Anything).Return([]domain.Credential{
 		{ID: "cred-1", FileHash: "0xabc", RevokedAt: &now},
 	}, nil)
 	m.regSvc.On("FindCredentialByHash", mock.Anything, mock.Anything).Return("0xtokenid", true, nil)
@@ -164,7 +164,7 @@ func TestVerify_ExactIntegrityWarning(t *testing.T) {
 	}
 
 	m.verRepo.On("FindByUploadedFileHash", mock.Anything, mock.Anything).Return(nil, nil)
-	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything).Return([]domain.Credential{
+	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything, mock.Anything).Return([]domain.Credential{
 		{ID: "cred-1", FileHash: "0xabc", RevokedAt: nil},
 	}, nil)
 	m.regSvc.On("FindCredentialByHash", mock.Anything, mock.Anything).Return("", false, nil)
@@ -193,7 +193,7 @@ func TestVerify_FuzzyNoIdentifiers(t *testing.T) {
 	}
 
 	m.verRepo.On("FindByUploadedFileHash", mock.Anything, mock.Anything).Return(nil, nil)
-	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything).Return(nil, nil)
+	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
 	m.aiClient.On("ExtractIDs", mock.Anything, mock.Anything).Return([]pyai.ExtractedID{}, nil)
 	m.verRepo.On("Store", mock.Anything, mock.Anything).Return(nil)
 
@@ -220,7 +220,7 @@ func TestVerify_FuzzyNoMatch(t *testing.T) {
 	}
 
 	m.verRepo.On("FindByUploadedFileHash", mock.Anything, mock.Anything).Return(nil, nil)
-	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything).Return(nil, nil)
+	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
 	m.aiClient.On("ExtractIDs", mock.Anything, mock.Anything).Return([]pyai.ExtractedID{
 		{Type: "student_id", Value: "12345"},
 	}, nil)
@@ -250,7 +250,7 @@ func TestVerify_FuzzyTampered(t *testing.T) {
 	}
 
 	m.verRepo.On("FindByUploadedFileHash", mock.Anything, mock.Anything).Return(nil, nil)
-	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything).Return(nil, nil)
+	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
 	m.aiClient.On("ExtractIDs", mock.Anything, mock.Anything).Return([]pyai.ExtractedID{
 		{Type: "student_id", Value: "12345"},
 	}, nil)
@@ -289,7 +289,7 @@ func TestVerify_FuzzySuspicious(t *testing.T) {
 	}
 
 	m.verRepo.On("FindByUploadedFileHash", mock.Anything, mock.Anything).Return(nil, nil)
-	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything).Return(nil, nil)
+	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
 	m.aiClient.On("ExtractIDs", mock.Anything, mock.Anything).Return([]pyai.ExtractedID{
 		{Type: "student_id", Value: "12345"},
 	}, nil)
@@ -326,7 +326,7 @@ func TestVerify_FuzzyLowSimilarity(t *testing.T) {
 	}
 
 	m.verRepo.On("FindByUploadedFileHash", mock.Anything, mock.Anything).Return(nil, nil)
-	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything).Return(nil, nil)
+	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
 	m.aiClient.On("ExtractIDs", mock.Anything, mock.Anything).Return([]pyai.ExtractedID{
 		{Type: "student_id", Value: "12345"},
 	}, nil)
@@ -362,7 +362,7 @@ func TestVerify_FuzzyNotSimilar(t *testing.T) {
 	}
 
 	m.verRepo.On("FindByUploadedFileHash", mock.Anything, mock.Anything).Return(nil, nil)
-	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything).Return(nil, nil)
+	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
 	m.aiClient.On("ExtractIDs", mock.Anything, mock.Anything).Return([]pyai.ExtractedID{
 		{Type: "student_id", Value: "12345"},
 	}, nil)
@@ -398,7 +398,7 @@ func TestVerify_TieBreakNonRevokedPreferred(t *testing.T) {
 	}
 
 	m.verRepo.On("FindByUploadedFileHash", mock.Anything, mock.Anything).Return(nil, nil)
-	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything).Return(nil, nil)
+	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
 	m.aiClient.On("ExtractIDs", mock.Anything, mock.Anything).Return([]pyai.ExtractedID{
 		{Type: "student_id", Value: "ID1"},
 		{Type: "student_id", Value: "ID2"},
@@ -412,7 +412,7 @@ func TestVerify_TieBreakNonRevokedPreferred(t *testing.T) {
 		{CredentialID: "cred-live", IDs: []domain.ExtractedID{{Value: "ID1"}, {Value: "ID2"}}, Embedding: []float64{2.0, 0.0}},
 	}, nil)
 
-	m.credRepo.On("FindByIds", mock.Anything, mock.Anything).Return([]domain.Credential{
+	m.credRepo.On("FindByIds", mock.Anything, mock.Anything, mock.Anything).Return([]domain.Credential{
 		{ID: "cred-revoked", RevokedAt: &now, IssuedAt: earlier},
 		{ID: "cred-live", RevokedAt: nil, IssuedAt: earlier},
 	}, nil)
@@ -450,7 +450,7 @@ func TestVerify_TieBreakNewestIssuedAt(t *testing.T) {
 	}
 
 	m.verRepo.On("FindByUploadedFileHash", mock.Anything, mock.Anything).Return(nil, nil)
-	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything).Return(nil, nil)
+	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
 	m.aiClient.On("ExtractIDs", mock.Anything, mock.Anything).Return([]pyai.ExtractedID{
 		{Type: "student_id", Value: "ID1"},
 		{Type: "student_id", Value: "ID2"},
@@ -465,7 +465,7 @@ func TestVerify_TieBreakNewestIssuedAt(t *testing.T) {
 		{CredentialID: "cred-new", IDs: []domain.ExtractedID{{Value: "ID1"}, {Value: "ID2"}}, Embedding: []float64{3.0, 0.0}},
 	}, nil)
 
-	m.credRepo.On("FindByIds", mock.Anything, mock.Anything).Return([]domain.Credential{
+	m.credRepo.On("FindByIds", mock.Anything, mock.Anything, mock.Anything).Return([]domain.Credential{
 		{ID: "cred-old", RevokedAt: nil, IssuedAt: earlier},
 		{ID: "cred-new", RevokedAt: nil, IssuedAt: newer},
 	}, nil)
@@ -497,10 +497,10 @@ func TestIssue_AllFailed(t *testing.T) {
 	userRepo := &mocks.MockUserRepository{}
 	stor := &storage.Storage{BaseDir: t.TempDir()}
 
-	userRepo.On("FindByIds", mock.Anything, mock.Anything).Return([]domain.User{}, nil)
+	userRepo.On("FindByIds", mock.Anything, mock.Anything, mock.Anything).Return([]domain.User{}, nil)
 
 	credRepo := &mocks.MockCredentialRepository{}
-	credRepo.On("FindByFileHashes", mock.Anything, mock.Anything).Return(nil, nil)
+	credRepo.On("FindByFileHashes", mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
 
 	svc := &credentialService{
 		repo:     credRepo,
@@ -531,7 +531,7 @@ func TestIssue_ChainRollback(t *testing.T) {
 	userRepo := &mocks.MockUserRepository{}
 	stor := &storage.Storage{BaseDir: t.TempDir()}
 
-	userRepo.On("FindByIds", mock.Anything, mock.Anything).Return(
+	userRepo.On("FindByIds", mock.Anything, mock.Anything, mock.Anything).Return(
 		[]domain.User{{Id: "holder-valid"}}, nil)
 
 	regSvc := &mocks.MockRegistryService{}
@@ -545,7 +545,7 @@ func TestIssue_ChainRollback(t *testing.T) {
 	uow.On("Credential").Return(innerCredRepo)
 
 	credRepo := &mocks.MockCredentialRepository{}
-	credRepo.On("FindByFileHashes", mock.Anything, mock.Anything).Return(nil, nil)
+	credRepo.On("FindByFileHashes", mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
 
 	svc := &credentialService{
 		repo:            credRepo,
@@ -580,9 +580,9 @@ func TestIssue_PartialSuccess(t *testing.T) {
 	stor := &storage.Storage{BaseDir: t.TempDir()}
 
 	userRepo := &mocks.MockUserRepository{}
-	userRepo.On("FindByIds", mock.Anything, mock.Anything).
+	userRepo.On("FindByIds", mock.Anything, mock.Anything, mock.Anything).
 		Return([]domain.User{{Id: "holder-2"}}, nil)
-	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything).Return(nil, nil)
+	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
 
 	uow := mocks.NewPropagatingUnitOfWork()
 	innerCredRepo := &mocks.MockCredentialRepository{}
@@ -632,7 +632,7 @@ func TestReExtract_HappyPath(t *testing.T) {
 		{ID: "cred-2", ExtractStatus: domain.ExtractStatusFailed, FileURI: &fileURI},
 	}
 	innerCredRepo := &mocks.MockCredentialRepository{}
-	innerCredRepo.On("FindByIds", mock.Anything, mock.Anything).Return(targets, nil)
+	innerCredRepo.On("FindByIds", mock.Anything, mock.Anything, mock.Anything).Return(targets, nil)
 	innerCredRepo.On("Update", mock.Anything, mock.Anything).Return(targets, nil)
 	uow.On("Credential").Return(innerCredRepo)
 	mocks.RunUnitOfWorkFn(uow, uow)
@@ -656,7 +656,7 @@ func TestReExtract_NotFound(t *testing.T) {
 	enq := &localMockEnqueuer{}
 	uow := mocks.NewPropagatingUnitOfWork()
 	innerCredRepo := &mocks.MockCredentialRepository{}
-	innerCredRepo.On("FindByIds", mock.Anything, []string{"cred-1", "cred-2"}).Return(
+	innerCredRepo.On("FindByIds", mock.Anything, []string{"cred-1", "cred-2"}, (*domainQuery.Query)(nil)).Return(
 		[]domain.Credential{{ID: "cred-1"}}, nil)
 	uow.On("Credential").Return(innerCredRepo)
 
@@ -682,7 +682,7 @@ func TestReExtract_NotFailed(t *testing.T) {
 	uow := mocks.NewPropagatingUnitOfWork()
 	fileURI := "uploads/test.pdf"
 	innerCredRepo := &mocks.MockCredentialRepository{}
-	innerCredRepo.On("FindByIds", mock.Anything, []string{"cred-1"}).Return(
+	innerCredRepo.On("FindByIds", mock.Anything, []string{"cred-1"}, (*domainQuery.Query)(nil)).Return(
 		[]domain.Credential{{ID: "cred-1", ExtractStatus: domain.ExtractStatusSucceeded, FileURI: &fileURI}}, nil)
 	uow.On("Credential").Return(innerCredRepo)
 
@@ -737,7 +737,7 @@ func TestRevoke_HappyPath(t *testing.T) {
 	tokID := "1"
 	targets := []domain.Credential{{ID: "c1", TokenID: &tokID}}
 	innerCredRepo := &mocks.MockCredentialRepository{}
-	innerCredRepo.On("FindByIds", mock.Anything, []string{"c1"}).Return(targets, nil)
+	innerCredRepo.On("FindByIds", mock.Anything, []string{"c1"}, (*domainQuery.Query)(nil)).Return(targets, nil)
 	innerCredRepo.On("Update", mock.Anything, mock.Anything, mock.Anything).Return(targets, nil)
 
 	uow := mocks.NewPropagatingUnitOfWork()
@@ -762,7 +762,7 @@ func TestRevoke_NotFound(t *testing.T) {
 	ctx := ctxWithAuth(&user)
 
 	innerCredRepo := &mocks.MockCredentialRepository{}
-	innerCredRepo.On("FindByIds", mock.Anything, []string{"missing"}).Return([]domain.Credential{}, nil)
+	innerCredRepo.On("FindByIds", mock.Anything, []string{"missing"}, (*domainQuery.Query)(nil)).Return([]domain.Credential{}, nil)
 	uow := mocks.NewPropagatingUnitOfWork()
 	uow.On("Credential").Return(innerCredRepo)
 
@@ -784,7 +784,7 @@ func TestRevoke_AlreadyRevoked(t *testing.T) {
 
 	now := time.Now()
 	innerCredRepo := &mocks.MockCredentialRepository{}
-	innerCredRepo.On("FindByIds", mock.Anything, []string{"c1"}).Return(
+	innerCredRepo.On("FindByIds", mock.Anything, []string{"c1"}, (*domainQuery.Query)(nil)).Return(
 		[]domain.Credential{{ID: "c1", RevokedAt: &now}}, nil)
 	uow := mocks.NewPropagatingUnitOfWork()
 	uow.On("Credential").Return(innerCredRepo)
@@ -807,7 +807,7 @@ func TestRevoke_ChainRollback(t *testing.T) {
 
 	tokID := "1"
 	innerCredRepo := &mocks.MockCredentialRepository{}
-	innerCredRepo.On("FindByIds", mock.Anything, []string{"c1"}).Return(
+	innerCredRepo.On("FindByIds", mock.Anything, []string{"c1"}, (*domainQuery.Query)(nil)).Return(
 		[]domain.Credential{{ID: "c1", TokenID: &tokID}}, nil)
 	innerCredRepo.On("Update", mock.Anything, mock.Anything, mock.Anything).Return(
 		[]domain.Credential{{ID: "c1"}}, nil)

@@ -29,24 +29,24 @@ func (m *MockCredentialRepository) Find(ctx context.Context, id string, query *d
 	return nil, args.Error(1)
 }
 
-func (m *MockCredentialRepository) FindByHolderId(ctx context.Context, holderID string) ([]domain.Credential, error) {
-	args := m.Called(ctx, holderID)
+func (m *MockCredentialRepository) FindByHolderId(ctx context.Context, holderID string, query *domainQuery.Query) ([]domain.Credential, error) {
+	args := m.Called(ctx, holderID, query)
 	if v := args.Get(0); v != nil {
 		return v.([]domain.Credential), args.Error(1)
 	}
 	return nil, args.Error(1)
 }
 
-func (m *MockCredentialRepository) FindByIds(ctx context.Context, ids ...string) ([]domain.Credential, error) {
-	args := m.Called(ctx, ids)
+func (m *MockCredentialRepository) FindByIds(ctx context.Context, ids []string, query *domainQuery.Query) ([]domain.Credential, error) {
+	args := m.Called(ctx, ids, query)
 	if v := args.Get(0); v != nil {
 		return v.([]domain.Credential), args.Error(1)
 	}
 	return nil, args.Error(1)
 }
 
-func (m *MockCredentialRepository) FindByFileHashes(ctx context.Context, hashes ...string) ([]domain.Credential, error) {
-	args := m.Called(ctx, hashes)
+func (m *MockCredentialRepository) FindByFileHashes(ctx context.Context, hashes []string, query *domainQuery.Query) ([]domain.Credential, error) {
+	args := m.Called(ctx, hashes, query)
 	if v := args.Get(0); v != nil {
 		return v.([]domain.Credential), args.Error(1)
 	}
