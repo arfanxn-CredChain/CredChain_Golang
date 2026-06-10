@@ -51,3 +51,13 @@ func (m *MockUserPolicy) TransferSuperAdminPreFetch(ctx context.Context, targetI
 	args := m.Called(ctx, targetId)
 	return args.Error(0)
 }
+
+func (m *MockUserPolicy) RestorePreFetch(ctx context.Context, ids ...string) error {
+	args := m.Called(ctx, ids)
+	return args.Error(0)
+}
+
+func (m *MockUserPolicy) RestorePostFetch(ctx context.Context, targets []domain.User) error {
+	args := m.Called(ctx, targets)
+	return args.Error(0)
+}

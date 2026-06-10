@@ -18,6 +18,8 @@ type UserPolicy interface {
 	DeletePreFetch(ctx context.Context, ids ...string) error
 	DeletePostFetch(ctx context.Context, targets []domain.User) error
 	TransferSuperAdminPreFetch(ctx context.Context, targetId string) error
+	RestorePreFetch(ctx context.Context, ids ...string) error
+	RestorePostFetch(ctx context.Context, targets []domain.User) error
 }
 
 type userPolicy struct{}
@@ -164,6 +166,34 @@ func (p *userPolicy) DeletePostFetch(ctx context.Context, targets []domain.User)
 				domain.WithMetadata("auth_user_id", authUser.Id),
 				domain.WithMetadata("target_user_id", target.Id),
 				domain.WithMetadata("target_role", target.Role.String()))
+		}
+	}
+	return nil
+}
+
+func (p *userPolicy) RestorePreFetch(ctx context.Context, ids ...string) error {
+	authUser := httpContext.MustGetUser(ctx)
+	if authUser.Role.Rank() < domain.RoleAdmin.Rank() {
+		return domain.NewError(domain.CodeUserRestoreSignerAdminRequiredForbidden)
+	}
+	for _, id := range ids {
+		if id == authUser.Id {
+			return domain.NewError(domain.CodeUserRestoreSelfTargetForbidden,
+				domain.WithMetadata("user_id", authUser.Id))
+		}
+	}
+	return nil
+}
+
+func (p *userPolicy) RestorePostFetch(ctx context.Context, targets []domain.User) error {
+	for _, t := range targets {
+		if t.Role == domain.RoleSuperAdmin {
+			return domain.NewError(domain.CodeUserRestoreSuperAdminTargetForbidden,
+				domain.WithMetadata("user_id", t.Id))
+		}
+		if t.DeletedAt == nil {
+			return domain.NewError(domain.CodeUserRestoreNotTrashedForbidden,
+				domain.WithMetadata("user_id", t.Id))
 		}
 	}
 	return nil
