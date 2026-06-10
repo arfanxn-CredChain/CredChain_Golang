@@ -866,6 +866,138 @@
                   ]
                 },
                 {
+                  "name": "Self Credentials",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "const r = pm.response.json();",
+                          "if (r.code === 400100 && r.data && r.data.length > 0) {",
+                          "    pm.collectionVariables.set('TARGET_CREDENTIAL_ID', r.data[0].id);",
+                          "    pm.test('Self credentials', () => pm.expect(r.code).to.eql(400100));",
+                          "} else {",
+                          "    pm.test('Self credentials: ' + r.message, () => pm.expect(r.code).to.eql(400100));",
+                          "}"
+                        ],
+                        "type": "text/javascript"
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{BASE_URL}}/api/users/self/credentials?page=1&limit=10",
+                      "host": [
+                        "{{BASE_URL}}"
+                      ],
+                      "path": [
+                        "api",
+                        "users",
+                        "self",
+                        "credentials"
+                      ]
+                    },
+                    "description": "Paginated list of credentials owned by the authenticated user. Same query DSL as GET /api/credentials, scoped to holder_user_id == auth_user.id."
+                  },
+                  "response": [
+                    {
+                      "name": "400100 OK",
+                      "originalRequest": {},
+                      "status": "OK",
+                      "code": 200,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 400100,\n    \"message\": \"Kredensial berhasil diambil.\",\n    \"data\": []\n}"
+                    }
+                  ]
+                },
+                {
+                  "name": "Self Credential by ID",
+                  "event": [
+                    {
+                      "listen": "prerequest",
+                      "script": {
+                        "exec": [
+                          "if (!pm.collectionVariables.get('TARGET_CREDENTIAL_ID')) pm.test.fail('TARGET_CREDENTIAL_ID not set. Run Self Credentials first.');"
+                        ],
+                        "type": "text/javascript"
+                      }
+                    },
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "const r = pm.response.json();",
+                          "if (r.code === 400100) {",
+                          "    pm.test('Self credential', () => pm.expect(r.code).to.eql(400100));",
+                          "} else {",
+                          "    pm.test('Self credential: ' + r.message, () => pm.expect(r.code).to.eql(400100));",
+                          "}"
+                        ],
+                        "type": "text/javascript"
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{BASE_URL}}/api/users/self/credentials/{{TARGET_CREDENTIAL_ID}}",
+                      "host": [
+                        "{{BASE_URL}}"
+                      ],
+                      "path": [
+                        "api",
+                        "users",
+                        "self",
+                        "credentials",
+                        "{{TARGET_CREDENTIAL_ID}}"
+                      ]
+                    },
+                    "description": "Single credential owned by the authenticated user. Returns 404 (CodeCredentialFetchNotFound) when not found OR not owned \u2014 never leaks IDs across holders."
+                  },
+                  "response": [
+                    {
+                      "name": "400100 OK",
+                      "originalRequest": {},
+                      "status": "OK",
+                      "code": 200,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 400100,\n    \"message\": \"Kredensial berhasil diambil.\",\n    \"data\": {}\n}"
+                    },
+                    {
+                      "name": "400140 Not Found",
+                      "originalRequest": {},
+                      "status": "Not Found",
+                      "code": 404,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 400140,\n    \"message\": \"Credential not found.\",\n    \"data\": null\n}"
+                    }
+                  ]
+                },
+                {
                   "name": "Update Self Email",
                   "event": [
                     {
@@ -2103,6 +2235,150 @@
                       "body": "{\n    \"code\": 300743,\n    \"message\": \"Tidak dapat menghapus akun sendiri melalui endpoint ini.\"\n}"
                     }
                   ]
+                },
+                {
+                  "name": "Batch Restore Users",
+                  "event": [
+                    {
+                      "listen": "prerequest",
+                      "script": {
+                        "exec": [
+                          "if (!pm.collectionVariables.get('TARGET_USER_ID')) pm.test.fail('TARGET_USER_ID not set.');"
+                        ],
+                        "type": "text/javascript"
+                      }
+                    },
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "const r = pm.response.json();",
+                          "if (r.code === 300900) {",
+                          "    pm.test('Users restored', () => pm.expect(r.code).to.eql(300900));",
+                          "} else pm.test('Restore failed: ' + r.message, () => pm.expect(r.code).to.not.eql(300900));"
+                        ],
+                        "type": "text/javascript"
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "PUT",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"ids\": [\n    \"{{TARGET_USER_ID}}\"\n  ]\n}"
+                    },
+                    "url": {
+                      "raw": "{{BASE_URL}}/api/users/batch/restore",
+                      "host": [
+                        "{{BASE_URL}}"
+                      ],
+                      "path": [
+                        "api",
+                        "users",
+                        "batch",
+                        "restore"
+                      ]
+                    },
+                    "description": "Restore trashed users. Admin+. Clears soft-delete (deleted_at = NULL), re-syncs preserved DB role to blockchain. Cannot restore SuperAdmin targets (300943). Non-trashed targets rejected (300944). Self-target blocked (300942). Below-Admin blocked (300941)."
+                  },
+                  "response": [
+                    {
+                      "name": "300900 OK",
+                      "originalRequest": {},
+                      "status": "OK",
+                      "code": 200,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300900,\n    \"message\": \"Users restored successfully.\",\n    \"data\": {\n        \"users\": [],\n        \"restored_count\": 1\n    }\n}"
+                    },
+                    {
+                      "name": "300943 SuperAdmin Target Forbidden",
+                      "originalRequest": {},
+                      "status": "Forbidden",
+                      "code": 403,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300943,\n    \"message\": \"SuperAdmin users cannot be restored via this endpoint.\",\n    \"data\": null\n}"
+                    },
+                    {
+                      "name": "300944 Not Trashed Forbidden",
+                      "originalRequest": {},
+                      "status": "Forbidden",
+                      "code": 403,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300944,\n    \"message\": \"All target users must be previously deleted.\",\n    \"data\": null\n}"
+                    },
+                    {
+                      "name": "300942 Self Target Forbidden",
+                      "originalRequest": {},
+                      "status": "Forbidden",
+                      "code": 403,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300942,\n    \"message\": \"You cannot restore your own account.\",\n    \"data\": null\n}"
+                    },
+                    {
+                      "name": "300941 Below Admin Forbidden",
+                      "originalRequest": {},
+                      "status": "Forbidden",
+                      "code": 403,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300941,\n    \"message\": \"Only administrators can restore users.\",\n    \"data\": null\n}"
+                    },
+                    {
+                      "name": "300945 Blockchain Sync Failed",
+                      "originalRequest": {},
+                      "status": "Internal Server Error",
+                      "code": 500,
+                      "_postman_previewlanguage": "json",
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "cookie": [],
+                      "body": "{\n    \"code\": 300945,\n    \"message\": \"Failed to sync user restore to blockchain.\",\n    \"data\": null\n}"
+                    }
+                  ]
                 }
               ],
               "description": "Admin-only user management endpoints."
@@ -2406,7 +2682,7 @@
                     "verify"
                   ]
                 },
-                "description": "Verify credential by uploading file. Returns verdict code (400401-400409) + locale description."
+                "description": "Verify the authenticity of a credential file. Returns a verdict code (400401-400412). New party-disabled verdicts (400410-400412) are returned when the credential's holder or issuer has been deactivated and the underlying credential would otherwise be authentic. No auth required \u2014 public endpoint for external verifiers (HR, employers)."
               },
               "response": [
                 {
@@ -2543,6 +2819,51 @@
                   ],
                   "cookie": [],
                   "body": "{\n    \"code\": 400409,\n    \"message\": \"No matching issued credential was found for the IDs in this document.\",\n    \"data\": {\n        \"verdict_code\": 400409,\n        \"similarity_score\": 0.0,\n        \"similarity_percent\": \"0%\",\n        \"description\": \"No matching issued credential was found for the IDs in this document.\"\n    }\n}"
+                },
+                {
+                  "name": "400410 Holder Disabled",
+                  "originalRequest": {},
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n    \"code\": 400410,\n    \"message\": \"The credential holder has been deactivated. Credential validity requires manual review.\",\n    \"data\": {}\n}"
+                },
+                {
+                  "name": "400411 Issuer Disabled",
+                  "originalRequest": {},
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n    \"code\": 400411,\n    \"message\": \"The issuing authority has been deactivated. Credential validity requires manual review.\",\n    \"data\": {}\n}"
+                },
+                {
+                  "name": "400412 Party Disabled",
+                  "originalRequest": {},
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n    \"code\": 400412,\n    \"message\": \"Both the credential holder and issuing authority have been deactivated. Credential validity requires manual review.\",\n    \"data\": {}\n}"
                 }
               ]
             }

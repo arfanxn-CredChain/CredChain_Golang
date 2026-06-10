@@ -323,7 +323,7 @@ Service methods contain zero role/rank comparisons — all authorization lives i
 
 **RoleNone:** `domain.RoleNone` (Solidity enum value 0) is the on-chain revocation target. Used by `userService.Delete` to revoke roles via `AuthorityService.UpdateUserRole`. **Never persisted to the Postgres `role` ENUM** — in-memory only for chain calls.
 
-**`syncBlockchainRoles` helper:** shared helper used by `Store`, `UpdateRole`, `Delete`, and `Update` flows. Calls `authorityService.UpdateUserRole(ctx, wallet, users)` and translates raw chain errors into a caller-supplied domain code. Caller is responsible for transactional context.
+**`syncBlockchainRoles` helper:** shared helper used by `Store`, `UpdateRole`, `Delete`, `Restore`, and `Update` flows. Calls `authorityService.UpdateUserRole(ctx, wallet, users)` and translates raw chain errors into a caller-supplied domain code. Caller is responsible for transactional context.
 
 ### Rate Limiting Middlewares
 
@@ -415,6 +415,8 @@ All under `/api` prefix. Middleware order: `ErrorLoggerMiddleware` → `I18nMidd
 Postman collection for API testing: `CredChain_postman_collection.json` (in `CredChain_Golang/` root).
 
 **Structure:** `CredChain` → `API` → [Health, Auth, User > [Self, Admin], Credential]
+
+Updated 2026-06-10: User > Self includes Self Credentials (list + get by ID). User > Admin includes Batch Restore Users. Credential > Verify Hash includes party-disabled verdict response examples (400410-400412).
 
 **Usage:**
 
