@@ -224,3 +224,13 @@ func (r UserTransferSuperAdminRequest) Validate() error {
 		validation.Field(&r.Id, validation.Required, is.UUID),
 	)
 }
+
+type UserRestoreRequest struct {
+	IDs []string `json:"ids"`
+}
+
+func (r UserRestoreRequest) Validate() error {
+	return validation.ValidateStruct(&r,
+		validation.Field(&r.IDs, validation.Required, validation.Length(1, 0)),
+	)
+}

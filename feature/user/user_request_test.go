@@ -440,3 +440,15 @@ func TestUserTransferSuperAdminRequest_Validate(t *testing.T) {
 		})
 	}
 }
+
+func TestUserRestoreRequest_Validate_EmptyIDs(t *testing.T) {
+	req := UserRestoreRequest{IDs: []string{}}
+	err := req.Validate()
+	assert.Error(t, err)
+}
+
+func TestUserRestoreRequest_Validate_Valid(t *testing.T) {
+	req := UserRestoreRequest{IDs: []string{"01J123456789012345678901"}}
+	err := req.Validate()
+	assert.NoError(t, err)
+}
