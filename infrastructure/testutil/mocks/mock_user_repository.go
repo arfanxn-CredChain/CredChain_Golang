@@ -74,6 +74,11 @@ func (m *MockUserRepository) Delete(ctx context.Context, ids ...string) (int64, 
 	return int64(args.Int(0)), args.Error(1)
 }
 
+func (m *MockUserRepository) Restore(ctx context.Context, ids ...string) (int64, error) {
+	args := m.Called(ctx, ids)
+	return args.Get(0).(int64), args.Error(1)
+}
+
 func (m *MockUserRepository) UpdateRole(ctx context.Context, users ...domain.User) ([]domain.User, int64, error) {
 	args := m.Called(ctx, users)
 	if v := args.Get(0); v != nil {

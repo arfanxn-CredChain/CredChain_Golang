@@ -461,3 +461,16 @@ func (r *gormUserRepository) Delete(ctx context.Context, ids ...string) (int64, 
 	result := r.db.WithContext(ctx).Delete(&model.User{}, "id IN ?", ids)
 	return result.RowsAffected, result.Error
 }
+
+// Restore unsets deleted_at for trashed users (batch operation).
+// Returns: (int64, error) - rows affected count, error
+func (r *gormUserRepository) Restore(ctx context.Context, ids ...string) (int64, error) {
+	if len(ids) == 0 {
+		return 0, nil
+	}
+	result := r.db.WithContext(ctx).
+		Model(&model.User{}).
+		Where("id IN ?", ids).
+		Update("deleted_at", nil)
+	return result.RowsAffected, result.Error
+}

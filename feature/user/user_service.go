@@ -31,6 +31,7 @@ type UserService interface {
 	Store(ctx context.Context, users ...domain.User) ([]domain.User, error)
 	Delete(ctx context.Context, ids ...string) (int64, error)
 	TransferSuperAdmin(ctx context.Context, targetId string) error
+	Restore(ctx context.Context, ids []string) ([]domain.User, int64, error)
 }
 
 type userService struct {
@@ -467,4 +468,31 @@ func (s *userService) TransferSuperAdmin(ctx context.Context, targetId string) e
 		}
 		return nil
 	})
+}
+
+func (s *userService) Restore(ctx context.Context, ids []string) ([]domain.User, int64, error) {
+	if err := s.policy.RestorePreFetch(ctx, ids...); err != nil {
+		return nil, 0, err
+	}
+	var restored []domain.User
+	var count int64
+	err := s.uow.Execute(ctx, func(uow domain.UnitOfWork) error {
+		targets, err := uow.User().FindByIds(ctx, ids...)
+		if err != nil {
+			return err
+		}
+		if err := s.policy.RestorePostFetch(ctx, targets); err != nil {
+			return err
+		}
+		count, err = uow.User().Restore(ctx, ids...)
+		if err != nil {
+			return err
+		}
+		restored, err = uow.User().FindByIds(ctx, ids...)
+		if err != nil {
+			return err
+		}
+		return s.syncBlockchainRoles(ctx, restored, domain.CodeUserRestoreBlockchainSyncFailed)
+	})
+	return restored, count, err
 }

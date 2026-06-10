@@ -135,6 +135,9 @@ type UserRepository interface {
 	Store(ctx context.Context, users ...User) ([]User, error)
 	Delete(ctx context.Context, ids ...string) (int64, error)
 
+	// Restore unsets deleted_at for trashed users (batch operation).
+	Restore(ctx context.Context, ids ...string) (int64, error)
+
 	// Specialized operations
 	UpdateRole(ctx context.Context, users ...User) ([]User, int64, error)
 }

@@ -51,6 +51,9 @@ func (m *mockUserService) Delete(ctx context.Context, ids ...string) (int64, err
 func (m *mockUserService) TransferSuperAdmin(ctx context.Context, targetId string) error {
 	return m.Called(ctx, targetId).Error(0)
 }
+func (m *mockUserService) Restore(ctx context.Context, ids []string) ([]domain.User, int64, error) {
+	panic("not implemented")
+}
 
 func TestUserHandler_TransferSuperAdmin_ValidationError(t *testing.T) {
 	authUser := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleSuperAdmin))
