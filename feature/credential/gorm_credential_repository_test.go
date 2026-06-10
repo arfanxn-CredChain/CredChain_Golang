@@ -29,11 +29,11 @@ func TestGormCredentialStore_FindByIds(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	both, err := repo.FindByIds(ctx, "c1", "c2")
+	both, err := repo.FindByIds(ctx, []string{"c1", "c2"}, nil)
 	require.NoError(t, err)
 	assert.Len(t, both, 2)
 
-	one, err := repo.FindByIds(ctx, "c1", "missing")
+	one, err := repo.FindByIds(ctx, []string{"c1", "missing"}, nil)
 	require.NoError(t, err)
 	assert.Len(t, one, 1)
 	assert.Equal(t, "c1", one[0].ID)
@@ -48,7 +48,7 @@ func TestGormCredentialFindByFileHashes(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	found, err := repo.FindByFileHashes(ctx, "0xaa", "0xzz")
+	found, err := repo.FindByFileHashes(ctx, []string{"0xaa", "0xzz"}, nil)
 	require.NoError(t, err)
 	assert.Len(t, found, 1)
 	assert.Equal(t, "0xaa", found[0].FileHash)
@@ -64,7 +64,7 @@ func TestGormCredentialFindByHolderId(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	found, err := repo.FindByHolderId(ctx, "h1")
+	found, err := repo.FindByHolderId(ctx, "h1", nil)
 	require.NoError(t, err)
 	assert.Len(t, found, 1)
 	assert.Equal(t, "c1", found[0].ID)
