@@ -57,6 +57,9 @@
   "success_credential_verify_not_similar": "Dokumen tidak mirip dengan kredensial yang cocok.",
   "success_credential_verify_no_identifiers": "Tidak ada ID yang dapat diidentifikasi dalam dokumen.",
   "success_credential_verify_no_match": "Tidak ada kredensial yang cocok ditemukan untuk ID dalam dokumen ini.",
+  "success_credential_verify_holder_disabled": "Pemegang kredensial telah dinonaktifkan. Validitas kredensial memerlukan tinjauan manual.",
+  "success_credential_verify_issuer_disabled": "Otoritas penerbit telah dinonaktifkan. Validitas kredensial memerlukan tinjauan manual.",
+  "success_credential_verify_party_disabled": "Pemegang dan otoritas penerbit kredensial telah dinonaktifkan. Validitas kredensial memerlukan tinjauan manual.",
   "success_logout": "Berhasil keluar.",
 
   "error_internal": "Terjadi kesalahan server.",
@@ -121,5 +124,11 @@
   "error_transfer_super_admin_self_target_forbidden": "Tidak dapat mengalihkan peran super admin ke diri sendiri.",
   "error_transfer_super_admin_target_not_found": "Pengguna target tidak ditemukan.",
   "error_transfer_super_admin_trashed_forbidden": "Tidak dapat mengalihkan peran super admin ke pengguna yang telah dihapus.",
-  "error_transfer_super_admin_blockchain_sync_failed": "Gagal mengalihkan peran super admin di blockchain."
+  "error_transfer_super_admin_blockchain_sync_failed": "Gagal mengalihkan peran super admin di blockchain.",
+  "success_users_restore": "Pengguna berhasil dipulihkan.",
+  "error_users_restore_signer_admin_required": "Hanya administrator yang dapat memulihkan pengguna.",
+  "error_users_restore_self_target_forbidden": "Anda tidak dapat memulihkan akun Anda sendiri.",
+  "error_users_restore_super_admin_target_forbidden": "Pengguna SuperAdmin tidak dapat dipulihkan melalui endpoint ini.",
+  "error_users_restore_not_trashed_forbidden": "Semua pengguna target harus telah dihapus sebelumnya.",
+  "error_users_restore_blockchain_sync_failed": "Gagal menyinkronkan pemulihan pengguna ke blockchain."
 }

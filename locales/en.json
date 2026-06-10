@@ -57,6 +57,9 @@
   "success_credential_verify_not_similar": "The document is not similar to the matched credential.",
   "success_credential_verify_no_identifiers": "No identifiable IDs were found in the document.",
   "success_credential_verify_no_match": "No matching issued credential was found for the IDs in this document.",
+  "success_credential_verify_holder_disabled": "The credential holder has been deactivated. Credential validity requires manual review.",
+  "success_credential_verify_issuer_disabled": "The issuing authority has been deactivated. Credential validity requires manual review.",
+  "success_credential_verify_party_disabled": "Both the credential holder and issuing authority have been deactivated. Credential validity requires manual review.",
   "success_logout": "Logged out successfully.",
 
   "error_internal": "An internal server error occurred.",
@@ -121,5 +124,11 @@
   "error_transfer_super_admin_self_target_forbidden": "Cannot transfer super admin role to yourself.",
   "error_transfer_super_admin_target_not_found": "Target user not found.",
   "error_transfer_super_admin_trashed_forbidden": "Cannot transfer super admin role to a deleted user.",
-  "error_transfer_super_admin_blockchain_sync_failed": "Failed to transfer super admin role on blockchain."
+  "error_transfer_super_admin_blockchain_sync_failed": "Failed to transfer super admin role on blockchain.",
+  "success_users_restore": "Users restored successfully.",
+  "error_users_restore_signer_admin_required": "Only administrators can restore users.",
+  "error_users_restore_self_target_forbidden": "You cannot restore your own account.",
+  "error_users_restore_super_admin_target_forbidden": "SuperAdmin users cannot be restored via this endpoint.",
+  "error_users_restore_not_trashed_forbidden": "All target users must be previously deleted.",
+  "error_users_restore_blockchain_sync_failed": "Failed to sync user restore to blockchain."
 }

@@ -75,6 +75,12 @@ var CodeToMessageKey = map[int]string{
 	domain.CodeUserTransferSuperAdminTargetNotFound:       "error_transfer_super_admin_target_not_found",
 	domain.CodeUserTransferSuperAdminTrashedForbidden:     "error_transfer_super_admin_trashed_forbidden",
 	domain.CodeUserTransferSuperAdminBlockchainSyncFailed: "error_transfer_super_admin_blockchain_sync_failed",
+	domain.CodeUserRestoreSuccess:                       "success_users_restore",
+	domain.CodeUserRestoreSignerAdminRequiredForbidden:  "error_users_restore_signer_admin_required",
+	domain.CodeUserRestoreSelfTargetForbidden:           "error_users_restore_self_target_forbidden",
+	domain.CodeUserRestoreSuperAdminTargetForbidden:     "error_users_restore_super_admin_target_forbidden",
+	domain.CodeUserRestoreNotTrashedForbidden:           "error_users_restore_not_trashed_forbidden",
+	domain.CodeUserRestoreBlockchainSyncFailed:          "error_users_restore_blockchain_sync_failed",
 
 	// Credential codes
 	domain.CodeCredentialFetchSuccess:               "success_credential_fetched",
@@ -109,6 +115,9 @@ var CodeToMessageKey = map[int]string{
 	domain.CodeCredentialVerifyNotSimilar:           "success_credential_verify_not_similar",
 	domain.CodeCredentialVerifyNoIdentifiers:        "success_credential_verify_no_identifiers",
 	domain.CodeCredentialVerifyNoMatch:              "success_credential_verify_no_match",
+	domain.CodeCredentialVerifyHolderDisabled:       "success_credential_verify_holder_disabled",
+	domain.CodeCredentialVerifyIssuerDisabled:       "success_credential_verify_issuer_disabled",
+	domain.CodeCredentialVerifyPartyDisabled:        "success_credential_verify_party_disabled",
 
 	// Credential Re-Extract codes
 	domain.CodeCredentialReExtractSuccess:   "success_credential_reextract",
@@ -180,6 +189,12 @@ var HttpCodes = map[int]int{
 	domain.CodeUserTransferSuperAdminTargetNotFound:       http.StatusNotFound,
 	domain.CodeUserTransferSuperAdminTrashedForbidden:     http.StatusForbidden,
 	domain.CodeUserTransferSuperAdminBlockchainSyncFailed: http.StatusInternalServerError,
+	domain.CodeUserRestoreSuccess:                       http.StatusOK,
+	domain.CodeUserRestoreSignerAdminRequiredForbidden:  http.StatusForbidden,
+	domain.CodeUserRestoreSelfTargetForbidden:           http.StatusForbidden,
+	domain.CodeUserRestoreSuperAdminTargetForbidden:     http.StatusForbidden,
+	domain.CodeUserRestoreNotTrashedForbidden:           http.StatusForbidden,
+	domain.CodeUserRestoreBlockchainSyncFailed:          http.StatusInternalServerError,
 
 	domain.CodeCredentialFetchSuccess:               http.StatusOK,
 	domain.CodeCredentialFetchNotFound:              http.StatusNotFound,
@@ -213,6 +228,9 @@ var HttpCodes = map[int]int{
 	domain.CodeCredentialVerifyNotSimilar:           http.StatusOK,
 	domain.CodeCredentialVerifyNoIdentifiers:        http.StatusOK,
 	domain.CodeCredentialVerifyNoMatch:              http.StatusOK,
+	domain.CodeCredentialVerifyHolderDisabled:       http.StatusOK,
+	domain.CodeCredentialVerifyIssuerDisabled:       http.StatusOK,
+	domain.CodeCredentialVerifyPartyDisabled:        http.StatusOK,
 
 	domain.CodeCredentialReExtractSuccess:   http.StatusOK,
 	domain.CodeCredentialReExtractNotFound:  http.StatusNotFound,
