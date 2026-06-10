@@ -78,12 +78,12 @@ const (
 	CodeUserTransferSuperAdminBlockchainSyncFailed = 300645
 
 	// ── Restore (09) ─────────────────────────────────────────────────────────
-	CodeUserRestoreSuccess                       = 300900
-	CodeUserRestoreSignerAdminRequiredForbidden  = 300941
-	CodeUserRestoreSelfTargetForbidden           = 300942
-	CodeUserRestoreSuperAdminTargetForbidden     = 300943
-	CodeUserRestoreNotTrashedForbidden           = 300944
-	CodeUserRestoreBlockchainSyncFailed          = 300945
+	CodeUserRestoreSuccess                      = 300900
+	CodeUserRestoreSignerAdminRequiredForbidden = 300941
+	CodeUserRestoreSelfTargetForbidden          = 300942
+	CodeUserRestoreSuperAdminTargetForbidden    = 300943
+	CodeUserRestoreNotTrashedForbidden          = 300944
+	CodeUserRestoreBlockchainSyncFailed         = 300945
 
 	// ── Credential (40) ──────────────────────────────────────────────────────
 	CodeCredentialFetchSuccess    = 400100
