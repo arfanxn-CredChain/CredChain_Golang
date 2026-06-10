@@ -238,12 +238,16 @@ func (r *gormCredentialRepository) Find(ctx context.Context, id string, query *d
 // ── Batch lookups ─────────────────────────────────────────────────────────
 
 // FindByIds retrieves credentials by ID list (batch lookup).
-func (r *gormCredentialRepository) FindByIds(ctx context.Context, ids ...string) ([]domain.Credential, error) {
+func (r *gormCredentialRepository) FindByIds(ctx context.Context, ids []string, query *domainQuery.Query) ([]domain.Credential, error) {
 	if len(ids) == 0 {
 		return []domain.Credential{}, nil
 	}
+	db := r.db.WithContext(ctx)
+	if query != nil {
+		db = preloadByIncludes(db, query)
+	}
 	var rows []model.Credential
-	if err := r.db.WithContext(ctx).Where("id IN ?", ids).Find(&rows).Error; err != nil {
+	if err := db.Where("id IN ?", ids).Find(&rows).Error; err != nil {
 		return nil, err
 	}
 	out := make([]domain.Credential, len(rows))
@@ -254,9 +258,13 @@ func (r *gormCredentialRepository) FindByIds(ctx context.Context, ids ...string)
 }
 
 // FindByHolderId retrieves all credentials owned by a single holder.
-func (r *gormCredentialRepository) FindByHolderId(ctx context.Context, holderID string) ([]domain.Credential, error) {
+func (r *gormCredentialRepository) FindByHolderId(ctx context.Context, holderID string, query *domainQuery.Query) ([]domain.Credential, error) {
+	db := r.db.WithContext(ctx)
+	if query != nil {
+		db = preloadByIncludes(db, query)
+	}
 	var rows []model.Credential
-	if err := r.db.WithContext(ctx).Where("holder_user_id = ?", holderID).Find(&rows).Error; err != nil {
+	if err := db.Where("holder_user_id = ?", holderID).Find(&rows).Error; err != nil {
 		return nil, err
 	}
 	out := make([]domain.Credential, len(rows))
@@ -268,12 +276,16 @@ func (r *gormCredentialRepository) FindByHolderId(ctx context.Context, holderID 
 
 // FindByFileHashes retrieves credentials whose file_hash matches any of the
 // supplied hashes. Used during issue to detect duplicate uploads.
-func (r *gormCredentialRepository) FindByFileHashes(ctx context.Context, hashes ...string) ([]domain.Credential, error) {
+func (r *gormCredentialRepository) FindByFileHashes(ctx context.Context, hashes []string, query *domainQuery.Query) ([]domain.Credential, error) {
 	if len(hashes) == 0 {
 		return []domain.Credential{}, nil
 	}
+	db := r.db.WithContext(ctx)
+	if query != nil {
+		db = preloadByIncludes(db, query)
+	}
 	var rows []model.Credential
-	if err := r.db.WithContext(ctx).Where("file_hash IN ?", hashes).Find(&rows).Error; err != nil {
+	if err := db.Where("file_hash IN ?", hashes).Find(&rows).Error; err != nil {
 		return nil, err
 	}
 	out := make([]domain.Credential, len(rows))
@@ -328,7 +340,7 @@ func (r *gormCredentialRepository) Update(ctx context.Context, credentials ...do
 	for i, c := range credentials {
 		ids[i] = c.ID
 	}
-	return r.FindByIds(ctx, ids...)
+	return r.FindByIds(ctx, ids, nil)
 }
 
 // updateBatchCase builds and executes a single UPDATE statement using CASE

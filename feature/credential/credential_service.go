@@ -209,7 +209,7 @@ func (s *credentialService) Issue(ctx context.Context, items []CredentialIssuanc
 	for i, it := range items {
 		hashes[i] = "0x" + hex.EncodeToString(ethCrypto.Keccak256(it.FileBytes))
 	}
-	existing, err := s.repo.FindByFileHashes(ctx, hashes...)
+	existing, err := s.repo.FindByFileHashes(ctx, hashes, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -370,7 +370,7 @@ func (s *credentialService) Revoke(ctx context.Context, ids ...string) ([]domain
 
 	var revoked []domain.Credential
 	err := s.uow.Execute(ctx, func(uow domain.UnitOfWork) error {
-		targets, err := uow.Credential().FindByIds(ctx, ids...)
+		targets, err := uow.Credential().FindByIds(ctx, ids, nil)
 		if err != nil {
 			return err
 		}
@@ -451,7 +451,7 @@ func (s *credentialService) Verify(ctx context.Context, file pyai.ExtractFile) (
 	}
 
 	// EXACT-HASH PATH
-	existing, err := s.repo.FindByFileHashes(ctx, uploadedHash)
+	existing, err := s.repo.FindByFileHashes(ctx, []string{uploadedHash}, nil)
 	if err != nil {
 		return 0, nil, nil, nil, err
 	}
@@ -517,7 +517,7 @@ func (s *credentialService) verifyPickBestMatch(ctx context.Context, ranked []do
 		return tied[0]
 	}
 	ids := lo.Map(tied, func(e domain.CredentialExtraction, _ int) string { return e.CredentialID })
-	creds, err := s.repo.FindByIds(ctx, ids...)
+	creds, err := s.repo.FindByIds(ctx, ids, nil)
 	if err != nil {
 		return tied[0]
 	}
@@ -596,7 +596,7 @@ func (s *credentialService) ReExtract(ctx context.Context, ids ...string) ([]dom
 	var updated []domain.Credential
 	var toEnqueue []domain.Credential
 	err := s.uow.Execute(ctx, func(uow domain.UnitOfWork) error {
-		targets, err := uow.Credential().FindByIds(ctx, ids...)
+		targets, err := uow.Credential().FindByIds(ctx, ids, nil)
 		if err != nil {
 			return err
 		}
