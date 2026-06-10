@@ -369,19 +369,27 @@ func (s *userService) UpdateRole(ctx context.Context, updates ...domain.UserRole
 	return updatedUsers, rowsAffected, err
 }
 
-func (s *userService) deleteUserAndSyncBlockchain(ctx context.Context, ids []string, targetUsers []domain.User) (int64, error) {
+func (s *userService) Delete(ctx context.Context, ids ...string) (int64, error) {
+	if err := s.policy.DeletePreFetch(ctx, ids...); err != nil {
+		return 0, err
+	}
 	var rowsAffected int64
 	err := s.uow.Execute(ctx, func(uow domain.UnitOfWork) error {
-		var err error
-		rowsAffected, err = uow.User().Delete(ctx, ids...)
+		targetUsers, err := uow.User().FindByIds(ctx, ids...)
 		if err != nil {
 			return err
 		}
-		// Idempotency: skip on-chain RoleNone sync for already-trashed users.
-		// FindByIds is unscoped (3a), so targetUsers may include soft-deleted rows.
-		// GORM's soft Delete is a no-op on already-trashed rows (rowsAffected reflects
-		// only freshly-deleted rows), so we mirror that on the chain side: build the
-		// revocation set from live targets only.
+		if err := s.policy.DeletePostFetch(ctx, targetUsers); err != nil {
+			return err
+		}
+		if len(targetUsers) == 0 {
+			return nil
+		}
+		var err2 error
+		rowsAffected, err2 = uow.User().Delete(ctx, ids...)
+		if err2 != nil {
+			return err2
+		}
 		liveTargets := make([]domain.User, 0, len(targetUsers))
 		for _, t := range targetUsers {
 			if t.DeletedAt == nil {
@@ -406,28 +414,6 @@ func (s *userService) deleteUserAndSyncBlockchain(ctx context.Context, ids []str
 		return s.syncBlockchainRoles(ctx, revocationUsers, domain.CodeUserDeleteBlockchainSyncFailed)
 	})
 	return rowsAffected, err
-}
-
-func (s *userService) Delete(ctx context.Context, ids ...string) (int64, error) {
-	if err := s.policy.DeletePreFetch(ctx, ids...); err != nil {
-		return 0, err
-	}
-	var targetUsers []domain.User
-	err := s.uow.Execute(ctx, func(uow domain.UnitOfWork) error {
-		var err error
-		targetUsers, err = uow.User().FindByIds(ctx, ids...)
-		if err != nil {
-			return err
-		}
-		return s.policy.DeletePostFetch(ctx, targetUsers)
-	})
-	if err != nil {
-		return 0, err
-	}
-	if len(targetUsers) == 0 {
-		return 0, nil
-	}
-	return s.deleteUserAndSyncBlockchain(ctx, ids, targetUsers)
 }
 
 func (s *userService) TransferSuperAdmin(ctx context.Context, targetId string) error {
