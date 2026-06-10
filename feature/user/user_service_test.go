@@ -1008,3 +1008,206 @@ func TestUserService_TransferSuperAdmin_Success(t *testing.T) {
 	tokenRepo.AssertCalled(t, "RevokeByUserIdAndType", mock.Anything, "super-admin-id", domain.UserTokenTypeRefresh)
 	tokenRepo.AssertCalled(t, "RevokeByUserIdAndType", mock.Anything, "target-id", domain.UserTokenTypeRefresh)
 }
+
+func TestUserService_Restore_Success(t *testing.T) {
+	repo := &mocks.MockUserRepository{}
+	uow := mocks.NewPropagatingUnitOfWork()
+	auth := &mocks.MockAuthorityService{}
+	policy := &mocks.MockUserPolicy{}
+
+	authUser := fixtures.NewDomainUser(fixtures.WithID("admin1"), fixtures.WithRole(domain.RoleAdmin))
+	delTime := time.Now().Add(-1 * time.Hour)
+	target := fixtures.NewDomainUser(fixtures.WithID("u1"), fixtures.WithRole(domain.RoleHolder))
+	target.DeletedAt = &delTime
+
+	policy.On("RestorePreFetch", mock.Anything, mock.Anything).Return(nil)
+	policy.On("RestorePostFetch", mock.Anything, mock.Anything).Return(nil)
+	uow.On("User").Return(repo)
+	repo.On("FindByIds", mock.Anything, mock.Anything).Return([]domain.User{target}, nil).Once()
+	repo.On("Restore", mock.Anything, mock.Anything).Return(int64(1), nil)
+	restored := target
+	restored.DeletedAt = nil
+	repo.On("FindByIds", mock.Anything, mock.Anything).Return([]domain.User{restored}, nil).Once()
+	auth.On("UpdateUserRole", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+
+	svc := NewUserService(UserServiceParams{
+		UserRepo: repo, UoW: uow, Config: mkSvcCfg(),
+		AuthorityService: auth, Logger: zap.NewNop(), Policy: policy,
+	})
+	users, count, err := svc.Restore(ctxWithAuth(&authUser), []string{"u1"})
+	assert.NoError(t, err)
+	assert.Len(t, users, 1)
+	assert.EqualValues(t, 1, count)
+	assert.Nil(t, users[0].DeletedAt)
+	auth.AssertCalled(t, "UpdateUserRole", mock.Anything, mock.Anything, mock.Anything)
+}
+
+func TestUserService_Restore_AdminRestoresAdmin(t *testing.T) {
+	repo := &mocks.MockUserRepository{}
+	uow := mocks.NewPropagatingUnitOfWork()
+	auth := &mocks.MockAuthorityService{}
+	policy := &mocks.MockUserPolicy{}
+
+	authUser := fixtures.NewDomainUser(fixtures.WithID("admin1"), fixtures.WithRole(domain.RoleAdmin))
+	delTime := time.Now().Add(-1 * time.Hour)
+	target := fixtures.NewDomainUser(fixtures.WithID("admin2"), fixtures.WithRole(domain.RoleAdmin))
+	target.DeletedAt = &delTime
+
+	policy.On("RestorePreFetch", mock.Anything, mock.Anything).Return(nil)
+	policy.On("RestorePostFetch", mock.Anything, mock.Anything).Return(nil)
+	uow.On("User").Return(repo)
+	repo.On("FindByIds", mock.Anything, mock.Anything).Return([]domain.User{target}, nil).Once()
+	repo.On("Restore", mock.Anything, mock.Anything).Return(int64(1), nil)
+	restored := target
+	restored.DeletedAt = nil
+	repo.On("FindByIds", mock.Anything, mock.Anything).Return([]domain.User{restored}, nil).Once()
+	auth.On("UpdateUserRole", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+
+	svc := NewUserService(UserServiceParams{
+		UserRepo: repo, UoW: uow, Config: mkSvcCfg(),
+		AuthorityService: auth, Logger: zap.NewNop(), Policy: policy,
+	})
+	users, count, err := svc.Restore(ctxWithAuth(&authUser), []string{"admin2"})
+	assert.NoError(t, err)
+	assert.Len(t, users, 1)
+	assert.EqualValues(t, 1, count)
+	assert.Nil(t, users[0].DeletedAt)
+	assert.Equal(t, domain.RoleAdmin, users[0].Role)
+}
+
+func TestUserService_Restore_SuperAdminTargetForbidden(t *testing.T) {
+	repo := &mocks.MockUserRepository{}
+	uow := mocks.NewPropagatingUnitOfWork()
+	auth := &mocks.MockAuthorityService{}
+	policy := &mocks.MockUserPolicy{}
+
+	authUser := fixtures.NewDomainUser(fixtures.WithID("admin1"), fixtures.WithRole(domain.RoleAdmin))
+	delTime := time.Now().Add(-1 * time.Hour)
+	target := fixtures.NewDomainUser(fixtures.WithID("u1"), fixtures.WithRole(domain.RoleSuperAdmin))
+	target.DeletedAt = &delTime
+
+	policy.On("RestorePreFetch", mock.Anything, mock.Anything).Return(nil)
+	policy.On("RestorePostFetch", mock.Anything, mock.Anything).Return(
+		domain.NewError(domain.CodeUserRestoreSuperAdminTargetForbidden,
+			domain.WithMetadata("user_id", target.Id)))
+	uow.On("User").Return(repo)
+	repo.On("FindByIds", mock.Anything, mock.Anything).Return([]domain.User{target}, nil)
+
+	svc := NewUserService(UserServiceParams{
+		UserRepo: repo, UoW: uow, Config: mkSvcCfg(),
+		AuthorityService: auth, Logger: zap.NewNop(), Policy: policy,
+	})
+	_, _, err := svc.Restore(ctxWithAuth(&authUser), []string{"u1"})
+	assert.Error(t, err)
+	var de *domain.Error
+	assert.ErrorAs(t, err, &de)
+	assert.Equal(t, domain.CodeUserRestoreSuperAdminTargetForbidden, de.Code)
+	auth.AssertNotCalled(t, "UpdateUserRole", mock.Anything, mock.Anything, mock.Anything)
+}
+
+func TestUserService_Restore_LiveTargetForbidden(t *testing.T) {
+	repo := &mocks.MockUserRepository{}
+	uow := mocks.NewPropagatingUnitOfWork()
+	auth := &mocks.MockAuthorityService{}
+	policy := &mocks.MockUserPolicy{}
+
+	authUser := fixtures.NewDomainUser(fixtures.WithID("admin1"), fixtures.WithRole(domain.RoleAdmin))
+	target := fixtures.NewDomainUser(fixtures.WithID("u1"), fixtures.WithRole(domain.RoleHolder))
+
+	policy.On("RestorePreFetch", mock.Anything, mock.Anything).Return(nil)
+	policy.On("RestorePostFetch", mock.Anything, mock.Anything).Return(
+		domain.NewError(domain.CodeUserRestoreNotTrashedForbidden,
+			domain.WithMetadata("user_id", target.Id)))
+	uow.On("User").Return(repo)
+	repo.On("FindByIds", mock.Anything, mock.Anything).Return([]domain.User{target}, nil)
+
+	svc := NewUserService(UserServiceParams{
+		UserRepo: repo, UoW: uow, Config: mkSvcCfg(),
+		AuthorityService: auth, Logger: zap.NewNop(), Policy: policy,
+	})
+	_, _, err := svc.Restore(ctxWithAuth(&authUser), []string{"u1"})
+	assert.Error(t, err)
+	var de *domain.Error
+	assert.ErrorAs(t, err, &de)
+	assert.Equal(t, domain.CodeUserRestoreNotTrashedForbidden, de.Code)
+	auth.AssertNotCalled(t, "UpdateUserRole", mock.Anything, mock.Anything, mock.Anything)
+}
+
+func TestUserService_Restore_SelfTargetForbidden(t *testing.T) {
+	repo := &mocks.MockUserRepository{}
+	uow := &mocks.MockUnitOfWork{}
+	auth := &mocks.MockAuthorityService{}
+	policy := &mocks.MockUserPolicy{}
+
+	authUser := fixtures.NewDomainUser(fixtures.WithID("self"), fixtures.WithRole(domain.RoleAdmin))
+
+	policy.On("RestorePreFetch", mock.Anything, mock.Anything).Return(
+		domain.NewError(domain.CodeUserRestoreSelfTargetForbidden,
+			domain.WithMetadata("user_id", authUser.Id)))
+
+	svc := NewUserService(UserServiceParams{
+		UserRepo: repo, UoW: uow, Config: mkSvcCfg(),
+		AuthorityService: auth, Logger: zap.NewNop(), Policy: policy,
+	})
+	_, _, err := svc.Restore(ctxWithAuth(&authUser), []string{"self"})
+	assert.Error(t, err)
+	var de *domain.Error
+	assert.ErrorAs(t, err, &de)
+	assert.Equal(t, domain.CodeUserRestoreSelfTargetForbidden, de.Code)
+	auth.AssertNotCalled(t, "UpdateUserRole", mock.Anything, mock.Anything, mock.Anything)
+}
+
+func TestUserService_Restore_BelowAdminForbidden(t *testing.T) {
+	repo := &mocks.MockUserRepository{}
+	uow := &mocks.MockUnitOfWork{}
+	auth := &mocks.MockAuthorityService{}
+	policy := &mocks.MockUserPolicy{}
+
+	authUser := fixtures.NewDomainUser(fixtures.WithID("holder1"), fixtures.WithRole(domain.RoleHolder))
+
+	policy.On("RestorePreFetch", mock.Anything, mock.Anything).Return(
+		domain.NewError(domain.CodeUserRestoreSignerAdminRequiredForbidden))
+
+	svc := NewUserService(UserServiceParams{
+		UserRepo: repo, UoW: uow, Config: mkSvcCfg(),
+		AuthorityService: auth, Logger: zap.NewNop(), Policy: policy,
+	})
+	_, _, err := svc.Restore(ctxWithAuth(&authUser), []string{"u1"})
+	assert.Error(t, err)
+	var de *domain.Error
+	assert.ErrorAs(t, err, &de)
+	assert.Equal(t, domain.CodeUserRestoreSignerAdminRequiredForbidden, de.Code)
+	auth.AssertNotCalled(t, "UpdateUserRole", mock.Anything, mock.Anything, mock.Anything)
+}
+
+func TestUserService_Restore_BlockchainSyncFailed_RollsBack(t *testing.T) {
+	repo := &mocks.MockUserRepository{}
+	uow := mocks.NewPropagatingUnitOfWork()
+	auth := &mocks.MockAuthorityService{}
+	policy := &mocks.MockUserPolicy{}
+
+	authUser := fixtures.NewDomainUser(fixtures.WithID("admin1"), fixtures.WithRole(domain.RoleAdmin))
+	delTime := time.Now().Add(-1 * time.Hour)
+	target := fixtures.NewDomainUser(fixtures.WithID("u1"), fixtures.WithRole(domain.RoleHolder))
+	target.DeletedAt = &delTime
+
+	policy.On("RestorePreFetch", mock.Anything, mock.Anything).Return(nil)
+	policy.On("RestorePostFetch", mock.Anything, mock.Anything).Return(nil)
+	uow.On("User").Return(repo)
+	repo.On("FindByIds", mock.Anything, mock.Anything).Return([]domain.User{target}, nil)
+	repo.On("Restore", mock.Anything, mock.Anything).Return(int64(1), nil)
+	restored := target
+	restored.DeletedAt = nil
+	repo.On("FindByIds", mock.Anything, mock.Anything).Return([]domain.User{restored}, nil).Once()
+	auth.On("UpdateUserRole", mock.Anything, mock.Anything, mock.Anything).Return(errors.New("chain error"))
+
+	svc := NewUserService(UserServiceParams{
+		UserRepo: repo, UoW: uow, Config: mkSvcCfg(),
+		AuthorityService: auth, Logger: zap.NewNop(), Policy: policy,
+	})
+	_, _, err := svc.Restore(ctxWithAuth(&authUser), []string{"u1"})
+	assert.Error(t, err)
+	var de *domain.Error
+	assert.ErrorAs(t, err, &de)
+	assert.Equal(t, domain.CodeUserRestoreBlockchainSyncFailed, de.Code)
+}
