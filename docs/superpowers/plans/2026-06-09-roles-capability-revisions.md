@@ -1,7 +1,7 @@
 # Roles Capability Revisions
 
 Date: 2026-06-09
-Status: In progress
+Status: Complete
 
 ## Context
 
@@ -142,8 +142,10 @@ All tests green; `go vet` clean; `gofmt -l .` prints nothing.
 ## Part B — Deferred TODOs
 
 B1 and B2 (holder self-credentials endpoints) were **implemented 2026-06-09**
-(handler `SelfPaginate`/`SelfFind` + service + routes + tests). B3–B6 remain
-deferred — documented below as standalone future implementation plans.
+(handler `SelfPaginate`/`SelfFind` + service + routes + tests). B3–B5 were
+implemented 2026-06-10 (credential revocation on delete, UoW unification for
+Delete, Restore endpoint). B6 (verify audit-log) was never needed and has been
+removed from this plan.
 
 ### B1. `GET /api/users/self/credentials` — Holder lists own credentials *(DONE)*
 
@@ -193,30 +195,20 @@ own credentials. Frontend uses this on the Holder dashboard / profile page.
 
 **Dependencies:** B1 (uses same concepts).
 
-### B4. User credential revocation on delete
+### B4. User credential revocation on delete *(DONE 2026-06-10)*
 
 **Objective:** When a user is soft-deleted (via `DELETE /api/users/batch`), all
 their credentials should also be revoked on-chain via CredentialRegistry and
 marked revoked in the DB.
 
-**Current state:** `feature/user/user_service.go:Delete` has a multi-line code
-TODO documenting this gap. Currently only the user's role is revoked
-(`RoleNone` via `AuthorityService.UpdateUserRole`); their credentials are not
-revoked.
+**Implemented:** `feature/user/user_service.go:Delete` now calls `credSvc.RevokeByHolder`
+in the same UoW transaction, batch-revoking all credentials for the deleted
+holder on-chain via CredentialRegistry and marking them revoked in the DB.
+The multi-line TODO has been removed. Party-disabled verify verdicts
+(400410–400412) are re-checked live against the users table on every verify
+call to detect trashed holders/issuers.
 
-**Implementation sketch:**
-1. `credential_service.go` — new method `RevokeByHolder(ctx, holderUserId)`
-   that batch-revokes all credentials for that holder.
-2. `user_service.go` `Delete` — after chain role revoke, call
-   `credSvc.RevokeByHolder(ctx, user.Id)` in the same UoW.
-3. On-chain: use `RegistryBinding.BatchRevokeCredentialsWithSignature` to
-   revoke the credential NFTs on-chain.
-
-**Depends on:** CredentialRegistry bindings being wired in the user feature's
-dependency scope (currently only the credential feature uses registry, but the
-on-chain revocation is already done via `syncBlockchainRoles` in user service).
-
-### B5. UoW pattern unification
+### B5. UoW pattern unification *(DONE 2026-06-10)*
 
 **Objective:** `UpdateRole` and `Delete` originally used two `uow.Execute()`
 calls (read phase then write phase) while `Update` uses a single call. Unify
@@ -228,22 +220,15 @@ to a single UoW to eliminate the small race window between read and write.
   transaction. Chain-sync failure rolls back the DB write atomically.
   `updateRoleAndSyncBlockchainRoles` helper removed; `updateRoleValidateAndPrepare`
   retained (still called from inside the unified UoW).
-- `Delete` — **PENDING**: still split into two UoW calls. Will be unified in a
-  follow-up to mirror the `UpdateRole` pattern.
+- `Delete` — **DONE 2026-06-10**: collapsed into a single `s.uow.Execute` call
+  (fetch + validate + soft-delete DB + credential revocation + chain role
+  revocation in one transaction).
+- **Restore** — **DONE 2026-06-10**: `PUT /api/users/batch/restore` clears
+  `deleted_at` and re-syncs the preserved DB role to chain via
+  `syncBlockchainRoles`. Policy: `RestorePreFetch` blocks below-Admin and
+  self-targeting; `RestorePostFetch` blocks SuperAdmin targets and non-trashed
+  targets.
 
-**Files (Delete refactor, future):**
-- `feature/user/user_service.go` — collapse `Delete` + `deleteUserAndSyncBlockchain`
-  into a single `s.uow.Execute` call. Existing chain-failure rollback test
-  (`TestUserService_Delete_BlockchainRevokeFailure_RollsBack` via
-  `mocks.NewPropagatingUnitOfWork`) covers atomicity.
 
-### B6. `POST /api/credentials/verify` — optional audit-log (if needed in future)
 
-Currently the verify endpoint is fully public and anonymous (Part A5). If
-audit requirements emerge, consider:
-- Making auth optional (not required): verify with auth logs who verified.
-- Or keeping it anonymous but IP-rate-limited (current rate limiter model
-  already handles this via `ApiRateLimitMiddleware` global scope).
-
-No action needed now.
 

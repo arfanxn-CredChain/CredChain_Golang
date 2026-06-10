@@ -274,6 +274,7 @@ Adding a new `domain.Code*` constant requires updating: `mapper.go` (both `CodeT
 - `userPolicy.UpdateRolePostFetch` returns `CodeUserRoleTrashedForbidden` (300547, 403).
 - `userService.Delete` is idempotent on already-trashed rows (skips on-chain `RoleNone` sync, returns `deleted_count` of newly-deleted rows only).
 - `cmd/init_super_admin` filters out trashed entries from the `FindByRole(SuperAdmin)` existence check so a system whose previous SuperAdmin was soft-deleted can be re-initialized.
+- `userService.Restore` unsets `deleted_at` and re-syncs the preserved DB role to the blockchain via `syncBlockchainRoles`. Admin can restore Admin peers but NOT SuperAdmin targets (`CodeUserRestoreSuperAdminTargetForbidden` 300943). Live (non-trashed) targets are rejected (`CodeUserRestoreNotTrashedForbidden` 300944) — strict BatchOption B.
 
 `domain.User.DeletedAt` (`*time.Time`) is GORM-agnostic; mapped from `gorm.DeletedAt.Time` when `Valid=true`. Propagated through `response.User.DeletedAt`.
 
@@ -288,10 +289,12 @@ Adding a new `domain.Code*` constant requires updating: `mapper.go` (both `CodeT
 - `UpdatePreFetch` + `UpdatePostFetch` mirror this for the batch user update endpoint.
 - `DeletePreFetch` blocks below-Admin signers and self-targeting.
 - `DeletePostFetch` blocks Admin-deleting-Admin/SuperAdmin.
+- `RestorePreFetch` blocks below-Admin signers and self-targeting.
+- `RestorePostFetch` blocks SuperAdmin target restoration and non-trashed targets.
 
 Service methods contain zero role/rank comparisons — all authorization lives in policy. `UpdatePostFetch` signature: `(ctx, targets []domain.User, updates []domain.User)` — receives both the fetched targets and the proposed updates so role-hierarchy rules apply to both current and requested roles.
 
-**UoW consistency:** `UpdateRole` uses a single `s.uow.Execute` call (fetch + validate + DB update + chain sync in one transaction), mirroring the `Update` flow. `Delete` is planned to follow the same pattern (currently split into two UoW calls).
+**UoW consistency:** `UpdateRole` and `Delete` use a single `s.uow.Execute` call (fetch + validate + DB mutation + chain sync in one transaction), mirroring the `Update` flow.
 
 **Self-target codes:** `UpdateRolePreFetch` returns `CodeUserRoleSelfTargetForbidden` (300546); `DeletePreFetch` returns `CodeUserDeleteSelfTargetForbidden` (300743). Both map to HTTP 403. Do NOT use `CodeAuthForbidden` — wrong locale message.
 
@@ -314,7 +317,9 @@ Service methods contain zero role/rank comparisons — all authorization lives i
 - `UpdateUserRole` calls `bind.WaitMined` after the relayer tx and verifies `receipt.Status == 1` before returning, ensuring on-chain nonce has incremented before the next call
 - `waitMined` is a struct field (`waitMinedFunc` type) initialized in `NewAuthorityService` to `bind.WaitMined`; tests can substitute their own stub via type assertion to `*authorityService`
 
-**Verify verdicts (400401-400409):** authentic, revoked, integrity_warning, tampered, suspicious, low_similarity, not_similar, no_identifiers, no_match. `integrity_warning` returns HTTP 409, all others 200.
+**Verify verdicts (400401-400412):** authentic, revoked, integrity_warning, tampered, suspicious, low_similarity, not_similar, no_identifiers, no_match, holder_disabled, issuer_disabled, party_disabled. `integrity_warning` returns HTTP 409, all others 200.
+
+**Verify cache:** the MongoDB `credential_verifications` cache (24h TTL) stores only the credential-level verdict snapshot. Holder/issuer deleted status is re-checked live against the users table on every call (including cache hits), so the party-disabled verdict (400410–400412) is always fresh with respect to user state.
 
 **RoleNone:** `domain.RoleNone` (Solidity enum value 0) is the on-chain revocation target. Used by `userService.Delete` to revoke roles via `AuthorityService.UpdateUserRole`. **Never persisted to the Postgres `role` ENUM** — in-memory only for chain calls.
 
@@ -365,12 +370,13 @@ All under `/api` prefix. Middleware order: `ErrorLoggerMiddleware` → `I18nMidd
 | PUT | `/api/users/batch` | Admin+ | Batch update users (handler `Update`); same-role updates silently skipped; email changes revoke target's refresh tokens; role changes sync to blockchain |
 | PUT | `/api/users/batch/role` | Admin+ | Batch role update (handler `UpdateRole`); syncs DB and on-chain |
 | DELETE | `/api/users/batch` | Admin+ | Soft delete users (handler `Delete`); on-chain role revoked to `RoleNone` |
+| PUT | `/api/users/batch/restore` | Admin+ | Restore trashed users (handler `Restore`); clears soft-delete, re-syncs DB role to chain |
 | GET | `/api/credentials` | Issuer+ | List credentials |
 | GET | `/api/credentials/:id` | Issuer+ | Single credential |
 | POST | `/api/credentials/batch/issue` | Issuer+ | Issue credentials |
 | POST | `/api/credentials/batch/revoke` | Issuer+ | Revoke credentials |
 | POST | `/api/credentials/batch/reextract` | Issuer+ | Re-extract failed credentials |
-| POST | `/api/credentials/verify` | None (public) | Returns verdict code (400401-400409) + locale description; used by external verifiers (HR, employers) — no auth required |
+| POST | `/api/credentials/verify` | None (public) | Returns verdict code (400401-400412) + locale description; used by external verifiers (HR, employers) — no auth required |
 
 ### Database
 

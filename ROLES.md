@@ -72,12 +72,13 @@ Middleware chain: `ErrorLoggerMiddleware` → `I18nMiddleware` → `ApiRateLimit
 | `/api/users/batch` | PUT | Authenticated | Admin+ |
 | `/api/users/batch/role` | PUT | Authenticated | Admin+ |
 | `/api/users/batch` | DELETE | Authenticated | Admin+ |
+| `/api/users/batch/restore` | PUT | Authenticated | Admin+ |
 | `/api/credentials` | GET | Authenticated | Issuer+ |
 | `/api/credentials/:id` | GET | Authenticated | Issuer+ |
 | `/api/credentials/batch/issue` | POST | Authenticated | Issuer+ |
 | `/api/credentials/batch/revoke` | POST | Authenticated | Issuer+ |
 | `/api/credentials/batch/reextract` | POST | Authenticated | Issuer+ |
-| `/api/credentials/verify` | POST | **None (public)** | None — used by external verifiers (HR, employers) |
+| `/api/credentials/verify` | POST | **None (public)** | None — used by external verifiers (HR, employers); returns verdict 400401-400412 including party-disabled (400410-400412) for trashed holder/issuer |
 
 **Role middlewares** (`infrastructure/http/middleware/auth.go:94-146`):
 - `AdminRoleMiddleware` → checks `HasRoleOrAbove(ctx, wallet, RoleAdmin)` on-chain
@@ -154,6 +155,20 @@ Allowed combos: Admin creates Holder/Issuer; SuperAdmin creates anything except 
 |------|-----------|------|
 | Admin cannot delete Admin/SuperAdmin | Signer=Admin, target=Admin+ | `CodeUserDeleteAdminForbidden` (300741) |
 
+#### RestorePreFetch
+
+| Rule | Condition | Code |
+|------|-----------|------|
+| Signer must be Admin+ | Below Admin | `CodeUserRoleSignerAdminRequiredForbidden` (300542) |
+| Cannot self-restore | Signer ID in target list | `CodeUserRestoreSelfTargetForbidden` (300941) |
+
+#### RestorePostFetch
+
+| Rule | Condition | Code |
+|------|-----------|------|
+| Cannot restore SuperAdmin | Target role is SuperAdmin | `CodeUserRestoreSuperAdminTargetForbidden` (300943) |
+| Cannot restore non-trashed user | Target has nil DeletedAt | `CodeUserRestoreNotTrashedForbidden` (300944) |
+
 #### TransferSuperAdminPreFetch
 
 | Rule | Condition | Code |
@@ -216,6 +231,7 @@ Create users (batch)            —      —       —       ✓¹      ✓²
 Update users (batch)            —      —       —       ✓³      ✓⁶
 Update user roles               —      —       —       ✓⁴      ✓²
 Delete users                    —      —       —       ✓⁵      ✓
+Restore users                   —      —       —       ✓       ✓
 ──
 List credentials                —      —       ✓       ✓       ✓
 Find credential                 —      —       ✓       ✓       ✓
@@ -253,6 +269,9 @@ Verify credential (public)      ✓      ✓       ✓       ✓       ✓
 | Change own email via batch | Anyone (incl. SuperAdmin) | `CodeUserUpdateSelfEmailForbidden` (300845) — use `/users/self/email` |
 | Self-delete | Anyone | `CodeUserDeleteSelfTargetForbidden` (300743) |
 | Self-target role update | Anyone | `CodeUserRoleSelfTargetForbidden` (300546) |
+| Restore SuperAdmin | Admin+ | `CodeUserRestoreSuperAdminTargetForbidden` (300943) |
+| Restore live (non-trashed) user | Admin+ | `CodeUserRestoreNotTrashedForbidden` (300944) |
+| Restore self | Anyone | `CodeUserRestoreSelfTargetForbidden` (300941) |
 | Transfer SuperAdmin to self | SuperAdmin | `CodeUserTransferSuperAdminSelfTargetForbidden` (300641) |
 | Update trashed user | Admin+ | `CodeUserUpdateTrashedForbidden` (300846) |
 | Update trashed user's role | Admin+ | `CodeUserRoleTrashedForbidden` (300547) |
