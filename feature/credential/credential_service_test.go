@@ -1163,3 +1163,11 @@ func TestVerify_DoesNotOverrideTampered_WhenHolderDeleted(t *testing.T) {
 	assert.NotNil(t, percent)
 	assert.Equal(t, "30%", *percent)
 }
+
+func TestVerifyCacheVerdict_StoreFails(t *testing.T) {
+	verRepo := &mocks.MockCredentialVerificationRepository{}
+	verRepo.On("Store", mock.Anything, mock.Anything).Return(assert.AnError)
+	svc := &credentialService{verificationRepo: verRepo, logger: zap.NewNop()}
+	svc.verifyCacheVerdict(context.Background(), "0xhash", domain.CodeCredentialVerifyNoMatch, nil, nil, nil)
+	verRepo.AssertCalled(t, "Store", mock.Anything, mock.Anything)
+}
