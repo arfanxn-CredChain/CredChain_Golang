@@ -1,0 +1,77 @@
+package credential
+
+import (
+	"context"
+
+	"CredChain_Golang/domain"
+	domainQuery "CredChain_Golang/domain/query"
+	pyai "CredChain_Golang/infrastructure/ai/pyai"
+
+	"github.com/stretchr/testify/mock"
+)
+
+type mockCredentialService struct{ mock.Mock }
+
+func (m *mockCredentialService) Paginate(ctx context.Context, query *domainQuery.Query) ([]domain.Credential, int, error) {
+	args := m.Called(ctx, query)
+	return args.Get(0).([]domain.Credential), args.Int(1), args.Error(2)
+}
+
+func (m *mockCredentialService) Find(ctx context.Context, id string, query *domainQuery.Query) (*domain.Credential, error) {
+	args := m.Called(ctx, id, query)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.Credential), args.Error(1)
+}
+
+func (m *mockCredentialService) SelfPaginate(ctx context.Context, query *domainQuery.Query) ([]domain.Credential, int, error) {
+	args := m.Called(ctx, query)
+	return args.Get(0).([]domain.Credential), args.Int(1), args.Error(2)
+}
+
+func (m *mockCredentialService) SelfFind(ctx context.Context, id string, query *domainQuery.Query) (*domain.Credential, error) {
+	args := m.Called(ctx, id, query)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.Credential), args.Error(1)
+}
+
+func (m *mockCredentialService) Issue(ctx context.Context, items []CredentialIssuance) ([]domain.Credential, map[string][]string, error) {
+	args := m.Called(ctx, items)
+	if args.Get(0) == nil {
+		return nil, nil, args.Error(2)
+	}
+	if args.Get(1) == nil {
+		return args.Get(0).([]domain.Credential), nil, args.Error(2)
+	}
+	return args.Get(0).([]domain.Credential), args.Get(1).(map[string][]string), args.Error(2)
+}
+
+func (m *mockCredentialService) Revoke(ctx context.Context, ids ...string) ([]domain.Credential, error) {
+	args := m.Called(ctx, ids)
+	return args.Get(0).([]domain.Credential), args.Error(1)
+}
+
+func (m *mockCredentialService) Verify(ctx context.Context, file pyai.ExtractFile) (int, *domain.Credential, *float64, *string, error) {
+	args := m.Called(ctx, file)
+	var cred *domain.Credential
+	if args.Get(1) != nil {
+		cred = args.Get(1).(*domain.Credential)
+	}
+	var similarity *float64
+	if args.Get(2) != nil {
+		similarity = args.Get(2).(*float64)
+	}
+	var field *string
+	if args.Get(3) != nil {
+		field = args.Get(3).(*string)
+	}
+	return args.Int(0), cred, similarity, field, args.Error(4)
+}
+
+func (m *mockCredentialService) ReExtract(ctx context.Context, ids ...string) ([]domain.Credential, error) {
+	args := m.Called(ctx, ids)
+	return args.Get(0).([]domain.Credential), args.Error(1)
+}
