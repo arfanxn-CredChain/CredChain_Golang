@@ -1,8 +1,11 @@
 package credential
 
 import (
+	"bytes"
 	"mime/multipart"
 	"net/http"
+	"net/http/httptest"
+	"net/textproto"
 	"testing"
 
 	"CredChain_Golang/domain"
@@ -10,6 +13,7 @@ import (
 	"CredChain_Golang/infrastructure/testutil/gintest"
 
 	"github.com/gin-gonic/gin"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -159,4 +163,95 @@ func TestHandler_SelfFind_Success(t *testing.T) {
 	h := &credentialHandler{credSvc: svc}
 	h.SelfFind(c)
 	assert.Equal(t, http.StatusOK, rr.Code)
+}
+
+func TestHandler_Revoke_Success(t *testing.T) {
+	user := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleIssuer))
+	c, rr := gintest.NewContext(t,
+		gintest.WithUser(&user),
+		gintest.WithMethod("POST"),
+		gintest.WithPath("/"),
+		gintest.WithBody(map[string]any{"ids": []string{"c1"}}),
+		gintest.WithI18nBundle(gintest.LoadTestI18nBundle(t)),
+	)
+	svc := &mockCredentialService{}
+	svc.On("Revoke", mock.Anything, mock.Anything).Return([]domain.Credential{{ID: "c1"}}, nil)
+	h := &credentialHandler{credSvc: svc}
+	h.Revoke(c)
+	assert.Equal(t, http.StatusOK, rr.Code)
+}
+
+func TestHandler_ReExtract_Success(t *testing.T) {
+	user := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleIssuer))
+	c, rr := gintest.NewContext(t,
+		gintest.WithUser(&user),
+		gintest.WithMethod("POST"),
+		gintest.WithPath("/"),
+		gintest.WithBody(map[string]any{"ids": []string{"c1"}}),
+		gintest.WithI18nBundle(gintest.LoadTestI18nBundle(t)),
+	)
+	svc := &mockCredentialService{}
+	svc.On("ReExtract", mock.Anything, mock.Anything).Return([]domain.Credential{{ID: "c1"}}, nil)
+	h := &credentialHandler{credSvc: svc}
+	h.ReExtract(c)
+	assert.Equal(t, http.StatusOK, rr.Code)
+}
+
+func TestHandler_Verify_NoFile(t *testing.T) {
+	user := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleIssuer))
+	c, rr := gintest.NewContext(t,
+		gintest.WithUser(&user),
+		gintest.WithMethod("POST"),
+		gintest.WithPath("/"),
+		gintest.WithI18nBundle(gintest.LoadTestI18nBundle(t)),
+	)
+	h := &credentialHandler{credSvc: &mockCredentialService{}}
+	h.Verify(c)
+	assert.Equal(t, http.StatusBadRequest, rr.Code)
+}
+
+func TestHandler_Verify_PublicEndpoint_Succeeds(t *testing.T) {
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	req := httptest.NewRequest("POST", "/", nil)
+	c.Request = req
+	bundle := gintest.LoadTestI18nBundle(t)
+	c.Set("i18n_localizer", i18n.NewLocalizer(bundle, "en"))
+
+	svc := &mockCredentialService{}
+	score := 0.95
+	pct := "95.0%"
+	svc.On("Verify", mock.Anything, mock.Anything).Return(domain.CodeCredentialVerifyAuthentic, &domain.Credential{ID: "c1"}, &score, &pct, nil)
+
+	h := &credentialHandler{credSvc: svc}
+	h.Verify(c)
+	assert.NotEqual(t, http.StatusForbidden, c.Writer.Status())
+}
+
+func TestHandler_Verify_ServiceReturnsVerdict(t *testing.T) {
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	mimeHdr := make(textproto.MIMEHeader)
+	mimeHdr.Set("Content-Disposition", `form-data; name="file"; filename="test.pdf"`)
+	part, _ := writer.CreatePart(mimeHdr)
+	part.Write([]byte("test"))
+	writer.Close()
+
+	user := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleIssuer))
+	req := httptest.NewRequest("POST", "/", body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = req
+	c.Set("user", user)
+	bundle := gintest.LoadTestI18nBundle(t)
+	c.Set("i18n_localizer", i18n.NewLocalizer(bundle, "en"))
+
+	svc := &mockCredentialService{}
+	score := 0.95
+	pct := "95.0%"
+	svc.On("Verify", mock.Anything, mock.Anything).Return(domain.CodeCredentialVerifyAuthentic, &domain.Credential{ID: "c1"}, &score, &pct, nil)
+
+	h := &credentialHandler{credSvc: svc}
+	h.Verify(c)
+	assert.Equal(t, http.StatusOK, c.Writer.Status())
 }
