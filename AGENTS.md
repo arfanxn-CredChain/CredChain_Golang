@@ -553,7 +553,7 @@ When adding a new endpoint or service method, add at least: one happy-path test,
 - **`init-super-admin`** validates wallet has SuperAdmin role on-chain before database initialization; checks for existing SuperAdmin by role using `FindByRole`, not by email. Filters out trashed users from the existence check.
 - **Auth is Google OAuth only** — no email/password login exists.
 - **Soulbound tokens:** `CredentialRegistry._update()` blocks all transfers and burns (reverts with `CredentialTransferError`) — Solidity-side enforcement; backend should not attempt transfer flows.
-- **`CredChain_React_Demo/` and `CredChain_GoogleTestHtml/`** in the workspace root are deprecated/test-only — never modify them from this repo.
+
 - **Policy checks** happen in `feature/*/policy.go`, not in middleware or domain.
 - **`migrate-down`** rolls back only ONE migration step, not all.
 - **Environment files:** `.env` and `.env.docker` contain credentials and are NOT tracked by git; use `.env.example` as template.
