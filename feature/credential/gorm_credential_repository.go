@@ -3,12 +3,12 @@ package credential
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"sort"
 	"strings"
 
 	"CredChain_Golang/domain"
 	domainQuery "CredChain_Golang/domain/query"
+	gormhelpers "CredChain_Golang/infrastructure/database/gorm"
 	"CredChain_Golang/infrastructure/database/gorm/model"
 
 	"github.com/oklog/ulid/v2"
@@ -131,7 +131,7 @@ func (r *gormCredentialRepository) Get(ctx context.Context, query *domainQuery.Q
 	}
 
 	if query.HasFilters() {
-		db = applyCredentialFilters(db, query.Filters)
+		db = gormhelpers.ApplyFilters(db, query.Filters, allowedFilterColumns, "credentials.")
 	}
 
 	var total int64
@@ -139,23 +139,9 @@ func (r *gormCredentialRepository) Get(ctx context.Context, query *domainQuery.Q
 		return nil, 0, err
 	}
 
-	if query.HasSorts() {
-		for _, s := range query.Sorts {
-			if !allowedSortColumns[s.Column] {
-				continue
-			}
-			col := mapSortColumn(s.Column)
-			db = db.Order(fmt.Sprintf("%s %s", col, s.Order))
-		}
-	} else {
-		db = db.Order("credentials.issued_at DESC")
-	}
-
+	db = gormhelpers.ApplySorts(db, query, allowedSortColumns, "credentials.issued_at DESC", mapSortColumn)
 	db = preloadByIncludes(db, query)
-
-	if query.HasPagination() {
-		db = db.Limit(query.Limit).Offset(query.Offset())
-	}
+	db = gormhelpers.ApplyPagination(db, query)
 
 	var credentials []model.Credential
 	if err := db.Find(&credentials).Error; err != nil {
@@ -167,57 +153,6 @@ func (r *gormCredentialRepository) Get(ctx context.Context, query *domainQuery.Q
 		out[i] = c.ToDomain()
 	}
 	return out, int(total), nil
-}
-
-// applyCredentialFilters maps domainQuery.Filter operators to GORM Where
-// clauses, gated by the allowedFilterColumns allowlist for SQL injection
-// safety. Columns are always scoped with the "credentials." prefix.
-func applyCredentialFilters(db *gorm.DB, filters []domainQuery.Filter) *gorm.DB {
-	for _, f := range filters {
-		if !allowedFilterColumns[f.Column] {
-			continue
-		}
-		col := "credentials." + f.Column
-		switch f.Operator {
-		case domainQuery.OperatorEqual:
-			db = db.Where(col+" = ?", f.GetValue())
-		case domainQuery.OperatorNotEqual:
-			db = db.Where(col+" != ?", f.GetValue())
-		case domainQuery.OperatorGreaterThan:
-			db = db.Where(col+" > ?", f.GetValue())
-		case domainQuery.OperatorLessThan:
-			db = db.Where(col+" < ?", f.GetValue())
-		case domainQuery.OperatorGreaterThanOrEqual:
-			db = db.Where(col+" >= ?", f.GetValue())
-		case domainQuery.OperatorLessThanOrEqual:
-			db = db.Where(col+" <= ?", f.GetValue())
-		case domainQuery.OperatorLike, domainQuery.OperatorILike:
-			db = db.Where("LOWER("+col+") LIKE LOWER(?)", "%"+f.GetValue()+"%")
-		case domainQuery.OperatorNotLike, domainQuery.OperatorNotILike:
-			db = db.Where("LOWER("+col+") NOT LIKE LOWER(?)", "%"+f.GetValue()+"%")
-		case domainQuery.OperatorIn:
-			if len(f.Values) > 0 {
-				db = db.Where(col+" IN ?", f.Values)
-			}
-		case domainQuery.OperatorNotIn:
-			if len(f.Values) > 0 {
-				db = db.Where(col+" NOT IN ?", f.Values)
-			}
-		case domainQuery.OperatorBetween:
-			if len(f.Values) == 2 {
-				db = db.Where(col+" BETWEEN ? AND ?", f.Values[0], f.Values[1])
-			}
-		case domainQuery.OperatorNotBetween:
-			if len(f.Values) == 2 {
-				db = db.Where(col+" NOT BETWEEN ? AND ?", f.Values[0], f.Values[1])
-			}
-		case domainQuery.OperatorNull:
-			db = db.Where(col + " IS NULL")
-		case domainQuery.OperatorNotNull:
-			db = db.Where(col + " IS NOT NULL")
-		}
-	}
-	return db
 }
 
 // ── Single-row lookups ────────────────────────────────────────────────────
