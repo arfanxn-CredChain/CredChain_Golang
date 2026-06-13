@@ -284,35 +284,29 @@ func (r *gormCredentialRepository) Update(ctx context.Context, credentials ...do
 func (r *gormCredentialRepository) updateBatchCase(ctx context.Context, items []domain.Credential) error {
 	sort.Slice(items, func(i, j int) bool { return items[i].ID < items[j].ID })
 
-	var setClauses []string
-	var setArgs []interface{}
+	var clauses []string
+	var allArgs [][]interface{}
 
-	addCaseClause := func(col string, getValue func(domain.Credential) (interface{}, bool)) {
-		var caseArgs []interface{}
+	addCol := func(col string, getValue func(domain.Credential) (interface{}, bool)) {
+		var pairs []interface{}
 		for _, c := range items {
 			if v, ok := getValue(c); ok {
-				caseArgs = append(caseArgs, c.ID, v)
+				pairs = append(pairs, c.ID, v)
 			}
 		}
-		if len(caseArgs) == 0 {
-			return
+		if clause, args := gormhelpers.BuildCaseColumnSQL("id", col, pairs); clause != "" {
+			clauses = append(clauses, clause)
+			allArgs = append(allArgs, args)
 		}
-		caseSQL := "CASE id"
-		for i := 0; i < len(caseArgs)/2; i++ {
-			caseSQL += " WHEN ? THEN ?"
-		}
-		caseSQL += " ELSE " + col + " END"
-		setClauses = append(setClauses, col+" = "+caseSQL)
-		setArgs = append(setArgs, caseArgs...)
 	}
 
-	addCaseClause("name", func(c domain.Credential) (interface{}, bool) {
+	addCol("name", func(c domain.Credential) (interface{}, bool) {
 		if c.Name != "" {
 			return c.Name, true
 		}
 		return nil, false
 	})
-	addCaseClause("meta", func(c domain.Credential) (interface{}, bool) {
+	addCol("meta", func(c domain.Credential) (interface{}, bool) {
 		if c.Meta == nil {
 			return nil, false
 		}
@@ -322,50 +316,50 @@ func (r *gormCredentialRepository) updateBatchCase(ctx context.Context, items []
 		}
 		return string(b), true
 	})
-	addCaseClause("token_id", func(c domain.Credential) (interface{}, bool) {
+	addCol("token_id", func(c domain.Credential) (interface{}, bool) {
 		if c.TokenID == nil {
 			return nil, false
 		}
 		return *c.TokenID, true
 	})
-	addCaseClause("file_uri", func(c domain.Credential) (interface{}, bool) {
+	addCol("file_uri", func(c domain.Credential) (interface{}, bool) {
 		if c.FileURI == nil {
 			return nil, false
 		}
 		return *c.FileURI, true
 	})
-	addCaseClause("revoked_at", func(c domain.Credential) (interface{}, bool) {
+	addCol("revoked_at", func(c domain.Credential) (interface{}, bool) {
 		if c.RevokedAt == nil {
 			return nil, false
 		}
 		return *c.RevokedAt, true
 	})
-	addCaseClause("revoker_user_id", func(c domain.Credential) (interface{}, bool) {
+	addCol("revoker_user_id", func(c domain.Credential) (interface{}, bool) {
 		if c.RevokerUserID == nil {
 			return nil, false
 		}
 		return *c.RevokerUserID, true
 	})
-	addCaseClause("extract_status", func(c domain.Credential) (interface{}, bool) {
+	addCol("extract_status", func(c domain.Credential) (interface{}, bool) {
 		if c.ExtractStatus == "" {
 			return nil, false
 		}
 		return string(c.ExtractStatus), true
 	})
-	addCaseClause("extract_error", func(c domain.Credential) (interface{}, bool) {
+	addCol("extract_error", func(c domain.Credential) (interface{}, bool) {
 		if c.ExtractError == nil {
 			return nil, false
 		}
 		return *c.ExtractError, true
 	})
-	addCaseClause("extracted_at", func(c domain.Credential) (interface{}, bool) {
+	addCol("extracted_at", func(c domain.Credential) (interface{}, bool) {
 		if c.ExtractedAt == nil {
 			return nil, false
 		}
 		return *c.ExtractedAt, true
 	})
 
-	if len(setClauses) == 0 {
+	if len(clauses) == 0 {
 		return nil
 	}
 
@@ -373,8 +367,7 @@ func (r *gormCredentialRepository) updateBatchCase(ctx context.Context, items []
 	for i, c := range items {
 		ids[i] = c.ID
 	}
-	sql := "UPDATE credentials SET " + strings.Join(setClauses, ", ") + " WHERE id IN (?)"
-	finalArgs := append(setArgs, ids)
+	sql, finalArgs := gormhelpers.BuildBatchUpdateSQL("credentials", "id", clauses, allArgs, ids)
 	return r.db.WithContext(ctx).Exec(sql, finalArgs...).Error
 }
 
