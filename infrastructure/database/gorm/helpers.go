@@ -53,3 +53,24 @@ func ApplyFilters(db *gorm.DB, filters []domainQuery.Filter, allowedColumns map[
 	}
 	return db
 }
+
+func ApplySorts(db *gorm.DB, q *domainQuery.Query, allowedColumns map[string]bool, defaultSort string, mapper func(string) string) *gorm.DB {
+	appliedAny := false
+	if q.HasSorts() {
+		for _, s := range q.Sorts {
+			if !allowedColumns[s.Column] {
+				continue
+			}
+			col := s.Column
+			if mapper != nil {
+				col = mapper(col)
+			}
+			db = db.Order(col + " " + string(s.Order))
+			appliedAny = true
+		}
+	}
+	if !appliedAny {
+		db = db.Order(defaultSort)
+	}
+	return db
+}
