@@ -1,4 +1,4 @@
-package gorm
+package gorm_test
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"CredChain_Golang/domain"
 	"CredChain_Golang/feature/credential"
 	"CredChain_Golang/feature/user"
+	"CredChain_Golang/infrastructure/database/gorm"
 	"CredChain_Golang/infrastructure/testutil/db"
 	"CredChain_Golang/infrastructure/testutil/fixtures"
 
@@ -16,7 +17,7 @@ import (
 
 func TestGormUnitOfWork_Execute_CommitsOnSuccess(t *testing.T) {
 	gdb := db.OpenInMemorySQLite(t)
-	uow := NewGormUnitOfWork(gdb,
+	uow := gorm.NewGormUnitOfWork(gdb,
 		user.NewGormUserRepository,
 		credential.NewGormCredentialRepository,
 		user.NewGormUserTokenRepository)
@@ -36,7 +37,7 @@ func TestGormUnitOfWork_Execute_CommitsOnSuccess(t *testing.T) {
 
 func TestGormUnitOfWork_Execute_RollsBackOnError(t *testing.T) {
 	gdb := db.OpenInMemorySQLite(t)
-	uow := NewGormUnitOfWork(gdb,
+	uow := gorm.NewGormUnitOfWork(gdb,
 		user.NewGormUserRepository,
 		credential.NewGormCredentialRepository,
 		user.NewGormUserTokenRepository)
