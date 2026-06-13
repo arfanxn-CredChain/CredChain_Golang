@@ -79,6 +79,7 @@ func (r *gormUserRepository) Get(ctx context.Context, query *domainQuery.Query) 
 
 	db = gormhelpers.ApplySorts(db, query, allowedSortColumns, "updated_at DESC", nil)
 	db = gormhelpers.ApplyPagination(db, query)
+	db = db.Unscoped()
 
 	var users []model.User
 	if err := db.Find(&users).Error; err != nil {

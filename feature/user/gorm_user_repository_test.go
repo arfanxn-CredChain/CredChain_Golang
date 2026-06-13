@@ -705,6 +705,27 @@ func TestGormUserRepository_Get_NoDeletedAtReference_IncludesTrashed(t *testing.
 	assert.Contains(t, ids, "trashed-c", "trashed user must be included by default")
 }
 
+func TestGormUserRepository_Get_NoDeletedAtFilter_WithSortsAndPagination_IncludesTrashed(t *testing.T) {
+	repo := seedUsersForTrashed(t)
+	q := &domainQuery.Query{
+		Page:  1,
+		Limit: 10,
+		Sorts: []domainQuery.Sort{
+			domainQuery.NewSort("updated_at", domainQuery.SortDesc),
+		},
+	}
+	users, total, err := repo.Get(context.Background(), q)
+	assert.NoError(t, err, "Get with sorts+pagination must still include trashed users")
+	assert.Equal(t, 3, total, "should return 3 total users (2 live + 1 trashed)")
+	assert.Len(t, users, 3)
+
+	ids := make([]string, len(users))
+	for i, u := range users {
+		ids[i] = u.Id
+	}
+	assert.Contains(t, ids, "trashed-c", "trashed user must be included after sort+pagination")
+}
+
 func TestGormUserRepository_Get_FilterDeletedAtBetween_RangeFilterWorks(t *testing.T) {
 	repo := newRepo(t)
 	_, _ = repo.Store(context.Background(),
