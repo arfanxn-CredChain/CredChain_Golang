@@ -185,3 +185,32 @@ func TestApplyPagination_NoPagination(t *testing.T) {
 	})
 	assert.NotContains(t, sql, "LIMIT")
 }
+
+func TestBuildCaseColumnSQL_SinglePair(t *testing.T) {
+	clause, args := BuildCaseColumnSQL("id", "name", []interface{}{"user-1", "alice"})
+	assert.Equal(t, "name = CASE id WHEN ? THEN ? ELSE name END", clause)
+	assert.Equal(t, []interface{}{"user-1", "alice"}, args)
+}
+
+func TestBuildCaseColumnSQL_MultiplePairs(t *testing.T) {
+	clause, args := BuildCaseColumnSQL("id", "role", []interface{}{
+		"user-1", "admin",
+		"user-2", "holder",
+		"user-3", "issuer",
+	})
+	assert.Equal(t, "role = CASE id WHEN ? THEN ? WHEN ? THEN ? WHEN ? THEN ? ELSE role END", clause)
+	assert.Equal(t, []interface{}{"user-1", "admin", "user-2", "holder", "user-3", "issuer"}, args)
+}
+
+func TestBuildCaseColumnSQL_EmptyPairs(t *testing.T) {
+	clause, args := BuildCaseColumnSQL("id", "name", []interface{}{})
+	assert.Equal(t, "", clause)
+	assert.Nil(t, args)
+}
+
+func TestBuildCaseColumnSQL_CustomIDColumn(t *testing.T) {
+	clause, args := BuildCaseColumnSQL("user_id", "role", []interface{}{"user-1", "admin"})
+	assert.Contains(t, clause, "CASE user_id")
+	assert.Contains(t, clause, "ELSE role END")
+	assert.Equal(t, []interface{}{"user-1", "admin"}, args)
+}

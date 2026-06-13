@@ -1,6 +1,8 @@
 package gorm
 
 import (
+	"strings"
+
 	domainQuery "CredChain_Golang/domain/query"
 
 	"gorm.io/gorm"
@@ -80,4 +82,20 @@ func ApplyPagination(db *gorm.DB, q *domainQuery.Query) *gorm.DB {
 		return db.Limit(q.Limit).Offset(q.Offset())
 	}
 	return db
+}
+
+func BuildCaseColumnSQL(idColumn, col string, pairs []interface{}) (string, []interface{}) {
+	if len(pairs) == 0 {
+		return "", nil
+	}
+	var b strings.Builder
+	b.WriteString("CASE ")
+	b.WriteString(idColumn)
+	for i := 0; i < len(pairs)/2; i++ {
+		b.WriteString(" WHEN ? THEN ?")
+	}
+	b.WriteString(" ELSE ")
+	b.WriteString(col)
+	b.WriteString(" END")
+	return col + " = " + b.String(), pairs
 }
