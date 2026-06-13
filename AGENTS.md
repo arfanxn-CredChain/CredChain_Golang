@@ -433,7 +433,7 @@ Postman collection for API testing: `CredChain_postman_collection.json` (in `Cre
 
 **Structure:** `CredChain` → `API` → [Health, Auth, User > [Self, Admin], Credential]
 
-Updated 2026-06-10: User > Self includes Self Credentials (list + get by ID). User > Admin includes Batch Restore Users. Credential > Verify Hash includes party-disabled verdict response examples (400410-400412).
+Updated 2026-06-14: Credential endpoints (List, Get, Issue, Revoke, ReExtract) no longer stubs — real DTOs and bodies. Verify endpoint renamed from "Verify Hash" to "Verify". Fixed Login/Logout variable mismatch (USER_ID/EMAIL → AUTH_USER_ID/EMAIL). Added folder-level variables to API group. Removed unused TARGET_ADMIN_ID and TEST_NAME.
 
 **Usage:**
 
@@ -442,7 +442,7 @@ Updated 2026-06-10: User > Self includes Self Credentials (list + get by ID). Us
 3. Run Google Login → tokens auto-captured into `ACCESS_TOKEN` + `REFRESH_TOKEN`
 4. Subsequent requests use Bearer auth inherited from API folder
 
-**Collection variables:** `BASE_URL`, `ID_TOKEN`, `ACCESS_TOKEN`, `REFRESH_TOKEN`, `AUTH_USER_ID`, `AUTH_USER_EMAIL`, `AUTH_USER_NAME`, `TARGET_USER_ID`, `TARGET_ADMIN_ID`, `TARGET_CREDENTIAL_ID`, `TEST_EMAIL`, `TEST_NAME`, `TEST_PHONE`, `TEST_BIRTH_DATE`.
+**Collection variables:** `BASE_URL`, `ID_TOKEN`, `ACCESS_TOKEN`, `REFRESH_TOKEN`, `AUTH_USER_ID`, `AUTH_USER_EMAIL`, `AUTH_USER_NAME`, `TARGET_USER_ID`, `TARGET_CREDENTIAL_ID`, `TEST_EMAIL`, `TEST_PHONE`, `TEST_BIRTH_DATE`.
 
 Every endpoint has response examples for all domain codes it can return (success + all error paths). Auth responses include `deleted_at` field in User DTO. List Users and Find User by ID include "trashed user" success variants (non-null `deleted_at`); Batch Update Users / Update Roles include `300846` / `300547` (trashed-target forbidden, 403) examples.
 

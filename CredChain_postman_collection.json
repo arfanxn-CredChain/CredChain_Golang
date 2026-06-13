@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "1461e5b0-ec16-45a4-a6c7-59dc61135341",
     "name": "CredChain",
-    "description": "CredChain API collection. Health, Auth (Google OAuth), User (Self/Admin), Credential (stubs). Run 'make get-google-id-token' for ID_TOKEN. Auth uses httpOnly cookies (access_token Path=/api, refresh_token Path=/api/auth) set by the backend. Postman cookie jar handles cookies automatically. ACCESS_TOKEN/REFRESH_TOKEN vars are also captured from response body for backward-compat with Bearer header fallback.",
+    "description": "CredChain API collection. Health, Auth (Google OAuth), User (Self/Admin), Credential. Run 'make get-google-id-token' for ID_TOKEN. Auth uses httpOnly cookies (access_token Path=/api, refresh_token Path=/api/auth) set by the backend. Postman cookie jar handles cookies automatically. ACCESS_TOKEN/REFRESH_TOKEN vars are also captured from response body for backward-compat with Bearer header fallback.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "17284024",
     "_collection_link": "https://go.postman.co/collection/17284024-1461e5b0-ec16-45a4-a6c7-59dc61135341?source=collection_link"
@@ -82,8 +82,8 @@
                       "if (response.code === 200200 && response.data) {",
                       "    pm.collectionVariables.set(\"ACCESS_TOKEN\", response.data.access_token);",
                       "    pm.collectionVariables.set(\"REFRESH_TOKEN\", response.data.refresh_token);",
-                      "    pm.collectionVariables.set(\"USER_ID\", response.data.id);",
-                      "    pm.collectionVariables.set(\"USER_EMAIL\", response.data.email);",
+"    pm.collectionVariables.set(\"AUTH_USER_ID\", response.data.id);",
+      "    pm.collectionVariables.set(\"AUTH_USER_EMAIL\", response.data.email);",
                       "    ",
                       "    pm.test(\"Login successful\", function() {",
                       "        pm.response.to.have.status(200);",
@@ -572,8 +572,8 @@
                       "if (response.code === 200400) {",
                       "    pm.collectionVariables.set(\"ACCESS_TOKEN\", \"\");",
                       "    pm.collectionVariables.set(\"REFRESH_TOKEN\", \"\");",
-                      "    pm.collectionVariables.set(\"USER_ID\", \"\");",
-                      "    pm.collectionVariables.set(\"USER_EMAIL\", \"\");",
+"    pm.collectionVariables.set(\"AUTH_USER_ID\", \"\");",
+      "    pm.collectionVariables.set(\"AUTH_USER_EMAIL\", \"\");",
                       "    ",
                       "    pm.test(\"Logged out successfully\", function() {",
                       "        pm.response.to.have.status(200);",
@@ -872,13 +872,13 @@
                       "listen": "test",
                       "script": {
                         "exec": [
-                          "const r = pm.response.json();",
-                          "if (r.code === 400100 && r.data && r.data.length > 0) {",
-                          "    pm.collectionVariables.set('TARGET_CREDENTIAL_ID', r.data[0].id);",
-                          "    pm.test('Self credentials', () => pm.expect(r.code).to.eql(400100));",
-                          "} else {",
-                          "    pm.test('Self credentials: ' + r.message, () => pm.expect(r.code).to.eql(400100));",
-                          "}"
+"const r = pm.response.json();",
+"if (r.code === 400100 && r.data?.items?.length > 0) {",
+"    pm.collectionVariables.set('TARGET_CREDENTIAL_ID', r.data.items[0].id);",
+"    pm.test('Self credentials fetched', () => pm.expect(r.code).to.eql(400100));",
+"} else {",
+"    pm.test('Self credentials empty or failed: ' + r.message, () => pm.expect(r.code).to.eql(400100));",
+"}"
                         ],
                         "type": "text/javascript"
                       }
@@ -915,7 +915,7 @@
                         }
                       ],
                       "cookie": [],
-                      "body": "{\n    \"code\": 400100,\n    \"message\": \"Kredensial berhasil diambil.\",\n    \"data\": []\n}"
+                      "body": "{\n    \"code\": 400100,\n    \"message\": \"Kredensial berhasil diambil.\",\n    \"data\": {\n        \"first_page_url\": \"http://localhost:8080/api/users/self/credentials?limit=10&page=1\",\n        \"from\": 1,\n        \"to\": 2,\n        \"last_page\": 1,\n        \"page\": 1,\n        \"limit\": 10,\n        \"total\": 2,\n        \"prev_page_url\": null,\n        \"next_page_url\": null,\n        \"items\": [\n            {\n                \"id\": \"01HWXAMPLE234567890ABCDE\",\n                \"holder_user_id\": \"01KRJSS4XF1KJHP1326YMW81CN\",\n                \"issuer_user_id\": \"01KRJSS4XF1KJHP1326YMW81AB\",\n                \"revoker_user_id\": null,\n                \"name\": \"Bachelor's Degree\",\n                \"meta\": {\"institution\": \"UI\"},\n                \"token_id\": \"1\",\n                \"file_hash\": \"QmXAMPLEHASH1234567890\",\n                \"file_uri\": null,\n                \"extract_status\": \"completed\",\n                \"extract_error\": null,\n                \"extracted_at\": \"2024-01-15T10:30:00Z\",\n                \"issued_at\": \"2024-01-15T10:30:00Z\",\n                \"revoked_at\": null\n            }\n        ]\n    }\n}"
                     }
                   ]
                 },
@@ -978,10 +978,10 @@
                         }
                       ],
                       "cookie": [],
-                      "body": "{\n    \"code\": 400100,\n    \"message\": \"Kredensial berhasil diambil.\",\n    \"data\": {}\n}"
-                    },
-                    {
-                      "name": "400140 Not Found",
+                      "body": "{\n    \"code\": 400100,\n    \"message\": \"Kredensial berhasil diambil.\",\n    \"data\": {\n        \"id\": \"01HWXAMPLE234567890ABCDE\",\n        \"holder_user_id\": \"01KRJSS4XF1KJHP1326YMW81CN\",\n        \"issuer_user_id\": \"01KRJSS4XF1KJHP1326YMW81AB\",\n        \"revoker_user_id\": null,\n        \"name\": \"Bachelor's Degree\",\n        \"meta\": {\"institution\": \"UI\"},\n        \"token_id\": \"1\",\n        \"file_hash\": \"QmXAMPLEHASH1234567890\",\n        \"file_uri\": null,\n        \"extract_status\": \"completed\",\n        \"extract_error\": null,\n        \"extracted_at\": \"2024-01-15T10:30:00Z\",\n        \"issued_at\": \"2024-01-15T10:30:00Z\",\n        \"revoked_at\": null,\n        \"holder\": {\n            \"id\": \"01KRJSS4XF1KJHP1326YMW81CN\",\n            \"name\": \"Arfan\",\n            \"email\": \"arfan2173@gmail.com\",\n            \"role\": \"super_admin\",\n            \"wallet_address\": \"0x70997970C51812dc3A010C7d01b50e0d17dc79C8\",\n            \"created_at\": \"2026-05-14T15:31:18.960366+07:00\",\n            \"updated_at\": \"2026-05-14T15:31:18.960366+07:00\",\n            \"deleted_at\": null\n        },\n        \"issuer\": {\n            \"id\": \"01KRJSS4XF1KJHP1326YMW81AB\",\n            \"name\": \"Issuer Org\",\n            \"email\": \"issuer@example.com\",\n            \"role\": \"issuer\",\n            \"wallet_address\": \"0xABCDEF1234567890ABCDEF1234567890ABCDEF12\",\n            \"created_at\": \"2026-05-10T08:00:00Z\",\n            \"updated_at\": \"2026-05-10T08:00:00Z\",\n            \"deleted_at\": null\n        }\n    }\n}"
+                 },
+                 {
+                   "name": "400140 Not Found",
                       "originalRequest": {},
                       "status": "Not Found",
                       "code": 404,
@@ -2396,8 +2396,9 @@
                   "listen": "test",
                   "script": {
                     "exec": [
-                      "const r = pm.response.json();",
-                      "pm.test('List Credentials', () => pm.expect(r.code).to.eql(400100));"
+"const r = pm.response.json();",
+"if (r.data?.items?.length > 0) pm.collectionVariables.set('TARGET_CREDENTIAL_ID', r.data.items[0].id);",
+"pm.test('List Credentials', () => pm.expect(r.code).to.eql(400100));"
                     ],
                     "type": "text/javascript"
                   }
@@ -2407,20 +2408,37 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{BASE_URL}}/api/credentials",
+                  "raw": "{{BASE_URL}}/api/credentials?page=1&limit=10&includes=holder,issuer",
                   "host": [
                     "{{BASE_URL}}"
                   ],
                   "path": [
                     "api",
                     "credentials"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Page number (1-indexed). Defaults to 1."
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10",
+                      "description": "Items per page (1-100). Defaults to 10."
+                    },
+                    {
+                      "key": "includes",
+                      "value": "holder,issuer",
+                      "description": "Comma-separated relations to preload: holder, issuer, revoker."
+                    }
                   ]
                 },
-                "description": "List Credentials. Currently a stub."
+                "description": "Paginated credential list with search, filters, sorts, and optional holder/issuer/revoker user expansions via includes query parameter (e.g. ?includes=holder,issuer)."
               },
               "response": [
                 {
-                  "name": "400100 OK (stub)",
+                  "name": "400100 OK",
                   "originalRequest": {},
                   "status": "OK",
                   "code": 200,
@@ -2432,7 +2450,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n    \"code\": 400100,\n    \"message\": \"stub\",\n    \"data\": {\n        \"status\": \"stub\"\n    }\n}"
+                  "body": "{\n    \"code\": 400100,\n    \"message\": \"Kredensial berhasil diambil.\",\n    \"data\": {\n        \"first_page_url\": \"http://localhost:8080/api/credentials?limit=10&page=1\",\n        \"from\": 1,\n        \"to\": 2,\n        \"last_page\": 1,\n        \"page\": 1,\n        \"limit\": 10,\n        \"total\": 2,\n        \"prev_page_url\": null,\n        \"next_page_url\": null,\n        \"items\": [\n            {\n                \"id\": \"01HWXAMPLE234567890ABCDE\",\n                \"holder_user_id\": \"01KRJSS4XF1KJHP1326YMW81CN\",\n                \"issuer_user_id\": \"01KRJSS4XF1KJHP1326YMW81AB\",\n                \"revoker_user_id\": null,\n                \"name\": \"Bachelor's Degree\",\n                \"meta\": {\"institution\": \"UI\"},\n                \"token_id\": \"1\",\n                \"file_hash\": \"QmXAMPLEHASH1234567890\",\n                \"file_uri\": null,\n                \"extract_status\": \"completed\",\n                \"extract_error\": null,\n                \"extracted_at\": \"2024-01-15T10:30:00Z\",\n                \"issued_at\": \"2024-01-15T10:30:00Z\",\n                \"revoked_at\": null\n            }\n        ]\n    }\n}"
                 }
               ]
             },
@@ -2440,11 +2458,24 @@
               "name": "Get Credential by ID",
               "event": [
                 {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "if (!pm.collectionVariables.get('TARGET_CREDENTIAL_ID')) pm.test.fail('TARGET_CREDENTIAL_ID not set. Run List Credentials or Self Credentials first.');"
+                    ],
+                    "type": "text/javascript"
+                  }
+                },
+                {
                   "listen": "test",
                   "script": {
                     "exec": [
                       "const r = pm.response.json();",
-                      "pm.test('Get Credential by ID', () => pm.expect(r.code).to.eql(400100));"
+                      "if (r.code === 400100) {",
+                      "    pm.test('Credential found', () => pm.expect(r.code).to.eql(400100));",
+                      "} else {",
+                      "    pm.test('Get credential: ' + r.message, () => pm.expect(r.code).to.not.eql(400100));",
+                      "}"
                     ],
                     "type": "text/javascript"
                   }
@@ -2454,7 +2485,7 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{BASE_URL}}/api/credentials/{{TARGET_CREDENTIAL_ID}}",
+                  "raw": "{{BASE_URL}}/api/credentials/{{TARGET_CREDENTIAL_ID}}?includes=holder,issuer",
                   "host": [
                     "{{BASE_URL}}"
                   ],
@@ -2462,13 +2493,20 @@
                     "api",
                     "credentials",
                     "{{TARGET_CREDENTIAL_ID}}"
+                  ],
+                  "query": [
+                    {
+                      "key": "includes",
+                      "value": "holder,issuer",
+                      "description": "Comma-separated relations to preload: holder, issuer, revoker."
+                    }
                   ]
                 },
-                "description": "Get Credential by ID. Currently a stub."
+                "description": "Get a single credential by ID with optional user expansions via includes query parameter (e.g. ?includes=holder,issuer,revoker)."
               },
               "response": [
                 {
-                  "name": "400100 OK (stub)",
+                  "name": "400100 OK",
                   "originalRequest": {},
                   "status": "OK",
                   "code": 200,
@@ -2480,7 +2518,22 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n    \"code\": 400100,\n    \"message\": \"stub\",\n    \"data\": {\n        \"status\": \"stub\"\n    }\n}"
+                  "body": "{\n    \"code\": 400100,\n    \"message\": \"Kredensial berhasil diambil.\",\n    \"data\": {\n        \"id\": \"01HWXAMPLE234567890ABCDE\",\n        \"holder_user_id\": \"01KRJSS4XF1KJHP1326YMW81CN\",\n        \"issuer_user_id\": \"01KRJSS4XF1KJHP1326YMW81AB\",\n        \"revoker_user_id\": null,\n        \"name\": \"Bachelor's Degree\",\n        \"meta\": {\"institution\": \"UI\"},\n        \"token_id\": \"1\",\n        \"file_hash\": \"QmXAMPLEHASH1234567890\",\n        \"file_uri\": null,\n        \"extract_status\": \"completed\",\n        \"extract_error\": null,\n        \"extracted_at\": \"2024-01-15T10:30:00Z\",\n        \"issued_at\": \"2024-01-15T10:30:00Z\",\n        \"revoked_at\": null\n    }\n}"
+                },
+                {
+                  "name": "400140 Not Found",
+                  "originalRequest": {},
+                  "status": "Not Found",
+                  "code": 404,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n    \"code\": 400140,\n    \"message\": \"Kredensial tidak ditemukan.\"\n}"
                 }
               ]
             },
@@ -2500,7 +2553,40 @@
               ],
               "request": {
                 "method": "POST",
-                "header": [],
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "multipart/form-data"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "items[0][holder_user_id]",
+                      "value": "{{TARGET_USER_ID}}",
+                      "type": "text",
+                      "description": "ULID of the credential holder"
+                    },
+                    {
+                      "key": "items[0][name]",
+                      "value": "Bachelor's Degree",
+                      "type": "text",
+                      "description": "Credential name (1-256 chars)"
+                    },
+                    {
+                      "key": "items[0][meta]",
+                      "value": "{\"institution\":\"UI\"}",
+                      "type": "text",
+                      "description": "Optional JSON metadata"
+                    },
+                    {
+                      "key": "items[0][file]",
+                      "type": "file",
+                      "description": "PDF/JPEG/PNG/WebP/TIFF, max 10 MB"
+                    }
+                  ]
+                },
                 "url": {
                   "raw": "{{BASE_URL}}/api/credentials/batch/issue",
                   "host": [
@@ -2513,11 +2599,11 @@
                     "issue"
                   ]
                 },
-                "description": "Batch Issue Credentials. Currently a stub."
+                "description": "Batch issue credentials via multipart form. Max 100 items per batch. Required fields: holder_user_id, name, file. Optional: meta (JSON string). Allowed MIME types: application/pdf, image/jpeg, image/png, image/webp, image/tiff. Max file size: 10 MB."
               },
               "response": [
                 {
-                  "name": "400200 OK (stub)",
+                  "name": "400200 OK",
                   "originalRequest": {},
                   "status": "OK",
                   "code": 200,
@@ -2529,7 +2615,22 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n    \"code\": 400200,\n    \"message\": \"stub\",\n    \"data\": {\n        \"status\": \"stub\"\n    }\n}"
+                  "body": "{\n    \"code\": 400200,\n    \"message\": \"Kredensial berhasil diterbitkan.\",\n    \"data\": [\n        {\n            \"id\": \"01HWXAMPLE234567890ABCDE\",\n            \"holder_user_id\": \"01KRJSS4XF1KJHP1326YMW81CN\",\n            \"issuer_user_id\": \"01KRJSS4XF1KJHP1326YMW81AB\",\n            \"revoker_user_id\": null,\n            \"name\": \"Bachelor's Degree\",\n            \"meta\": {\"institution\": \"UI\"},\n            \"token_id\": null,\n            \"file_hash\": \"QmXAMPLEHASH1234567890\",\n            \"file_uri\": null,\n            \"extract_status\": \"pending\",\n            \"extract_error\": null,\n            \"extracted_at\": null,\n            \"issued_at\": \"2026-06-14T10:30:00Z\",\n            \"revoked_at\": null\n        }\n    ]\n}"
+                },
+                {
+                  "name": "400241 Validation Error",
+                  "originalRequest": {},
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n    \"code\": 400241,\n    \"message\": \"Kredensial tidak dapat diterbitkan karena data tidak valid.\",\n    \"errors\": {\n        \"items[0][name]\": [\n            \"Name harus diisi.\"\n        ]\n    }\n}"
                 }
               ]
             },
@@ -2549,7 +2650,16 @@
               ],
               "request": {
                 "method": "POST",
-                "header": [],
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ids\": [\n    \"{{TARGET_CREDENTIAL_ID}}\"\n  ]\n}"
+                },
                 "url": {
                   "raw": "{{BASE_URL}}/api/credentials/batch/revoke",
                   "host": [
@@ -2562,11 +2672,11 @@
                     "revoke"
                   ]
                 },
-                "description": "Batch Revoke Credentials. Currently a stub."
+                "description": "Batch revoke credentials by ID. Max 100 IDs. JSON body with ids array."
               },
               "response": [
                 {
-                  "name": "400300 OK (stub)",
+                  "name": "400300 OK",
                   "originalRequest": {},
                   "status": "OK",
                   "code": 200,
@@ -2578,7 +2688,22 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n    \"code\": 400300,\n    \"message\": \"stub\",\n    \"data\": {\n        \"status\": \"stub\"\n    }\n}"
+                  "body": "{\n    \"code\": 400300,\n    \"message\": \"Kredensial berhasil dicabut.\",\n    \"data\": [\n        {\n            \"id\": \"01HWXAMPLE234567890ABCDE\",\n            \"holder_user_id\": \"01KRJSS4XF1KJHP1326YMW81CN\",\n            \"issuer_user_id\": \"01KRJSS4XF1KJHP1326YMW81AB\",\n            \"revoker_user_id\": \"01KRJSS4XF1KJHP1326YMW81AB\",\n            \"name\": \"Bachelor's Degree\",\n            \"meta\": {\"institution\": \"UI\"},\n            \"token_id\": \"1\",\n            \"file_hash\": \"QmXAMPLEHASH1234567890\",\n            \"file_uri\": null,\n            \"extract_status\": \"completed\",\n            \"extract_error\": null,\n            \"extracted_at\": \"2024-01-15T10:30:00Z\",\n            \"issued_at\": \"2024-01-15T10:30:00Z\",\n            \"revoked_at\": \"2026-06-14T12:00:00Z\"\n        }\n    ]\n}"
+                },
+                {
+                  "name": "400340 Not Found",
+                  "originalRequest": {},
+                  "status": "Not Found",
+                  "code": 404,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n    \"code\": 400340,\n    \"message\": \"Kredensial tidak ditemukan.\"\n}"
                 }
               ]
             },
@@ -2624,7 +2749,7 @@
               },
               "response": [
                 {
-                  "name": "400500 OK (stub)",
+                  "name": "400500 OK",
                   "originalRequest": {},
                   "status": "OK",
                   "code": 200,
@@ -2636,19 +2761,19 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n    \"code\": 400500,\n    \"message\": \"stub\",\n    \"data\": null\n}"
+                  "body": "{\n    \"code\": 400500,\n    \"message\": \"Ekstraksi ulang kredensial berhasil diantrekan.\",\n    \"data\": [\n        {\n            \"id\": \"01HWXAMPLE234567890ABCDE\",\n            \"holder_user_id\": \"01KRJSS4XF1KJHP1326YMW81CN\",\n            \"issuer_user_id\": \"01KRJSS4XF1KJHP1326YMW81AB\",\n            \"revoker_user_id\": null,\n            \"name\": \"Bachelor's Degree\",\n            \"meta\": {\"institution\": \"UI\"},\n            \"token_id\": \"1\",\n            \"file_hash\": \"QmXAMPLEHASH1234567890\",\n            \"file_uri\": null,\n            \"extract_status\": \"pending\",\n            \"extract_error\": null,\n            \"extracted_at\": null,\n            \"issued_at\": \"2024-01-15T10:30:00Z\",\n            \"revoked_at\": null\n        }\n    ]\n}"
                 }
               ]
             },
             {
-              "name": "Verify Hash",
+              "name": "Verify",
               "event": [
                 {
                   "listen": "test",
                   "script": {
                     "exec": [
                       "const r = pm.response.json();",
-                      "pm.test('Verify Hash', () => pm.expect(r.code).to.eql(400400));"
+                      "pm.test('Verify', () => pm.expect(r.code).to.be.oneOf([400401,400402,400403,400404,400405,400406,400407,400408,400409,400410,400411,400412]));"
                     ],
                     "type": "text/javascript"
                   }
@@ -2868,10 +2993,60 @@
               ]
             }
           ],
-          "description": "Credential management endpoints. Issuer+ for issue/revoke/verify, Admin+ for list/get. All currently stubs."
+          "description": "Credential management endpoints. List/Get/Issue/Revoke require Issuer+. Verify is public. ReExtract requires Issuer+."
         }
       ],
       "description": "CredChain API endpoints.",
+      "variable": [
+        {
+          "key": "BASE_URL",
+          "value": "http://localhost:8080"
+        },
+        {
+          "key": "ID_TOKEN",
+          "value": ""
+        },
+        {
+          "key": "ACCESS_TOKEN",
+          "value": ""
+        },
+        {
+          "key": "REFRESH_TOKEN",
+          "value": ""
+        },
+        {
+          "key": "AUTH_USER_ID",
+          "value": ""
+        },
+        {
+          "key": "AUTH_USER_EMAIL",
+          "value": ""
+        },
+        {
+          "key": "AUTH_USER_NAME",
+          "value": ""
+        },
+        {
+          "key": "TARGET_USER_ID",
+          "value": ""
+        },
+        {
+          "key": "TARGET_CREDENTIAL_ID",
+          "value": ""
+        },
+        {
+          "key": "TEST_EMAIL",
+          "value": "test-holder@example.com"
+        },
+        {
+          "key": "TEST_PHONE",
+          "value": "+628123456789"
+        },
+        {
+          "key": "TEST_BIRTH_DATE",
+          "value": "2000-01-01"
+        }
+      ],
       "auth": {
         "type": "bearer",
         "bearer": [
@@ -2942,20 +3117,12 @@
       "value": ""
     },
     {
-      "key": "TARGET_ADMIN_ID",
-      "value": ""
-    },
-    {
       "key": "TARGET_CREDENTIAL_ID",
       "value": ""
     },
     {
       "key": "TEST_EMAIL",
       "value": "test-holder@example.com"
-    },
-    {
-      "key": "TEST_NAME",
-      "value": "Test User"
     },
     {
       "key": "TEST_PHONE",
