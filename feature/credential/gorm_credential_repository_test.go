@@ -180,3 +180,77 @@ func TestGormCredentialGet_Pagination(t *testing.T) {
 	assert.Equal(t, 5, total)
 	assert.Len(t, results, 2)
 }
+
+func TestGormCredentialGet_FilterDisallowedColumnIsIgnored(t *testing.T) {
+	repo := openCredRepo(t)
+	ctx := context.Background()
+	for _, n := range []string{"Alpha", "Beta"} {
+		_, err := repo.Store(ctx, domain.Credential{ID: "c" + n, HolderUserID: "h1", IssuerUserID: "iss", Name: n, FileHash: "0x" + n})
+		require.NoError(t, err)
+	}
+	q := &domainQuery.Query{
+		Filters: []domainQuery.Filter{
+			{Column: "secret_column", Operator: domainQuery.OperatorEqual, Values: []string{"x"}},
+		},
+	}
+	results, total, err := repo.Get(ctx, q)
+	require.NoError(t, err)
+	assert.Equal(t, 2, total, "disallowed filter column should be silently dropped")
+	assert.Len(t, results, 2)
+}
+
+func TestGormCredentialGet_SortDisallowedColumnIsIgnored(t *testing.T) {
+	repo := openCredRepo(t)
+	ctx := context.Background()
+	for _, n := range []string{"Alpha", "Beta"} {
+		_, err := repo.Store(ctx, domain.Credential{ID: "c" + n, HolderUserID: "h1", IssuerUserID: "iss", Name: n, FileHash: "0x" + n})
+		require.NoError(t, err)
+	}
+	q := &domainQuery.Query{
+		Sorts: []domainQuery.Sort{
+			{Column: "secret_column", Order: domainQuery.SortDesc},
+		},
+	}
+	results, total, err := repo.Get(ctx, q)
+	require.NoError(t, err)
+	assert.Equal(t, 2, total, "disallowed sort column should fall back to default sort")
+	assert.Len(t, results, 2)
+}
+
+func TestGormCredentialGet_PaginationPage2(t *testing.T) {
+	repo := openCredRepo(t)
+	ctx := context.Background()
+	for i := 0; i < 5; i++ {
+		id := "c" + strconv.Itoa(i+1)
+		_, err := repo.Store(ctx, domain.Credential{ID: id, HolderUserID: "h1", IssuerUserID: "iss", Name: id, FileHash: "0x" + id})
+		require.NoError(t, err)
+	}
+	q := &domainQuery.Query{Page: 2, Limit: 2}
+	results, total, err := repo.Get(ctx, q)
+	require.NoError(t, err)
+	assert.Equal(t, 5, total, "total must reflect all matching rows, not page slice")
+	assert.Len(t, results, 2, "page 2 with limit 2 should return 2 items")
+}
+
+func TestGormCredentialGet_FilterCombinedWithSort(t *testing.T) {
+	repo := openCredRepo(t)
+	ctx := context.Background()
+	for _, n := range []string{"Gamma", "Alpha", "Beta"} {
+		_, err := repo.Store(ctx, domain.Credential{ID: "c" + n, HolderUserID: "h1", IssuerUserID: "iss", Name: n, FileHash: "0x" + n})
+		require.NoError(t, err)
+	}
+	q := &domainQuery.Query{
+		Filters: []domainQuery.Filter{
+			{Column: "name", Operator: domainQuery.OperatorNotEqual, Values: []string{"Alpha"}},
+		},
+		Sorts: []domainQuery.Sort{
+			{Column: "name", Order: domainQuery.SortAsc},
+		},
+	}
+	results, total, err := repo.Get(ctx, q)
+	require.NoError(t, err)
+	assert.Equal(t, 2, total, "filter !Alpha should exclude Alpha, leaving 2")
+	assert.Len(t, results, 2)
+	assert.Equal(t, "Beta", results[0].Name)
+	assert.Equal(t, "Gamma", results[1].Name)
+}

@@ -181,6 +181,9 @@ func TestGormUserRepository_Get_DefaultOrder(t *testing.T) {
 	repo := newRepo(t)
 	_, _ = repo.Store(context.Background(),
 		fixtures.NewDomainUser(fixtures.WithEmail("a@x.com")),
+	)
+	time.Sleep(10 * time.Millisecond)
+	_, _ = repo.Store(context.Background(),
 		fixtures.NewDomainUser(fixtures.WithEmail("b@x.com")),
 	)
 	q := &domainQuery.Query{Page: 1, Limit: 10}
@@ -188,6 +191,8 @@ func TestGormUserRepository_Get_DefaultOrder(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 2, total)
 	assert.Len(t, users, 2)
+	assert.Equal(t, "b@x.com", users[0].Email, "newer user should come first with updated_at DESC")
+	assert.Equal(t, "a@x.com", users[1].Email)
 }
 
 func TestGormUserRepository_Get_SearchByName(t *testing.T) {
@@ -623,6 +628,28 @@ func TestGormUserRepository_Get_FilterPaginationCountIsConsistent(t *testing.T) 
 	assert.Len(t, users, 1, "items respect page limit")
 }
 
+func TestGormUserRepository_Get_PaginationPage2(t *testing.T) {
+	repo := seedUsersForFilter(t)
+	q := &domainQuery.Query{
+		Page: 2, Limit: 2,
+	}
+	users, total, err := repo.Get(context.Background(), q)
+	assert.NoError(t, err)
+	assert.Equal(t, 4, total, "total must reflect all matching rows")
+	assert.Len(t, users, 2, "page 2 with limit 2 should return remaining 2 items")
+}
+
+func TestGormUserRepository_Get_PaginationPage3Empty(t *testing.T) {
+	repo := seedUsersForFilter(t)
+	q := &domainQuery.Query{
+		Page: 3, Limit: 2,
+	}
+	users, total, err := repo.Get(context.Background(), q)
+	assert.NoError(t, err)
+	assert.Equal(t, 4, total, "total is unaffected by out-of-range page")
+	assert.Empty(t, users, "page beyond data range should return empty slice")
+}
+
 // seedUsersForTrashed seeds 2 live users + 1 trashed user (soft-deleted).
 // Returns repo plus the IDs in the order they were inserted.
 func seedUsersForTrashed(t *testing.T) domain.UserRepository {
@@ -724,6 +751,44 @@ func TestGormUserRepository_Get_SortByDeletedAtDesc_IncludesTrashedAndLive(t *te
 		idIndex[u.Id] = i
 	}
 	assert.Less(t, idIndex["trash-new"], idIndex["trash-old"], "DESC sort: newer trash before older trash")
+}
+
+func TestGormUserRepository_Get_SortByUpdatedAt(t *testing.T) {
+	repo := newRepo(t)
+	_, _ = repo.Store(context.Background(),
+		fixtures.NewDomainUser(fixtures.WithEmail("old@x.com")),
+	)
+	time.Sleep(10 * time.Millisecond)
+	_, _ = repo.Store(context.Background(),
+		fixtures.NewDomainUser(fixtures.WithEmail("new@x.com")),
+	)
+	q := &domainQuery.Query{
+		Sorts: []domainQuery.Sort{{Column: "updated_at", Order: domainQuery.SortDesc}},
+	}
+	users, _, err := repo.Get(context.Background(), q)
+	assert.NoError(t, err)
+	assert.Len(t, users, 2)
+	assert.Equal(t, "new@x.com", users[0].Email, "newer updated_at should come first with DESC")
+	assert.Equal(t, "old@x.com", users[1].Email)
+}
+
+func TestGormUserRepository_Get_SortByUpdatedAtAsc(t *testing.T) {
+	repo := newRepo(t)
+	_, _ = repo.Store(context.Background(),
+		fixtures.NewDomainUser(fixtures.WithEmail("old@x.com")),
+	)
+	time.Sleep(10 * time.Millisecond)
+	_, _ = repo.Store(context.Background(),
+		fixtures.NewDomainUser(fixtures.WithEmail("new@x.com")),
+	)
+	q := &domainQuery.Query{
+		Sorts: []domainQuery.Sort{{Column: "updated_at", Order: domainQuery.SortAsc}},
+	}
+	users, _, err := repo.Get(context.Background(), q)
+	assert.NoError(t, err)
+	assert.Len(t, users, 2)
+	assert.Equal(t, "old@x.com", users[0].Email, "older updated_at should come first with ASC")
+	assert.Equal(t, "new@x.com", users[1].Email)
 }
 
 func TestGormUserRepository_Get_FilterRoleAndDeletedAtNotNull_AndedCorrectly(t *testing.T) {
