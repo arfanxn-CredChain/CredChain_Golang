@@ -128,6 +128,7 @@ CredChain_Golang/
       signer.go         → signature packing utilities
     crypto/             → AES-256 encryption (encryption.go), random hex (token.go)
     database/gorm/      → GORM setup, UnitOfWork, gorm_context
+      helpers.go        → shared filter/sort/pagination/CASE update helpers (ApplyFilters, ApplySorts, ApplyPagination, BuildCaseColumnSQL, BuildBatchUpdateSQL)
       model/            → GORM structs: User, UserToken, Credential
     database/migrations → 000001_initial_schema.up.sql / .down.sql
     http/               → router.go + sub-packages
@@ -203,6 +204,20 @@ Each domain folder under `feature/` follows the same five-file pattern:
 - `model.User` has `gorm.DeletedAt` field for soft delete.
 - All models expose `ToDomain()` and `FromDomain()` mapping methods.
 
+### Shared GORM Helpers
+
+`infrastructure/database/gorm/helpers.go` provides five exported functions shared by all GORM repositories:
+
+| Helper | Purpose |
+|--------|---------|
+| `ApplyFilters(db, filters, allowedColumns, columnPrefix)` | Maps all 14 `domainQuery.Filter` operators to GORM Where clauses, gated by a column allowlist with optional table prefix |
+| `ApplySorts(db, query, allowedColumns, defaultSort, mapper)` | Applies sort clauses with column allowlist, falls back to `defaultSort` when no sorts or all filtered out; supports column name translation via `mapper` |
+| `ApplyPagination(db, query)` | Applies `LIMIT`/`OFFSET` when query has pagination |
+| `BuildCaseColumnSQL(idColumn, col, pairs)` | Generates `col = CASE idColumn WHEN ? THEN ? ELSE col END` for batch partial UPDATEs |
+| `BuildBatchUpdateSQL(table, idColumn, clauses, args, ids, extra...)` | Assembles complete `UPDATE table SET ... WHERE idColumn IN (?)` batch statement with optional extra set clauses (e.g., `updated_at = CURRENT_TIMESTAMP`) |
+
+Repos import via `gormhelpers "CredChain_Golang/infrastructure/database/gorm"` to avoid naming conflict with `gorm.io/gorm`. Tests for helpers live in `helpers_test.go`. Import cycle in `uow_test.go` was resolved by moving it to external test package (`package gorm_test`).
+
 ### Unit of Work
 
 `domain.UnitOfWork` wraps multi-repo transactions. `GormUnitOfWork.Execute(ctx, fn)` creates transaction-scoped repositories via factory functions and passes a fresh UoW into `fn`. Roll back on error; commit on nil return.
@@ -264,8 +279,8 @@ Adding a new `domain.Code*` constant requires updating: `mapper.go` (both `CodeT
 
 **Scoping rules (admins must be able to see trashed users):**
 
+- `Get` is **always unscoped** — returns soft-deleted rows alongside live ones. To exclude trashed users, clients must explicitly filter `deleted_at_` (IS NULL).
 - `Find` / `FindByIds` / `FindByEmails` / `FindByRole` are **unscoped** — return soft-deleted rows so admins can inspect, list, and recover trashed users.
-- `Get` auto-unscopes when its query references `deleted_at` in any filter or sort (via `referencesDeletedAt(q)`); otherwise default scope applies.
 
 **Mutation paths protect against acting on trashed rows:**
 
@@ -398,9 +413,11 @@ All under `/api` prefix. Middleware order: `ErrorLoggerMiddleware` → `I18nMidd
 
 **Repository Find error translation:** `userService.Find` translates `gorm.ErrRecordNotFound` to `domain.NewError(CodeUserFetchNotFound, WithMetadata("user_id", id))` so `GET /users/:id` returns HTTP 404 instead of leaking 500.
 
-**Repository Update:** variadic `Update(ctx, users ...domain.User) ([]domain.User, error)` — single and batch callers compile naturally. Uses a single batch CASE statement (`updateBatchCase` helper) to eliminate N+1: one UPDATE + one SELECT regardless of batch size. Per-column CASE branches are emitted only for users that provide a non-nil value; users that don't touch a column fall through to `ELSE column` (preserves existing value). `updated_at` stamped to `CURRENT_TIMESTAMP` explicitly (raw `db.Exec` bypasses GORM autoUpdateTime). `meta` marshalled via `json.Marshal` before binding.
+**Repository Update:** variadic `Update(ctx, users ...domain.User) ([]domain.User, error)` — single and batch callers compile naturally. Uses a single batch CASE statement (`updateBatchCase` helper) to eliminate N+1: one UPDATE + one SELECT regardless of batch size. Per-column CASE branches are emitted only for users that provide a non-nil value; users that don't touch a column fall through to `ELSE column` (preserves existing value). `updated_at` stamped to `CURRENT_TIMESTAMP` explicitly (raw `db.Exec` bypasses GORM autoUpdateTime). `meta` marshalled via `json.Marshal` before binding. The CASE SQL generation is delegated to shared helpers `BuildCaseColumnSQL` and `BuildBatchUpdateSQL` in `infrastructure/database/gorm/helpers.go`. Credential repository uses the same helpers.
 
-**Repository UpdateRole:** batch CASE statement with `WHERE id IN (?)` — pass IDs as a single `[]interface{}` slice (not spread) so GORM can expand the placeholder.
+**Repository UpdateRole:** batch CASE statement with `WHERE id IN (?)` — pass IDs as a single `[]interface{}` slice (not spread) so GORM can expand the placeholder. Also uses shared `BuildCaseColumnSQL` + `BuildBatchUpdateSQL` helpers.
+
+**Repository Get (pagination):** uses shared `ApplyFilters`, `ApplySorts`, and `ApplyPagination` helpers from `infrastructure/database/gorm/helpers.go`. Default sort for users: `updated_at DESC`. Default sort for credentials: `credentials.issued_at DESC`.
 
 ### Docker
 
@@ -570,7 +587,7 @@ All batch repository operations (Postgres and MongoDB) MUST execute a single
 query/aggregation regardless of batch size. NEVER issue queries inside a loop
 over input items.
 
-- Postgres batch updates use CASE statements (`updateBatchCase`).
+- Postgres batch updates use CASE statements via shared `BuildCaseColumnSQL` + `BuildBatchUpdateSQL` helpers (`infrastructure/database/gorm/helpers.go`).
 - Mongo id-search uses ONE aggregation pipeline (`FindRankedByIds`).
 - Relation/tie-break lookups use a single `IN`-clause / `$in` query.
 - Verify fuzzy path: 1 extract-ids call + 1 aggregation + 1 verify call + 1 cache write.
