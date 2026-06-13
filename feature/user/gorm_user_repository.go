@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"sort"
-	"strings"
 
 	"CredChain_Golang/domain"
 	domainQuery "CredChain_Golang/domain/query"
@@ -179,65 +178,59 @@ func (r *gormUserRepository) Update(ctx context.Context, users ...domain.User) (
 func (r *gormUserRepository) updateBatchCase(ctx context.Context, users []domain.User) error {
 	sort.Slice(users, func(i, j int) bool { return users[i].Id < users[j].Id })
 
-	var setClauses []string
-	var setArgs []interface{}
+	var clauses []string
+	var allArgs [][]interface{}
 
-	addCaseClause := func(col string, getValue func(domain.User) (interface{}, bool)) {
-		var caseArgs []interface{}
+	addCol := func(col string, getValue func(domain.User) (interface{}, bool)) {
+		var pairs []interface{}
 		for _, u := range users {
 			if v, ok := getValue(u); ok {
-				caseArgs = append(caseArgs, u.Id, v)
+				pairs = append(pairs, u.Id, v)
 			}
 		}
-		if len(caseArgs) == 0 {
-			return
+		if clause, args := gormhelpers.BuildCaseColumnSQL("id", col, pairs); clause != "" {
+			clauses = append(clauses, clause)
+			allArgs = append(allArgs, args)
 		}
-		caseSQL := "CASE id"
-		for i := 0; i < len(caseArgs)/2; i++ {
-			caseSQL += " WHEN ? THEN ?"
-		}
-		caseSQL += " ELSE " + col + " END"
-		setClauses = append(setClauses, col+" = "+caseSQL)
-		setArgs = append(setArgs, caseArgs...)
 	}
 
-	addCaseClause("name", func(u domain.User) (interface{}, bool) {
+	addCol("name", func(u domain.User) (interface{}, bool) {
 		if u.Name != nil {
 			return *u.Name, true
 		}
 		return nil, false
 	})
-	addCaseClause("number", func(u domain.User) (interface{}, bool) {
+	addCol("number", func(u domain.User) (interface{}, bool) {
 		if u.Number != nil {
 			return *u.Number, true
 		}
 		return nil, false
 	})
-	addCaseClause("phone_number", func(u domain.User) (interface{}, bool) {
+	addCol("phone_number", func(u domain.User) (interface{}, bool) {
 		if u.PhoneNumber != nil {
 			return *u.PhoneNumber, true
 		}
 		return nil, false
 	})
-	addCaseClause("email", func(u domain.User) (interface{}, bool) {
+	addCol("email", func(u domain.User) (interface{}, bool) {
 		if u.Email != "" {
 			return u.Email, true
 		}
 		return nil, false
 	})
-	addCaseClause("birth_date", func(u domain.User) (interface{}, bool) {
+	addCol("birth_date", func(u domain.User) (interface{}, bool) {
 		if u.BirthDate != nil {
 			return *u.BirthDate, true
 		}
 		return nil, false
 	})
-	addCaseClause("gender", func(u domain.User) (interface{}, bool) {
+	addCol("gender", func(u domain.User) (interface{}, bool) {
 		if u.Gender != nil {
 			return string(*u.Gender), true
 		}
 		return nil, false
 	})
-	addCaseClause("meta", func(u domain.User) (interface{}, bool) {
+	addCol("meta", func(u domain.User) (interface{}, bool) {
 		if u.Meta == nil {
 			return nil, false
 		}
@@ -247,38 +240,34 @@ func (r *gormUserRepository) updateBatchCase(ctx context.Context, users []domain
 		}
 		return string(b), true
 	})
-	addCaseClause("role", func(u domain.User) (interface{}, bool) {
+	addCol("role", func(u domain.User) (interface{}, bool) {
 		if u.Role != "" {
 			return string(u.Role), true
 		}
 		return nil, false
 	})
-	addCaseClause("wallet_address", func(u domain.User) (interface{}, bool) {
+	addCol("wallet_address", func(u domain.User) (interface{}, bool) {
 		if u.WalletAddress != "" {
 			return u.WalletAddress, true
 		}
 		return nil, false
 	})
-	addCaseClause("encrypted_wallet_private_key", func(u domain.User) (interface{}, bool) {
+	addCol("encrypted_wallet_private_key", func(u domain.User) (interface{}, bool) {
 		if u.EncryptedWalletPrivateKey != "" {
 			return u.EncryptedWalletPrivateKey, true
 		}
 		return nil, false
 	})
 
-	if len(setClauses) == 0 {
+	if len(clauses) == 0 {
 		return nil
 	}
-
-	setClauses = append(setClauses, "updated_at = CURRENT_TIMESTAMP")
 
 	ids := make([]interface{}, len(users))
 	for i, u := range users {
 		ids[i] = u.Id
 	}
-
-	sql := "UPDATE users SET " + strings.Join(setClauses, ", ") + " WHERE id IN (?)"
-	finalArgs := append(setArgs, ids)
+	sql, finalArgs := gormhelpers.BuildBatchUpdateSQL("users", "id", clauses, allArgs, ids, "updated_at = CURRENT_TIMESTAMP")
 	return r.db.WithContext(ctx).Exec(sql, finalArgs...).Error
 }
 
@@ -289,32 +278,24 @@ func (r *gormUserRepository) UpdateRole(ctx context.Context, users ...domain.Use
 		return []domain.User{}, 0, nil
 	}
 
-	db := r.db.WithContext(ctx)
-
-	// Efficient batch update using CASE statement
-	caseStmt := "CASE id "
-	args := make([]interface{}, 0, len(users)*2)
-
+	var pairs []interface{}
 	for _, user := range users {
-		caseStmt += "WHEN ? THEN ? "
-		args = append(args, user.Id, user.Role)
+		pairs = append(pairs, user.Id, user.Role)
 	}
-	caseStmt += "ELSE role END"
+	clause, clauseArgs := gormhelpers.BuildCaseColumnSQL("id", "role", pairs)
 
 	ids := make([]interface{}, len(users))
 	for i, user := range users {
 		ids[i] = user.Id
 	}
 
-	query := "UPDATE users SET role = " + caseStmt + " WHERE id IN (?)"
-	finalArgs := append(args, ids)
+	sql, finalArgs := gormhelpers.BuildBatchUpdateSQL("users", "id", []string{clause}, [][]interface{}{clauseArgs}, ids)
 
-	result := db.Exec(query, finalArgs...)
+	result := r.db.WithContext(ctx).Exec(sql, finalArgs...)
 	if err := result.Error; err != nil {
 		return nil, 0, err
 	}
 
-	// Fetch updated users
 	userIDs := make([]string, len(users))
 	for i, user := range users {
 		userIDs[i] = user.Id
