@@ -99,3 +99,16 @@ func BuildCaseColumnSQL(idColumn, col string, pairs []interface{}) (string, []in
 	b.WriteString(" END")
 	return col + " = " + b.String(), pairs
 }
+
+func BuildBatchUpdateSQL(table, idColumn string, setClauses []string, setArgs [][]interface{}, ids []interface{}, extraSetClauses ...string) (string, []interface{}) {
+	var allArgs []interface{}
+	for _, a := range setArgs {
+		allArgs = append(allArgs, a...)
+	}
+	allClauses := make([]string, len(setClauses))
+	copy(allClauses, setClauses)
+	allClauses = append(allClauses, extraSetClauses...)
+	sql := "UPDATE " + table + " SET " + strings.Join(allClauses, ", ") + " WHERE " + idColumn + " IN (?)"
+	allArgs = append(allArgs, ids)
+	return sql, allArgs
+}

@@ -214,3 +214,49 @@ func TestBuildCaseColumnSQL_CustomIDColumn(t *testing.T) {
 	assert.Contains(t, clause, "ELSE role END")
 	assert.Equal(t, []interface{}{"user-1", "admin"}, args)
 }
+
+func TestBuildBatchUpdateSQL_WithExtraClauses(t *testing.T) {
+	clause1, args1 := BuildCaseColumnSQL("id", "name", []interface{}{"user-1", "alice"})
+	clause2, args2 := BuildCaseColumnSQL("id", "role", []interface{}{"user-1", "admin"})
+
+	sql, finalArgs := BuildBatchUpdateSQL("users", "id",
+		[]string{clause1, clause2},
+		[][]interface{}{args1, args2},
+		[]interface{}{"user-1", "user-2"},
+		"updated_at = CURRENT_TIMESTAMP",
+	)
+
+	assert.Contains(t, sql, "UPDATE users SET")
+	assert.Contains(t, sql, "name = CASE id WHEN ? THEN ? ELSE name END")
+	assert.Contains(t, sql, "role = CASE id WHEN ? THEN ? ELSE role END")
+	assert.Contains(t, sql, "updated_at = CURRENT_TIMESTAMP")
+	assert.Contains(t, sql, "WHERE id IN (?)")
+	assert.Equal(t, []interface{}{"user-1", "alice", "user-1", "admin", []interface{}{"user-1", "user-2"}}, finalArgs)
+}
+
+func TestBuildBatchUpdateSQL_NoExtraClauses(t *testing.T) {
+	clause, args := BuildCaseColumnSQL("id", "role", []interface{}{"id-1", "holder"})
+
+	sql, finalArgs := BuildBatchUpdateSQL("credentials", "id",
+		[]string{clause},
+		[][]interface{}{args},
+		[]interface{}{"id-1"},
+	)
+
+	assert.Contains(t, sql, "UPDATE credentials SET")
+	assert.Contains(t, sql, "role = CASE id WHEN ? THEN ? ELSE role END")
+	assert.Contains(t, sql, "WHERE id IN (?)")
+	assert.Equal(t, []interface{}{"id-1", "holder", []interface{}{"id-1"}}, finalArgs)
+}
+
+func TestBuildBatchUpdateSQL_EmptyClauses(t *testing.T) {
+	sql, finalArgs := BuildBatchUpdateSQL("users", "id",
+		[]string{},
+		[][]interface{}{},
+		[]interface{}{"id-1"},
+	)
+
+	assert.Contains(t, sql, "UPDATE users SET")
+	assert.Contains(t, sql, "WHERE id IN (?)")
+	assert.Equal(t, []interface{}{[]interface{}{"id-1"}}, finalArgs)
+}
