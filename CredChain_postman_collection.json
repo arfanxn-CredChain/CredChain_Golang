@@ -82,8 +82,8 @@
                       "if (response.code === 200200 && response.data) {",
                       "    pm.collectionVariables.set(\"ACCESS_TOKEN\", response.data.access_token);",
                       "    pm.collectionVariables.set(\"REFRESH_TOKEN\", response.data.refresh_token);",
-"    pm.collectionVariables.set(\"AUTH_USER_ID\", response.data.id);",
-      "    pm.collectionVariables.set(\"AUTH_USER_EMAIL\", response.data.email);",
+                      "    pm.collectionVariables.set(\"AUTH_USER_ID\", response.data.id);",
+                      "    pm.collectionVariables.set(\"AUTH_USER_EMAIL\", response.data.email);",
                       "    ",
                       "    pm.test(\"Login successful\", function() {",
                       "        pm.response.to.have.status(200);",
@@ -572,8 +572,8 @@
                       "if (response.code === 200400) {",
                       "    pm.collectionVariables.set(\"ACCESS_TOKEN\", \"\");",
                       "    pm.collectionVariables.set(\"REFRESH_TOKEN\", \"\");",
-"    pm.collectionVariables.set(\"AUTH_USER_ID\", \"\");",
-      "    pm.collectionVariables.set(\"AUTH_USER_EMAIL\", \"\");",
+                      "    pm.collectionVariables.set(\"AUTH_USER_ID\", \"\");",
+                      "    pm.collectionVariables.set(\"AUTH_USER_EMAIL\", \"\");",
                       "    ",
                       "    pm.test(\"Logged out successfully\", function() {",
                       "        pm.response.to.have.status(200);",
@@ -872,13 +872,13 @@
                       "listen": "test",
                       "script": {
                         "exec": [
-"const r = pm.response.json();",
-"if (r.code === 400100 && r.data?.items?.length > 0) {",
-"    pm.collectionVariables.set('TARGET_CREDENTIAL_ID', r.data.items[0].id);",
-"    pm.test('Self credentials fetched', () => pm.expect(r.code).to.eql(400100));",
-"} else {",
-"    pm.test('Self credentials empty or failed: ' + r.message, () => pm.expect(r.code).to.eql(400100));",
-"}"
+                          "const r = pm.response.json();",
+                          "if (r.code === 400100 && r.data?.items?.length > 0) {",
+                          "    pm.collectionVariables.set('TARGET_CREDENTIAL_ID', r.data.items[0].id);",
+                          "    pm.test('Self credentials fetched', () => pm.expect(r.code).to.eql(400100));",
+                          "} else {",
+                          "    pm.test('Self credentials empty or failed: ' + r.message, () => pm.expect(r.code).to.eql(400100));",
+                          "}"
                         ],
                         "type": "text/javascript"
                       }
@@ -962,7 +962,7 @@
                         "{{TARGET_CREDENTIAL_ID}}"
                       ]
                     },
-                    "description": "Single credential owned by the authenticated user. Returns 404 (CodeCredentialFetchNotFound) when not found OR not owned \u2014 never leaks IDs across holders."
+                    "description": "Single credential owned by the authenticated user. Returns 404 (CodeCredentialFetchNotFound) when not found OR not owned — never leaks IDs across holders."
                   },
                   "response": [
                     {
@@ -979,9 +979,9 @@
                       ],
                       "cookie": [],
                       "body": "{\n    \"code\": 400100,\n    \"message\": \"Kredensial berhasil diambil.\",\n    \"data\": {\n        \"id\": \"01HWXAMPLE234567890ABCDE\",\n        \"holder_user_id\": \"01KRJSS4XF1KJHP1326YMW81CN\",\n        \"issuer_user_id\": \"01KRJSS4XF1KJHP1326YMW81AB\",\n        \"revoker_user_id\": null,\n        \"name\": \"Bachelor's Degree\",\n        \"meta\": {\"institution\": \"UI\"},\n        \"token_id\": \"1\",\n        \"file_hash\": \"QmXAMPLEHASH1234567890\",\n        \"file_uri\": null,\n        \"extract_status\": \"completed\",\n        \"extract_error\": null,\n        \"extracted_at\": \"2024-01-15T10:30:00Z\",\n        \"issued_at\": \"2024-01-15T10:30:00Z\",\n        \"revoked_at\": null,\n        \"holder\": {\n            \"id\": \"01KRJSS4XF1KJHP1326YMW81CN\",\n            \"name\": \"Arfan\",\n            \"email\": \"arfan2173@gmail.com\",\n            \"role\": \"super_admin\",\n            \"wallet_address\": \"0x70997970C51812dc3A010C7d01b50e0d17dc79C8\",\n            \"created_at\": \"2026-05-14T15:31:18.960366+07:00\",\n            \"updated_at\": \"2026-05-14T15:31:18.960366+07:00\",\n            \"deleted_at\": null\n        },\n        \"issuer\": {\n            \"id\": \"01KRJSS4XF1KJHP1326YMW81AB\",\n            \"name\": \"Issuer Org\",\n            \"email\": \"issuer@example.com\",\n            \"role\": \"issuer\",\n            \"wallet_address\": \"0xABCDEF1234567890ABCDEF1234567890ABCDEF12\",\n            \"created_at\": \"2026-05-10T08:00:00Z\",\n            \"updated_at\": \"2026-05-10T08:00:00Z\",\n            \"deleted_at\": null\n        }\n    }\n}"
-                 },
-                 {
-                   "name": "400140 Not Found",
+                    },
+                    {
+                      "name": "400140 Not Found",
                       "originalRequest": {},
                       "status": "Not Found",
                       "code": 404,
@@ -1361,7 +1361,7 @@
                   },
                   "response": [
                     {
-                      "name": "300100 OK \u2014 default (page=1, limit=10)",
+                      "name": "300100 OK — default (page=1, limit=10)",
                       "originalRequest": {},
                       "status": "OK",
                       "code": 200,
@@ -1376,7 +1376,7 @@
                       "body": "{\n    \"code\": 300100,\n    \"message\": \"Pengguna berhasil diambil.\",\n    \"data\": {\n        \"first_page_url\": \"http://localhost:8080/api/users?limit=10&page=1\",\n        \"from\": 1,\n        \"items\": [\n            {\n                \"id\": \"01KRJSS4XF1KJHP1326YMW81CN\",\n                \"name\": \"Arfan\",\n                \"number\": \"2173\",\n                \"phone_number\": \"+6288899991111\",\n                \"email\": \"arfan2173@gmail.com\",\n                \"birth_date\": \"2003-07-21T00:00:00Z\",\n                \"meta\": null,\n                \"role\": \"super_admin\",\n                \"wallet_address\": \"0x70997970C51812dc3A010C7d01b50e0d17dc79C8\",\n                \"created_at\": \"2026-05-14T15:31:18.960366+07:00\",\n                \"updated_at\": \"2026-05-14T15:31:18.960366+07:00\",\n                \"deleted_at\": null\n            }\n        ],\n        \"last_page\": 1,\n        \"last_page_url\": \"http://localhost:8080/api/users?limit=10&page=1\",\n        \"limit\": 10,\n        \"next_page_url\": null,\n        \"page\": 1,\n        \"prev_page_url\": null,\n        \"to\": 1,\n        \"total\": 1\n    }\n}"
                     },
                     {
-                      "name": "300100 OK \u2014 page=2, limit=5 (multi-page)",
+                      "name": "300100 OK — page=2, limit=5 (multi-page)",
                       "originalRequest": {},
                       "status": "OK",
                       "code": 200,
@@ -1391,7 +1391,7 @@
                       "body": "{\n    \"code\": 300100,\n    \"message\": \"Pengguna berhasil diambil.\",\n    \"data\": {\n        \"first_page_url\": \"http://localhost:8080/api/users?limit=5&page=1\",\n        \"from\": 6,\n        \"items\": [\n            {\n                \"id\": \"01KRJSS4XF1KJHP1326YMW81C6\",\n                \"name\": \"Bob\",\n                \"number\": null,\n                \"phone_number\": null,\n                \"email\": \"bob@example.com\",\n                \"birth_date\": null,\n                \"meta\": null,\n                \"role\": \"holder\",\n                \"wallet_address\": \"0xABCDEF1234567890ABCDEF1234567890ABCDEF12\",\n                \"created_at\": \"2026-05-20T10:00:00Z\",\n                \"updated_at\": \"2026-05-20T10:00:00Z\",\n                \"deleted_at\": null\n            }\n        ],\n        \"last_page\": 3,\n        \"last_page_url\": \"http://localhost:8080/api/users?limit=5&page=3\",\n        \"limit\": 5,\n        \"next_page_url\": \"http://localhost:8080/api/users?limit=5&page=3\",\n        \"page\": 2,\n        \"prev_page_url\": \"http://localhost:8080/api/users?limit=5&page=1\",\n        \"to\": 10,\n        \"total\": 13\n    }\n}"
                     },
                     {
-                      "name": "300100 OK \u2014 filter role=holder",
+                      "name": "300100 OK — filter role=holder",
                       "originalRequest": {},
                       "status": "OK",
                       "code": 200,
@@ -1406,7 +1406,7 @@
                       "body": "{\n    \"code\": 300100,\n    \"message\": \"Pengguna berhasil diambil.\",\n    \"data\": {\n        \"first_page_url\": \"http://localhost:8080/api/users?filters=role%3Dholder&limit=10&page=1\",\n        \"from\": 1,\n        \"items\": [\n            {\n                \"id\": \"01KRJSS4XF1KJHP1326YMW81C7\",\n                \"name\": \"Alice\",\n                \"number\": null,\n                \"phone_number\": null,\n                \"email\": \"alice@example.com\",\n                \"birth_date\": null,\n                \"meta\": null,\n                \"role\": \"holder\",\n                \"wallet_address\": \"0x1111111111111111111111111111111111111111\",\n                \"created_at\": \"2026-05-21T08:00:00Z\",\n                \"updated_at\": \"2026-05-21T08:00:00Z\",\n                \"deleted_at\": null\n            }\n        ],\n        \"last_page\": 1,\n        \"last_page_url\": \"http://localhost:8080/api/users?filters=role%3Dholder&limit=10&page=1\",\n        \"limit\": 10,\n        \"next_page_url\": null,\n        \"page\": 1,\n        \"prev_page_url\": null,\n        \"to\": 1,\n        \"total\": 1\n    }\n}"
                     },
                     {
-                      "name": "300100 OK \u2014 filter name~ali + sort -created_at",
+                      "name": "300100 OK — filter name~ali + sort -created_at",
                       "originalRequest": {},
                       "status": "OK",
                       "code": 200,
@@ -1421,7 +1421,7 @@
                       "body": "{\n    \"code\": 300100,\n    \"message\": \"Pengguna berhasil diambil.\",\n    \"data\": {\n        \"first_page_url\": \"http://localhost:8080/api/users?filters=name%7Eali&limit=10&page=1&sorts=-created_at\",\n        \"from\": 1,\n        \"items\": [\n            {\n                \"id\": \"01KRJSS4XF1KJHP1326YMW81C8\",\n                \"name\": \"Alice\",\n                \"number\": null,\n                \"phone_number\": null,\n                \"email\": \"alice@example.com\",\n                \"birth_date\": null,\n                \"meta\": null,\n                \"role\": \"holder\",\n                \"wallet_address\": \"0x2222222222222222222222222222222222222222\",\n                \"created_at\": \"2026-05-28T12:00:00Z\",\n                \"updated_at\": \"2026-05-28T12:00:00Z\",\n                \"deleted_at\": null\n            }\n        ],\n        \"last_page\": 1,\n        \"last_page_url\": \"http://localhost:8080/api/users?filters=name%7Eali&limit=10&page=1&sorts=-created_at\",\n        \"limit\": 10,\n        \"next_page_url\": null,\n        \"page\": 1,\n        \"prev_page_url\": null,\n        \"to\": 1,\n        \"total\": 1\n    }\n}"
                     },
                     {
-                      "name": "300100 OK \u2014 empty results (no match)",
+                      "name": "300100 OK — empty results (no match)",
                       "originalRequest": {},
                       "status": "OK",
                       "code": 200,
@@ -1436,7 +1436,7 @@
                       "body": "{\n    \"code\": 300100,\n    \"message\": \"Pengguna berhasil diambil.\",\n    \"data\": {\n        \"first_page_url\": \"http://localhost:8080/api/users?limit=10&page=1&search=zzznomatch\",\n        \"from\": 0,\n        \"items\": [],\n        \"last_page\": 1,\n        \"last_page_url\": \"http://localhost:8080/api/users?limit=10&page=1&search=zzznomatch\",\n        \"limit\": 10,\n        \"next_page_url\": null,\n        \"page\": 1,\n        \"prev_page_url\": null,\n        \"to\": 0,\n        \"total\": 0\n    }\n}"
                     },
                     {
-                      "name": "300100 OK \u2014 only trashed (filter deleted_at!_)",
+                      "name": "300100 OK — only trashed (filter deleted_at!_)",
                       "originalRequest": {},
                       "status": "OK",
                       "code": 200,
@@ -1451,7 +1451,7 @@
                       "body": "{\n    \"code\": 300100,\n    \"message\": \"Pengguna berhasil diambil.\",\n    \"data\": {\n        \"first_page_url\": \"http://localhost:8080/api/users?filters=deleted_at%21_&limit=10&page=1\",\n        \"from\": 1,\n        \"items\": [\n            {\n                \"id\": \"01KRJSS4XF1KJHP1326YMW81DA\",\n                \"name\": \"Trashed Holder\",\n                \"number\": null,\n                \"phone_number\": null,\n                \"email\": \"trashed-holder@example.com\",\n                \"birth_date\": null,\n                \"meta\": null,\n                \"role\": \"holder\",\n                \"wallet_address\": \"0x3333333333333333333333333333333333333333\",\n                \"created_at\": \"2026-05-10T08:00:00Z\",\n                \"updated_at\": \"2026-05-10T08:00:00Z\",\n                \"deleted_at\": \"2026-05-25T09:30:00Z\"\n            }\n        ],\n        \"last_page\": 1,\n        \"last_page_url\": \"http://localhost:8080/api/users?filters=deleted_at%21_&limit=10&page=1\",\n        \"limit\": 10,\n        \"next_page_url\": null,\n        \"page\": 1,\n        \"prev_page_url\": null,\n        \"to\": 1,\n        \"total\": 1\n    }\n}"
                     },
                     {
-                      "name": "100040 Validation \u2014 invalid filter syntax",
+                      "name": "100040 Validation — invalid filter syntax",
                       "originalRequest": {},
                       "status": "Unprocessable Entity",
                       "code": 422,
@@ -1466,7 +1466,7 @@
                       "body": "{\n    \"code\": 100040,\n    \"message\": \"Validasi gagal.\",\n    \"data\": {\n        \"filters\": \"has invalid syntax\"\n    }\n}"
                     },
                     {
-                      "name": "100040 Validation \u2014 limit > 100",
+                      "name": "100040 Validation — limit > 100",
                       "originalRequest": {},
                       "status": "Unprocessable Entity",
                       "code": 422,
@@ -1481,7 +1481,7 @@
                       "body": "{\n    \"code\": 100040,\n    \"message\": \"Validasi gagal.\",\n    \"data\": {\n        \"limit\": \"must be no greater than 100\"\n    }\n}"
                     },
                     {
-                      "name": "100040 Validation \u2014 page < 1",
+                      "name": "100040 Validation — page < 1",
                       "originalRequest": {},
                       "status": "Unprocessable Entity",
                       "code": 422,
@@ -1583,7 +1583,7 @@
                       "body": "{\n    \"code\": 300100,\n    \"message\": \"Pengguna berhasil diambil.\",\n    \"data\": {\n        \"id\": \"01KRJSS4XF1KJHP1326YMW81CN\",\n        \"name\": \"Arfan\",\n        \"number\": \"2173\",\n        \"phone_number\": \"6288899991111\",\n        \"email\": \"arfan2173@gmail.com\",\n        \"birth_date\": \"2003-07-21T00:00:00Z\",\n        \"meta\": null,\n        \"role\": \"super_admin\",\n        \"wallet_address\": \"0x70997970C51812dc3A010C7d01b50e0d17dc79C8\",\n        \"created_at\": \"2026-05-14T15:31:18.960366+07:00\",\n        \"updated_at\": \"2026-05-14T15:31:18.960366+07:00\",\n        \"deleted_at\": null\n    }\n}"
                     },
                     {
-                      "name": "300100 OK \u2014 trashed user",
+                      "name": "300100 OK — trashed user",
                       "originalRequest": {},
                       "status": "OK",
                       "code": 200,
@@ -2396,9 +2396,9 @@
                   "listen": "test",
                   "script": {
                     "exec": [
-"const r = pm.response.json();",
-"if (r.data?.items?.length > 0) pm.collectionVariables.set('TARGET_CREDENTIAL_ID', r.data.items[0].id);",
-"pm.test('List Credentials', () => pm.expect(r.code).to.eql(400100));"
+                      "const r = pm.response.json();",
+                      "if (r.data?.items?.length > 0) pm.collectionVariables.set('TARGET_CREDENTIAL_ID', r.data.items[0].id);",
+                      "pm.test('List Credentials', () => pm.expect(r.code).to.eql(400100));"
                     ],
                     "type": "text/javascript"
                   }
@@ -2807,7 +2807,7 @@
                     "verify"
                   ]
                 },
-                "description": "Verify the authenticity of a credential file. Returns a verdict code (400401-400412). New party-disabled verdicts (400410-400412) are returned when the credential's holder or issuer has been deactivated and the underlying credential would otherwise be authentic. No auth required \u2014 public endpoint for external verifiers (HR, employers)."
+                "description": "Verify the authenticity of a credential file. Returns a verdict code (400401-400412). New party-disabled verdicts (400410-400412) are returned when the credential's holder or issuer has been deactivated and the underlying credential would otherwise be authentic. No auth required — public endpoint for external verifiers (HR, employers)."
               },
               "response": [
                 {
@@ -2997,56 +2997,6 @@
         }
       ],
       "description": "CredChain API endpoints.",
-      "variable": [
-        {
-          "key": "BASE_URL",
-          "value": "http://localhost:8080"
-        },
-        {
-          "key": "ID_TOKEN",
-          "value": ""
-        },
-        {
-          "key": "ACCESS_TOKEN",
-          "value": ""
-        },
-        {
-          "key": "REFRESH_TOKEN",
-          "value": ""
-        },
-        {
-          "key": "AUTH_USER_ID",
-          "value": ""
-        },
-        {
-          "key": "AUTH_USER_EMAIL",
-          "value": ""
-        },
-        {
-          "key": "AUTH_USER_NAME",
-          "value": ""
-        },
-        {
-          "key": "TARGET_USER_ID",
-          "value": ""
-        },
-        {
-          "key": "TARGET_CREDENTIAL_ID",
-          "value": ""
-        },
-        {
-          "key": "TEST_EMAIL",
-          "value": "test-holder@example.com"
-        },
-        {
-          "key": "TEST_PHONE",
-          "value": "+628123456789"
-        },
-        {
-          "key": "TEST_BIRTH_DATE",
-          "value": "2000-01-01"
-        }
-      ],
       "auth": {
         "type": "bearer",
         "bearer": [
@@ -3086,51 +3036,63 @@
   "variable": [
     {
       "key": "BASE_URL",
-      "value": "http://localhost:8080"
+      "value": "http://localhost:8080",
+      "id": "b53c0bf3-e685-4c4b-8f26-052e6f3ac6e3"
     },
     {
       "key": "ID_TOKEN",
-      "value": ""
+      "value": "",
+      "id": "e247e5a4-a4e4-4960-ab25-dd6572b2406d"
     },
     {
       "key": "ACCESS_TOKEN",
-      "value": ""
+      "value": "",
+      "id": "9d2126fd-1be1-476e-9565-cea640963c0b"
     },
     {
       "key": "REFRESH_TOKEN",
-      "value": ""
+      "value": "",
+      "id": "31673758-1679-470c-a829-eb45486a8c39"
     },
     {
       "key": "AUTH_USER_ID",
-      "value": ""
+      "value": "",
+      "id": "09e438d7-06bd-46c0-a978-19b57889f45b"
     },
     {
       "key": "AUTH_USER_EMAIL",
-      "value": ""
+      "value": "",
+      "id": "5841642f-e66a-45ce-bb63-ba4276a0a1dc"
     },
     {
       "key": "AUTH_USER_NAME",
-      "value": ""
+      "value": "",
+      "id": "cfbadbb5-a736-48d8-bb17-831f98eff65f"
     },
     {
       "key": "TARGET_USER_ID",
-      "value": ""
+      "value": "",
+      "id": "69fa0d3c-5804-4052-83a1-b4a30f354ebf"
     },
     {
       "key": "TARGET_CREDENTIAL_ID",
-      "value": ""
+      "value": "",
+      "id": "1abb02ed-868a-4a65-ba9a-a0785d3093a2"
     },
     {
       "key": "TEST_EMAIL",
-      "value": "test-holder@example.com"
+      "value": "test-holder@example.com",
+      "id": "a0397dfd-456a-459e-9595-91d78182c231"
     },
     {
       "key": "TEST_PHONE",
-      "value": "+628123456789"
+      "value": "+628123456789",
+      "id": "f9baecaa-9c1f-4f5d-b557-2bc1bff97fa5"
     },
     {
       "key": "TEST_BIRTH_DATE",
-      "value": "2000-01-01"
+      "value": "2000-01-01",
+      "id": "a56e4980-da68-44c3-bac5-fb547e9ebd5f"
     }
   ]
 }
