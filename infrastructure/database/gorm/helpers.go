@@ -74,3 +74,10 @@ func ApplySorts(db *gorm.DB, q *domainQuery.Query, allowedColumns map[string]boo
 	}
 	return db
 }
+
+func ApplyPagination(db *gorm.DB, q *domainQuery.Query) *gorm.DB {
+	if q.HasPagination() {
+		return db.Limit(q.Limit).Offset(q.Offset())
+	}
+	return db
+}

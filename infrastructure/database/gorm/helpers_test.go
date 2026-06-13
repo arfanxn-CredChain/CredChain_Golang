@@ -161,3 +161,27 @@ func TestApplyFilters_LikeCaseInsensitive(t *testing.T) {
 	})
 	assert.Contains(t, sql, "LOWER(name) LIKE LOWER")
 }
+
+func TestApplyPagination_WithPagination(t *testing.T) {
+	gdb := db.OpenInMemorySQLite(t)
+
+	sql := gdb.ToSQL(func(tx *gorm.DB) *gorm.DB {
+		tx = tx.Model(&model.User{})
+		tx = ApplyPagination(tx, &domainQuery.Query{Page: 2, Limit: 20})
+		var out []model.User
+		return tx.Find(&out)
+	})
+	assert.Contains(t, sql, "LIMIT 20")
+}
+
+func TestApplyPagination_NoPagination(t *testing.T) {
+	gdb := db.OpenInMemorySQLite(t)
+
+	sql := gdb.ToSQL(func(tx *gorm.DB) *gorm.DB {
+		tx = tx.Model(&model.User{})
+		tx = ApplyPagination(tx, &domainQuery.Query{})
+		var out []model.User
+		return tx.Find(&out)
+	})
+	assert.NotContains(t, sql, "LIMIT")
+}
