@@ -258,7 +258,7 @@ func TestGormUserRepository_Delete_SoftDelete_FindReturnsTrashed(t *testing.T) {
 	assert.NotNil(t, got.DeletedAt, "trashed user must carry DeletedAt timestamp")
 }
 
-func TestGormUserRepository_Delete_SoftDelete_HidesFromGet(t *testing.T) {
+func TestGormUserRepository_Delete_SoftDelete_IncludesTrashedInGet(t *testing.T) {
 	repo := newRepo(t)
 	u1 := fixtures.NewDomainUser(fixtures.WithID("sd2"), fixtures.WithEmail("sd2@x.com"))
 	u2 := fixtures.NewDomainUser(fixtures.WithID("sd3"), fixtures.WithEmail("sd3@x.com"))
@@ -266,9 +266,31 @@ func TestGormUserRepository_Delete_SoftDelete_HidesFromGet(t *testing.T) {
 	_, _ = repo.Delete(context.Background(), "sd2")
 	users, total, err := repo.Get(context.Background(), &domainQuery.Query{})
 	assert.NoError(t, err)
-	assert.Equal(t, 1, total)
+	assert.Equal(t, 2, total, "Get is always unscoped: trashed users must be included by default")
+	assert.Len(t, users, 2)
+	ids := make([]string, len(users))
+	for i, u := range users {
+		ids[i] = u.Id
+	}
+	assert.Contains(t, ids, "sd2")
+	assert.Contains(t, ids, "sd3")
+}
+
+func TestGormUserRepository_Delete_SoftDelete_FilterNullExcludesTrashed(t *testing.T) {
+	repo := newRepo(t)
+	u1 := fixtures.NewDomainUser(fixtures.WithID("sd2a"), fixtures.WithEmail("sd2a@x.com"))
+	u2 := fixtures.NewDomainUser(fixtures.WithID("sd3a"), fixtures.WithEmail("sd3a@x.com"))
+	_, _ = repo.Store(context.Background(), u1, u2)
+	_, _ = repo.Delete(context.Background(), "sd2a")
+	users, total, err := repo.Get(context.Background(), &domainQuery.Query{
+		Filters: []domainQuery.Filter{
+			{Column: "deleted_at", Operator: domainQuery.OperatorNull},
+		},
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, 1, total, "deleted_at IS NULL filter must exclude trashed users")
 	assert.Len(t, users, 1)
-	assert.Equal(t, "sd3", users[0].Id)
+	assert.Equal(t, "sd3a", users[0].Id)
 }
 
 func TestGormUserRepository_Delete_SoftDelete_FindByIdsReturnsTrashed(t *testing.T) {
@@ -643,16 +665,17 @@ func TestGormUserRepository_Get_FilterDeletedAtNull_ReturnsOnlyLive(t *testing.T
 	}
 }
 
-func TestGormUserRepository_Get_NoDeletedAtReference_DefaultScopePreserved(t *testing.T) {
+func TestGormUserRepository_Get_NoDeletedAtReference_IncludesTrashed(t *testing.T) {
 	repo := seedUsersForTrashed(t)
 	q := &domainQuery.Query{Page: 1, Limit: 10}
 	users, total, err := repo.Get(context.Background(), q)
-	assert.NoError(t, err, "default Get must remain scoped (regression guard)")
-	assert.Equal(t, 2, total)
-	for _, u := range users {
-		assert.Nil(t, u.DeletedAt)
-		assert.NotEqual(t, "trashed-c", u.Id)
+	assert.NoError(t, err, "Get is always unscoped: trashed users must be included by default")
+	assert.Equal(t, 3, total)
+	ids := make([]string, len(users))
+	for i, u := range users {
+		ids[i] = u.Id
 	}
+	assert.Contains(t, ids, "trashed-c", "trashed user must be included by default")
 }
 
 func TestGormUserRepository_Get_FilterDeletedAtBetween_RangeFilterWorks(t *testing.T) {

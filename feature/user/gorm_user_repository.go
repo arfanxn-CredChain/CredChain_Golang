@@ -4,16 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"sort"
 	"strings"
 
 	"CredChain_Golang/domain"
 	domainQuery "CredChain_Golang/domain/query"
+	gormhelpers "CredChain_Golang/infrastructure/database/gorm"
 	"CredChain_Golang/infrastructure/database/gorm/model"
+
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/oklog/ulid/v2"
-	"github.com/samber/lo"
 	"gorm.io/gorm"
 )
 
@@ -59,21 +59,10 @@ var allowedSortColumns = map[string]bool{
 	"deleted_at": true,
 }
 
-// referencesDeletedAt reports whether any filter or sort touches the
-// deleted_at column. When true, Get bypasses GORM's soft-delete scope
-// so trashed users can be listed and ordered by their deletion timestamp.
-func referencesDeletedAt(q *domainQuery.Query) bool {
-	return lo.ContainsBy(q.Filters, func(f domainQuery.Filter) bool { return f.Column == "deleted_at" }) ||
-		lo.ContainsBy(q.Sorts, func(s domainQuery.Sort) bool { return s.Column == "deleted_at" })
-}
-
 // Get retrieves users with pagination, search, filters, and sorts (batch operation)
 // Returns: ([]User, int, error) - paginated slice, total count matching criteria, error
 func (r *gormUserRepository) Get(ctx context.Context, query *domainQuery.Query) ([]domain.User, int, error) {
-	db := r.db.WithContext(ctx).Model(&model.User{})
-	if referencesDeletedAt(query) {
-		db = db.Unscoped()
-	}
+	db := r.db.WithContext(ctx).Unscoped().Model(&model.User{})
 
 	if query.HasSearch() {
 		db = db.Where("LOWER(name) LIKE LOWER(?) OR LOWER(email) LIKE LOWER(?)",
@@ -81,28 +70,16 @@ func (r *gormUserRepository) Get(ctx context.Context, query *domainQuery.Query) 
 	}
 
 	if query.HasFilters() {
-		db = applyUserFilters(db, query.Filters)
+		db = gormhelpers.ApplyFilters(db, query.Filters, allowedFilterColumns, "")
 	}
 
-	// Count total (respects search + filters, excludes limit/offset)
 	var total int64
 	if err := db.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	if query.HasSorts() {
-		for _, s := range query.Sorts {
-			if allowedSortColumns[s.Column] {
-				db = db.Order(fmt.Sprintf("%s %s", s.Column, s.Order))
-			}
-		}
-	} else {
-		db = db.Order("created_at DESC")
-	}
-
-	if query.HasPagination() {
-		db = db.Limit(query.Limit).Offset(query.Offset())
-	}
+	db = gormhelpers.ApplySorts(db, query, allowedSortColumns, "updated_at DESC", nil)
+	db = gormhelpers.ApplyPagination(db, query)
 
 	var users []model.User
 	if err := db.Find(&users).Error; err != nil {
@@ -115,60 +92,6 @@ func (r *gormUserRepository) Get(ctx context.Context, query *domainQuery.Query) 
 	}
 
 	return domainUsers, int(total), nil
-}
-
-// applyUserFilters maps domainQuery.Filter operators to GORM Where clauses.
-// Filters on columns not present in allowedFilterColumns are silently dropped
-// (validator/parser already accepted them; here we enforce a column-level
-// allowlist to prevent SQL injection via the column field). Pattern operators
-// use LOWER(col) LIKE LOWER(?) for dialect-agnostic case-insensitivity
-// (Postgres + SQLite).
-func applyUserFilters(db *gorm.DB, filters []domainQuery.Filter) *gorm.DB {
-	for _, f := range filters {
-		if !allowedFilterColumns[f.Column] {
-			continue
-		}
-		col := f.Column
-		switch f.Operator {
-		case domainQuery.OperatorEqual:
-			db = db.Where(col+" = ?", f.GetValue())
-		case domainQuery.OperatorNotEqual:
-			db = db.Where(col+" != ?", f.GetValue())
-		case domainQuery.OperatorGreaterThan:
-			db = db.Where(col+" > ?", f.GetValue())
-		case domainQuery.OperatorLessThan:
-			db = db.Where(col+" < ?", f.GetValue())
-		case domainQuery.OperatorGreaterThanOrEqual:
-			db = db.Where(col+" >= ?", f.GetValue())
-		case domainQuery.OperatorLessThanOrEqual:
-			db = db.Where(col+" <= ?", f.GetValue())
-		case domainQuery.OperatorLike, domainQuery.OperatorILike:
-			db = db.Where("LOWER("+col+") LIKE LOWER(?)", "%"+f.GetValue()+"%")
-		case domainQuery.OperatorNotLike, domainQuery.OperatorNotILike:
-			db = db.Where("LOWER("+col+") NOT LIKE LOWER(?)", "%"+f.GetValue()+"%")
-		case domainQuery.OperatorIn:
-			if len(f.Values) > 0 {
-				db = db.Where(col+" IN ?", f.Values)
-			}
-		case domainQuery.OperatorNotIn:
-			if len(f.Values) > 0 {
-				db = db.Where(col+" NOT IN ?", f.Values)
-			}
-		case domainQuery.OperatorBetween:
-			if len(f.Values) == 2 {
-				db = db.Where(col+" BETWEEN ? AND ?", f.Values[0], f.Values[1])
-			}
-		case domainQuery.OperatorNotBetween:
-			if len(f.Values) == 2 {
-				db = db.Where(col+" NOT BETWEEN ? AND ?", f.Values[0], f.Values[1])
-			}
-		case domainQuery.OperatorNull:
-			db = db.Where(col + " IS NULL")
-		case domainQuery.OperatorNotNull:
-			db = db.Where(col + " IS NOT NULL")
-		}
-	}
-	return db
 }
 
 // Find retrieves a single user by ID, including soft-deleted users.
