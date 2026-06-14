@@ -50,7 +50,7 @@ Both leverage Solidity enum natural ordering, with Go mirroring via `Rank()`.
 
 ## API Route Authorization
 
-**Source:** `infrastructure/http/router.go:68-106`
+**Source:** `infrastructure/http/router.go:68-109`
 
 Middleware chain: `ErrorLoggerMiddleware` → `I18nMiddleware` → `ApiRateLimitMiddleware` → `AuthMiddleware` → `RoleMiddleware` (if applicable)
 
@@ -115,7 +115,7 @@ Allowed combos: Admin creates Holder/Issuer; SuperAdmin creates anything except 
 
 | Rule | Condition | Code |
 |------|-----------|------|
-| Cannot change own email via batch | Target ID == signer ID AND payload email non-nil | `CodeUserUpdateSelfEmailForbidden` (300845) |
+| Cannot change own email via batch | Target ID == signer ID AND payload email non-nil | `CodeUserUpdateSelfEmailForbidden` (300847) |
 | Cannot update trashed user | Target has non-nil DeletedAt | `CodeUserUpdateTrashedForbidden` (300846) |
 | Cannot update SuperAdmin | Target role is SuperAdmin | `CodeUserUpdateSuperAdminForbidden` (300843) |
 | Admin cannot update Admin | Signer=Admin, target role=Admin+ | `CodeUserUpdatePeerAdminForbidden` (300842) |
@@ -159,8 +159,8 @@ Allowed combos: Admin creates Holder/Issuer; SuperAdmin creates anything except 
 
 | Rule | Condition | Code |
 |------|-----------|------|
-| Signer must be Admin+ | Below Admin | `CodeUserRoleSignerAdminRequiredForbidden` (300542) |
-| Cannot self-restore | Signer ID in target list | `CodeUserRestoreSelfTargetForbidden` (300941) |
+| Signer must be Admin+ | Below Admin | `CodeUserRestoreSignerAdminRequiredForbidden` (300941) |
+| Cannot self-restore | Signer ID in target list | `CodeUserRestoreSelfTargetForbidden` (300942) |
 
 #### RestorePostFetch
 
@@ -182,11 +182,11 @@ Allowed combos: Admin creates Holder/Issuer; SuperAdmin creates anything except 
 | `IssuePreFetch` | Signer must be Issuer+ (DB role) | `CodeAuthForbidden` (200142) |
 | `IssuePostFetch` | No-op | — |
 | `RevokePreFetch` | Signer must be Issuer+ (DB role) | `CodeAuthForbidden` (200142) |
-| `RevokePostFetch` | No-op (future: revoker = original issuer or rank above) | — |
+| `RevokePostFetch` | No-op | — |
 | `VerifyPreFetch` | **No-op (public endpoint)** — verifier (HR, employer) needs no auth | — |
 | `ReExtractPreFetch` | Signer must be Issuer+ (DB role) | `CodeAuthForbidden` (200142) |
 
-Credential policy checks use **DB-stored role rank** (`signerIsIssuerOrAbove` at line 78-80), not on-chain.
+Credential policy checks use **DB-stored role rank** (`signerIsIssuerOrAbove` at line 73-76), not on-chain.
 
 ---
 
@@ -197,14 +197,18 @@ Credential policy checks use **DB-stored role rank** (`signerIsIssuerOrAbove` at
 | `initialize()` | deployer only (`_requireDeployer`) | All | All contracts |
 | `batchUpdateUserRoleWithSignature(params)` | Signer Admin+ | CredentialAuthority | `CredentialAuthority.sol:140-161` |
 | `transferSuperAdminWithSignature(params)` | Signer SuperAdmin | CredentialAuthority | `CredentialAuthority.sol:174-192` |
-| `batchIssueCredentialsWithSignature(params)` | Issuer Issuer+ | CredentialRegistry | `CredentialRegistry.sol:134-166` |
-| `batchRevokeCredentialsWithSignature(params)` | Revoker Issuer+ | CredentialRegistry | `CredentialRegistry.sol:178-201` |
+| `batchIssueCredentialsWithSignature(params)` | Issuer+ | CredentialRegistry | `CredentialRegistry.sol:134-166` |
+| `batchRevokeCredentialsWithSignature(params)` | Issuer+ | CredentialRegistry | `CredentialRegistry.sol:178-201` |
 
 Solidity `_enforceUserRoleUpdateHierarchy` (`CredentialAuthority.sol:246-260`):
 - Signer below Admin → revert `RoleBelowAdminError`
 - Admin cannot modify Admin+ targets → revert `AdminUpdatePeerAdminRoleError`
 - Admin cannot assign Admin+ roles → revert `RoleBelowAdminError`
+
+Additional checks in `batchUpdateUserRoleWithSignature` (`CredentialAuthority.sol:154`):
 - Any SuperAdmin assignment → revert `SuperAdminRoleNotUpdatableError`
+
+Additional check in `_updateUserRole` (`CredentialAuthority.sol:222`):
 - Same-role update → revert `SameRoleUpdateError`
 
 ---
@@ -266,12 +270,12 @@ Verify credential (public)      ✓      ✓       ✓       ✓       ✓
 | Admin promotes to Admin | Admin signer | `CodeUserRoleSignerAdminRequiredForbidden` (300542) |
 | Admin deletes Admin/SuperAdmin | Admin signer | `CodeUserDeleteAdminForbidden` (300741) |
 | Update self via batch | Admin (SuperAdmin allowed) | `CodeUserUpdateSelfForbidden` (300844) |
-| Change own email via batch | Anyone (incl. SuperAdmin) | `CodeUserUpdateSelfEmailForbidden` (300845) — use `/users/self/email` |
+| Change own email via batch | Anyone (incl. SuperAdmin) | `CodeUserUpdateSelfEmailForbidden` (300847) — use `/users/self/email` |
 | Self-delete | Anyone | `CodeUserDeleteSelfTargetForbidden` (300743) |
 | Self-target role update | Anyone | `CodeUserRoleSelfTargetForbidden` (300546) |
 | Restore SuperAdmin | Admin+ | `CodeUserRestoreSuperAdminTargetForbidden` (300943) |
 | Restore live (non-trashed) user | Admin+ | `CodeUserRestoreNotTrashedForbidden` (300944) |
-| Restore self | Anyone | `CodeUserRestoreSelfTargetForbidden` (300941) |
+| Restore self | Anyone | `CodeUserRestoreSelfTargetForbidden` (300942) |
 | Transfer SuperAdmin to self | SuperAdmin | `CodeUserTransferSuperAdminSelfTargetForbidden` (300641) |
 | Update trashed user | Admin+ | `CodeUserUpdateTrashedForbidden` (300846) |
 | Update trashed user's role | Admin+ | `CodeUserRoleTrashedForbidden` (300547) |
@@ -293,7 +297,7 @@ Pre-conditions:
 
 ### Transfer SuperAdmin
 
-**Only endpoint that changes SuperAdmin role.** Source: `feature/user/user_service.go:437-488`
+**Only endpoint that changes SuperAdmin role.** Source: `feature/user/user_service.go:420-471`
 
 Endpoint: `POST /api/users/self/transfer-super-admin`
 
@@ -306,17 +310,42 @@ Flow:
 
 ### On-Chain Role Sync
 
-**`syncBlockchainRoles`** (`feature/user/user_service.go:152-159`) called by all mutation paths:
+**`syncBlockchainRoles`** (`feature/user/user_service.go:153-160`) called by all mutation paths:
 - `Store` → `storeUsersAndSyncBlockchainRoles`
-- `UpdateRole` → `updateRoleAndSyncBlockchainRoles`
-- `Update` (when role changes) → `syncBlockchainRoles`
-- `Delete` → `deleteUserAndSyncBlockchain` (sends `RoleNone`, the chain-only revocation target)
+- `Update` (when role changes) → inside single `s.uow.Execute`
+- `UpdateRole` → inside single `s.uow.Execute`
+- `Delete` → inside single `s.uow.Execute` (sends `RoleNone`, the chain-only revocation target)
+- `Restore` → inside single `s.uow.Execute` (re-syncs preserved DB role to chain)
 
-Each packs users into `UserRoleUpdation` structs, signs with auth user's wallet, calls `batchUpdateUserRoleWithSignature` on CredentialAuthority, waits for receipt via `bind.WaitMined`, and verifies receipt status. Chain failure rolls back the DB transaction.
+All five flows call `syncBlockchainRoles` directly inside a single `s.uow.Execute` closure, matching the `Update` pattern. The helper delegates to `authorityService.UpdateUserRole`, which converts domain users into on-chain `UserRoleUpdation` structs, signs with the auth user's wallet, calls `batchUpdateUserRoleWithSignature` on CredentialAuthority, waits for receipt via `bind.WaitMined`, and verifies receipt status. Chain failure rolls back the DB transaction.
 
 ### RoleNone (On-Chain Revocation Only)
 
 `RoleNone` (`domain/user.go:14`, value `"none"` → Solidity `0`) is **never persisted** in Postgres (the `role` ENUM excludes `none`). It exists solely as the Solidity revocation target used by `Delete` to revoke the user's on-chain role.
+
+### Restore (PUT /api/users/batch/restore)
+
+**Only endpoint that un-does a soft-delete.** Source: `feature/user/user_service.go`
+
+Endpoint: `PUT /api/users/batch/restore`
+
+Flow:
+1. Admin submits a batch of trashed user IDs
+2. Policy blocks: below-Admin signers (300941), self-target (300942), SuperAdmin targets (300943), live non-trashed targets (300944)
+3. Single DB transaction: clears `deleted_at` via `uow.User().Restore()` repo method
+4. On-chain: re-syncs the preserved DB role via `syncBlockchainRoles`
+5. If chain sync fails, DB restore rolls back (single UoW)
+
+Constraints:
+- Admin can restore Admin peers — restore is an undo, not role escalation
+- SuperAdmin target restore is unconditionally blocked (300943)
+- Non-trashed target restore is strictly rejected (300944 — Option B)
+
+### Credential Verify: Party-Disabled Verdicts
+
+When `/api/credentials/verify` matches a credential whose holder or issuer has been soft-deleted, the verdict is overridden to indicate manual review is needed. Three codes: `holder_disabled` (400410), `issuer_disabled` (400411), `party_disabled` (400412 — both deleted). These only override `Authentic` (400401) — stronger verdicts like Revoked, Tampered, and IntegrityWarning persist unchanged.
+
+The verify cache (MongoDB, 24h TTL) stores only the credential-level verdict. Holder/issuer status is re-checked live on every call (including cache hits), so the party-disabled verdict is always fresh with respect to user state.
 
 ---
 
