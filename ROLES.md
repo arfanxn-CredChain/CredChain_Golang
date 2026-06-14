@@ -50,7 +50,7 @@ Both leverage Solidity enum natural ordering, with Go mirroring via `Rank()`.
 
 ## API Route Authorization
 
-**Source:** `infrastructure/http/router.go:68-109`
+**Source:** `infrastructure/http/router.go:68-111`
 
 Middleware chain: `ErrorLoggerMiddleware` → `I18nMiddleware` → `ApiRateLimitMiddleware` → `AuthMiddleware` → `RoleMiddleware` (if applicable)
 
@@ -117,7 +117,7 @@ Allowed combos: Admin creates Holder/Issuer; SuperAdmin creates anything except 
 |------|-----------|------|
 | Cannot change own email via batch | Target ID == signer ID AND payload email non-nil | `CodeUserUpdateSelfEmailForbidden` (300847) |
 | Cannot update trashed user | Target has non-nil DeletedAt | `CodeUserUpdateTrashedForbidden` (300846) |
-| Cannot update SuperAdmin | Target role is SuperAdmin | `CodeUserUpdateSuperAdminForbidden` (300843) |
+| Cannot update SuperAdmin | Target role is SuperAdmin AND target is not self | `CodeUserUpdateSuperAdminForbidden` (300843) |
 | Admin cannot update Admin | Signer=Admin, target role=Admin+ | `CodeUserUpdatePeerAdminForbidden` (300842) |
 | Cannot assign SuperAdmin | Payload includes RoleSuperAdmin | `CodeUserRoleSuperAdminBatchForbidden` (300544) |
 | Admin cannot promote to Admin | Signer=Admin, payload role=Admin | `CodeUserRoleSignerAdminRequiredForbidden` (300542) |
@@ -277,6 +277,7 @@ Verify credential (public)      ✓      ✓       ✓       ✓       ✓
 | Restore live (non-trashed) user | Admin+ | `CodeUserRestoreNotTrashedForbidden` (300944) |
 | Restore self | Anyone | `CodeUserRestoreSelfTargetForbidden` (300942) |
 | Transfer SuperAdmin to self | SuperAdmin | `CodeUserTransferSuperAdminSelfTargetForbidden` (300641) |
+| Transfer SuperAdmin to trashed user | SuperAdmin | `CodeUserTransferSuperAdminTrashedForbidden` (300643) |
 | Update trashed user | Admin+ | `CodeUserUpdateTrashedForbidden` (300846) |
 | Update trashed user's role | Admin+ | `CodeUserRoleTrashedForbidden` (300547) |
 | Update SuperAdmin's profile | Admin+ (SuperAdmin can self-edit; cannot change own email via batch) | `CodeUserUpdateSuperAdminForbidden` (300843) |
