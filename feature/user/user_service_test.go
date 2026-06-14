@@ -993,7 +993,17 @@ func TestUserService_TransferSuperAdmin_Success(t *testing.T) {
 	uow.On("UserToken").Return(tokenRepo)
 	repo.On("FindByIds", mock.Anything, mock.Anything).Return([]domain.User{target}, nil)
 	auth.On("TransferSuperAdmin", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-	repo.On("UpdateRole", mock.Anything, mock.Anything).Return([]domain.User{authUser, target}, 2, nil)
+	repo.On("UpdateRole", mock.Anything, mock.MatchedBy(func(users []domain.User) bool {
+		if len(users) != 2 {
+			return false
+		}
+		idRole := map[string]domain.Role{}
+		for _, u := range users {
+			idRole[u.Id] = u.Role
+		}
+		return idRole["super-admin-id"] == domain.RoleAdmin &&
+			idRole["target-id"] == domain.RoleSuperAdmin
+	})).Return([]domain.User{authUser, target}, 2, nil)
 	tokenRepo.On("RevokeByUserIdAndType", mock.Anything, "super-admin-id", domain.UserTokenTypeRefresh).Return(1, nil)
 	tokenRepo.On("RevokeByUserIdAndType", mock.Anything, "target-id", domain.UserTokenTypeRefresh).Return(1, nil)
 
@@ -1007,6 +1017,34 @@ func TestUserService_TransferSuperAdmin_Success(t *testing.T) {
 	auth.AssertCalled(t, "TransferSuperAdmin", mock.Anything, mock.Anything, mock.Anything)
 	tokenRepo.AssertCalled(t, "RevokeByUserIdAndType", mock.Anything, "super-admin-id", domain.UserTokenTypeRefresh)
 	tokenRepo.AssertCalled(t, "RevokeByUserIdAndType", mock.Anything, "target-id", domain.UserTokenTypeRefresh)
+}
+
+func TestUserService_TransferSuperAdmin_UpdateRoleFailure_RollsBack(t *testing.T) {
+	repo := &mocks.MockUserRepository{}
+	tokenRepo := &mocks.MockUserTokenRepository{}
+	uow := mocks.NewPropagatingUnitOfWork()
+	auth := &mocks.MockAuthorityService{}
+	policy := &mocks.MockUserPolicy{}
+
+	authUser := fixtures.NewDomainUser(fixtures.WithID("super-admin-id"), fixtures.WithRole(domain.RoleSuperAdmin))
+	target := fixtures.NewDomainUser(fixtures.WithID("target-id"), fixtures.WithRole(domain.RoleAdmin))
+
+	policy.On("TransferSuperAdminPreFetch", mock.Anything, "target-id").Return(nil)
+	uow.On("User").Return(repo)
+	uow.On("UserToken").Return(tokenRepo)
+	repo.On("FindByIds", mock.Anything, mock.Anything).Return([]domain.User{target}, nil)
+	auth.On("TransferSuperAdmin", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	repo.On("UpdateRole", mock.Anything, mock.Anything).Return(nil, 0, errors.New("db update failed"))
+
+	svc := NewUserService(UserServiceParams{
+		UserRepo: repo, UoW: uow, Config: mkSvcCfg(),
+		AuthorityService: auth, Logger: zap.NewNop(), Policy: policy,
+	})
+
+	err := svc.TransferSuperAdmin(ctxWithAuth(&authUser), "target-id")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "db update failed")
+	tokenRepo.AssertNotCalled(t, "RevokeByUserIdAndType", mock.Anything, mock.Anything, mock.Anything)
 }
 
 func TestUserService_Restore_Success(t *testing.T) {

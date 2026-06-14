@@ -60,7 +60,7 @@ func TestUserHandler_TransferSuperAdmin_ValidationError(t *testing.T) {
 	c, rr := gintest.NewContext(t,
 		gintest.WithMethod(http.MethodPost),
 		gintest.WithPath("/api/users/self/transfer-super-admin"),
-		gintest.WithBody(UserTransferSuperAdminRequest{Id: "not-a-uuid"}),
+		gintest.WithBody(UserTransferSuperAdminRequest{Id: ""}),
 		gintest.WithUser(&authUser),
 		gintest.WithI18nBundle(gintest.LoadTestI18nBundle(t)),
 	)

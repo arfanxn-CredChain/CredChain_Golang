@@ -221,7 +221,7 @@ type UserTransferSuperAdminRequest struct {
 
 func (r UserTransferSuperAdminRequest) Validate() error {
 	return validation.ValidateStruct(&r,
-		validation.Field(&r.Id, validation.Required, is.UUID),
+		validation.Field(&r.Id, validation.Required),
 	)
 }
 

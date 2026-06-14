@@ -40,7 +40,7 @@
   "success_login": "Login successful.",
   "success_user_fetched": "User retrieved successfully.",
   "success_users_created": "Users created successfully.",
-  "success_credentials_deleted": "Credentials deleted successfully.",
+  "success_users_deleted": "Users deleted successfully.",
   "success_profile_updated": "Profile updated successfully.",
   "success_email_updated": "Email updated successfully.",
   "success_role_updated": "Role updated successfully.",

@@ -40,7 +40,7 @@
   "success_login": "Login berhasil.",
   "success_user_fetched": "Pengguna berhasil diambil.",
   "success_users_created": "Pengguna berhasil dibuat.",
-  "success_credentials_deleted": "Kredensial berhasil dihapus.",
+  "success_users_deleted": "Pengguna berhasil dihapus.",
   "success_profile_updated": "Profil berhasil diperbarui.",
   "success_email_updated": "Email berhasil diperbarui.",
   "success_role_updated": "Peran berhasil diperbarui.",

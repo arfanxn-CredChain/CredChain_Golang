@@ -373,6 +373,7 @@ func (r *gormUserRepository) Restore(ctx context.Context, ids ...string) (int64,
 		return 0, nil
 	}
 	result := r.db.WithContext(ctx).
+		Unscoped().
 		Model(&model.User{}).
 		Where("id IN ?", ids).
 		Update("deleted_at", nil)

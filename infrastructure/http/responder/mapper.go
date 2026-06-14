@@ -58,7 +58,7 @@ var CodeToMessageKey = map[int]string{
 	domain.CodeUserRoleBlockchainSyncFailed:               "error_role_blockchain_sync_failed",
 	domain.CodeUserRoleSelfTargetForbidden:                "error_role_self_target_forbidden",
 	domain.CodeUserRoleTrashedForbidden:                   "error_role_trashed_forbidden",
-	domain.CodeUserBatchDeleteSuccess:                     "success_credentials_deleted",
+	domain.CodeUserBatchDeleteSuccess:                     "success_users_deleted",
 	domain.CodeUserDeleteAdminForbidden:                   "error_user_delete_admin_forbidden",
 	domain.CodeUserDeleteBlockchainSyncFailed:             "error_delete_blockchain_sync_failed",
 	domain.CodeUserDeleteSelfTargetForbidden:              "error_delete_self_target_forbidden",

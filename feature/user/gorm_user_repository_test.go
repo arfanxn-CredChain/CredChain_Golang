@@ -851,3 +851,101 @@ func TestGormUserRepository_Get_FilterDeletedAtNotNull_PaginationCountConsistent
 	assert.Equal(t, 3, total, "total reflects all trashed, not the page slice")
 	assert.Len(t, users, 1)
 }
+
+func TestGormUserRepository_Restore_Empty(t *testing.T) {
+	repo := newRepo(t)
+	n, err := repo.Restore(context.Background())
+	assert.NoError(t, err)
+	assert.EqualValues(t, 0, n)
+}
+
+func TestGormUserRepository_Restore_Single(t *testing.T) {
+	repo := newRepo(t)
+	u := fixtures.NewDomainUser(fixtures.WithID("rs1"), fixtures.WithEmail("rs1@x.com"))
+	_, _ = repo.Store(context.Background(), u)
+	_, _ = repo.Delete(context.Background(), "rs1")
+
+	found, err := repo.FindByIds(context.Background(), "rs1")
+	assert.NoError(t, err)
+	assert.Len(t, found, 1)
+	assert.NotNil(t, found[0].DeletedAt, "user must be trashed before restore")
+
+	n, err := repo.Restore(context.Background(), "rs1")
+	assert.NoError(t, err)
+	assert.EqualValues(t, 1, n)
+
+	restored, err := repo.FindByIds(context.Background(), "rs1")
+	assert.NoError(t, err)
+	assert.Len(t, restored, 1)
+	assert.Nil(t, restored[0].DeletedAt, "deleted_at must be nil after restore")
+}
+
+func TestGormUserRepository_Restore_Batch(t *testing.T) {
+	repo := newRepo(t)
+	u1 := fixtures.NewDomainUser(fixtures.WithID("rb1"), fixtures.WithEmail("rb1@x.com"))
+	u2 := fixtures.NewDomainUser(fixtures.WithID("rb2"), fixtures.WithEmail("rb2@x.com"))
+	u3 := fixtures.NewDomainUser(fixtures.WithID("rb3"), fixtures.WithEmail("rb3@x.com"))
+	_, _ = repo.Store(context.Background(), u1, u2, u3)
+	_, _ = repo.Delete(context.Background(), "rb1", "rb2", "rb3")
+
+	n, err := repo.Restore(context.Background(), "rb1", "rb2", "rb3")
+	assert.NoError(t, err)
+	assert.EqualValues(t, 3, n)
+
+	restored, err := repo.FindByIds(context.Background(), "rb1", "rb2", "rb3")
+	assert.NoError(t, err)
+	assert.Len(t, restored, 3)
+	for _, u := range restored {
+		assert.Nil(t, u.DeletedAt, "all restored users must have nil deleted_at")
+	}
+}
+
+func TestGormUserRepository_Restore_PartialBatch(t *testing.T) {
+	repo := newRepo(t)
+	u1 := fixtures.NewDomainUser(fixtures.WithID("rp1"), fixtures.WithEmail("rp1@x.com"))
+	u2 := fixtures.NewDomainUser(fixtures.WithID("rp2"), fixtures.WithEmail("rp2@x.com"))
+	_, _ = repo.Store(context.Background(), u1, u2)
+	_, _ = repo.Delete(context.Background(), "rp1")
+
+	n, err := repo.Restore(context.Background(), "rp1", "rp2")
+	assert.NoError(t, err)
+	assert.EqualValues(t, 2, n, "rows affected counts every matched row, even if deleted_at was already nil")
+
+	restored, err := repo.FindByIds(context.Background(), "rp1", "rp2")
+	assert.NoError(t, err)
+	assert.Len(t, restored, 2)
+	for _, u := range restored {
+		assert.Nil(t, u.DeletedAt, "both users must have nil deleted_at after restore")
+	}
+}
+
+func TestGormUserRepository_Restore_LiveUser_NoChange(t *testing.T) {
+	repo := newRepo(t)
+	u := fixtures.NewDomainUser(fixtures.WithID("rl1"), fixtures.WithEmail("rl1@x.com"))
+	_, _ = repo.Store(context.Background(), u)
+
+	n, err := repo.Restore(context.Background(), "rl1")
+	assert.NoError(t, err)
+	assert.EqualValues(t, 1, n, "row matched by WHERE clause counts as affected even if value unchanged")
+
+	found, err := repo.Find(context.Background(), "rl1")
+	assert.NoError(t, err)
+	assert.NotNil(t, found)
+	assert.Nil(t, found.DeletedAt)
+}
+
+func TestGormUserRepository_Restore_PreservesRole(t *testing.T) {
+	repo := newRepo(t)
+	u := fixtures.NewDomainUser(fixtures.WithID("rr1"), fixtures.WithEmail("rr1@x.com"), fixtures.WithRole(domain.RoleAdmin))
+	_, _ = repo.Store(context.Background(), u)
+	_, _ = repo.Delete(context.Background(), "rr1")
+
+	n, err := repo.Restore(context.Background(), "rr1")
+	assert.NoError(t, err)
+	assert.EqualValues(t, 1, n)
+
+	restored, err := repo.Find(context.Background(), "rr1")
+	assert.NoError(t, err)
+	assert.Nil(t, restored.DeletedAt)
+	assert.Equal(t, domain.RoleAdmin, restored.Role, "role must be preserved after restore")
+}
