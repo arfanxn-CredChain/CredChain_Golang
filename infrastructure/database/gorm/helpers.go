@@ -57,6 +57,9 @@ func ApplyFilters(db *gorm.DB, filters []domainQuery.Filter, allowedColumns map[
 }
 
 func ApplySorts(db *gorm.DB, q *domainQuery.Query, allowedColumns map[string]bool, defaultSort string, mapper func(string) string) *gorm.DB {
+	if q == nil {
+		return db.Order(defaultSort)
+	}
 	appliedAny := false
 	if q.HasSorts() {
 		for _, s := range q.Sorts {
@@ -78,6 +81,9 @@ func ApplySorts(db *gorm.DB, q *domainQuery.Query, allowedColumns map[string]boo
 }
 
 func ApplyPagination(db *gorm.DB, q *domainQuery.Query) *gorm.DB {
+	if q == nil {
+		return db
+	}
 	if q.HasPagination() {
 		return db.Limit(q.Limit).Offset(q.Offset())
 	}

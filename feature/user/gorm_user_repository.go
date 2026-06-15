@@ -63,13 +63,15 @@ var allowedSortColumns = map[string]bool{
 func (r *gormUserRepository) Get(ctx context.Context, query *domainQuery.Query) ([]domain.User, int, error) {
 	db := r.db.WithContext(ctx).Unscoped().Model(&model.User{})
 
-	if query.HasSearch() {
-		db = db.Where("LOWER(name) LIKE LOWER(?) OR LOWER(email) LIKE LOWER(?)",
-			"%"+query.Search+"%", "%"+query.Search+"%")
-	}
+	if query != nil {
+		if query.HasSearch() {
+			db = db.Where("LOWER(name) LIKE LOWER(?) OR LOWER(email) LIKE LOWER(?)",
+				"%"+query.Search+"%", "%"+query.Search+"%")
+		}
 
-	if query.HasFilters() {
-		db = gormhelpers.ApplyFilters(db, query.Filters, allowedFilterColumns, "")
+		if query.HasFilters() {
+			db = gormhelpers.ApplyFilters(db, query.Filters, allowedFilterColumns, "")
+		}
 	}
 
 	var total int64
