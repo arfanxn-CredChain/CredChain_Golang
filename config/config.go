@@ -67,6 +67,7 @@ type Config struct {
 	CredentialExtractWorkerPollSeconds *int
 	CredentialExtractWorkerMaxAttempts *int
 	StoragePath                        *string
+	HardhatMnemonic                    *string
 }
 
 func getIntEnv(key string, defaultVal *int) *int {
@@ -185,6 +186,7 @@ func NewConfig(envPath string) (*Config, error) {
 		CredentialExtractWorkerPollSeconds: getIntEnv("CREDENTIAL_EXTRACT_WORKER_POLL_SECONDS", &defaultCredentialExtractWorkerPoll),
 		CredentialExtractWorkerMaxAttempts: getIntEnv("CREDENTIAL_EXTRACT_WORKER_MAX_ATTEMPTS", &defaultCredentialExtractWorkerMaxAttempts),
 		StoragePath:                        getEnv("STORAGE_PATH", &defaultStoragePath),
+		HardhatMnemonic:                    getEnv("HARDHAT_MNEMONIC", nil),
 	}
 
 	if cfg.JWTSecret == nil {
