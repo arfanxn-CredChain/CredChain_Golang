@@ -14,7 +14,7 @@ type testSeeder struct {
 	run  func() error
 }
 
-func (s *testSeeder) Name() string                  { return s.name }
+func (s *testSeeder) Name() string                   { return s.name }
 func (s *testSeeder) Seed(ctx context.Context) error { return s.run() }
 
 func TestRegistry_RunVariadicNames(t *testing.T) {
