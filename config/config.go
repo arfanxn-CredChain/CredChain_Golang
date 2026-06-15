@@ -25,6 +25,7 @@ type Config struct {
 	WalletEncryptionKey                *string
 	RPCURL                             *string
 	RelayerPrivateKey                  *string
+	HardhatMnemonic                    *string
 	AuthorityContract                  *string
 	RegistryContract                   *string
 	JWTSecret                          *string
@@ -144,6 +145,7 @@ func NewConfig(envPath string) (*Config, error) {
 		WalletEncryptionKey:                getEnv("WALLET_ENCRYPTION_KEY", nil),
 		RPCURL:                             getEnv("RPC_URL", nil),
 		RelayerPrivateKey:                  getEnv("RELAYER_PRIVATE_KEY", nil),
+		HardhatMnemonic:                    getEnv("HARDHAT_MNEMONIC", nil),
 		AuthorityContract:                  getEnv("AUTHORITY_CONTRACT", nil),
 		RegistryContract:                   getEnv("REGISTRY_CONTRACT", nil),
 		JWTSecret:                          getEnv("JWT_SECRET", nil),
