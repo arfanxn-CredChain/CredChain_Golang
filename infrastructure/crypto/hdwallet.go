@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/big"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/crypto"
 
@@ -61,6 +62,16 @@ func DeriveKeyFromMnemonic(mnemonic string, index uint32) (privateKeyHex string,
 	addressHex = crypto.PubkeyToAddress(key.PublicKey).Hex()
 
 	return privateKeyHex, addressHex, nil
+}
+
+// DeriveAddressFromPrivateKey derives the Ethereum address from a hex-encoded
+// private key (with or without 0x prefix).
+func DeriveAddressFromPrivateKey(privateKeyHex string) (string, error) {
+	key, err := crypto.HexToECDSA(strings.TrimPrefix(privateKeyHex, "0x"))
+	if err != nil {
+		return "", fmt.Errorf("invalid private key: %w", err)
+	}
+	return crypto.PubkeyToAddress(key.PublicKey).Hex(), nil
 }
 
 func deriveMasterKey(seed []byte) (*ecdsa.PrivateKey, []byte, error) {
