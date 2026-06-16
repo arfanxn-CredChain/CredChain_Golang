@@ -13,8 +13,8 @@ type User struct {
 	Number                    *string        `gorm:"type:varchar(50);column:number" json:"number"`
 	PhoneNumber               *string        `gorm:"type:varchar(50);column:phone_number" json:"phone_number"`
 	Email                     string         `gorm:"type:varchar(255);uniqueIndex;column:email" json:"email"`
-	BirthDate                 *time.Time     `gorm:"column:birth_date" json:"birth_date"`
 	Gender                    *string        `gorm:"type:gender;column:gender" json:"gender"`
+	BirthDate                 *time.Time     `gorm:"column:birth_date" json:"birth_date"`
 	Meta                      map[string]any `gorm:"type:jsonb;serializer:json;column:meta" json:"meta"`
 	Role                      string         `gorm:"type:varchar(50);column:role" json:"role"`
 	WalletAddress             string         `gorm:"type:varchar(255);column:wallet_address" json:"wallet_address"`
@@ -41,8 +41,8 @@ func (m *User) ToDomain() domain.User {
 		Number:                    m.Number,
 		PhoneNumber:               m.PhoneNumber,
 		Email:                     m.Email,
-		BirthDate:                 m.BirthDate,
 		Gender:                    gender,
+		BirthDate:                 m.BirthDate,
 		Meta:                      m.Meta,
 		Role:                      domain.Role(m.Role),
 		WalletAddress:             m.WalletAddress,
@@ -69,8 +69,8 @@ func FromDomainUser(u domain.User) User {
 		Number:                    u.Number,
 		PhoneNumber:               u.PhoneNumber,
 		Email:                     u.Email,
-		BirthDate:                 u.BirthDate,
 		Gender:                    gender,
+		BirthDate:                 u.BirthDate,
 		Meta:                      u.Meta,
 		Role:                      string(u.Role),
 		WalletAddress:             u.WalletAddress,
