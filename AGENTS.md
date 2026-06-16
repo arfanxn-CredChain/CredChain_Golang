@@ -434,16 +434,19 @@ All under `/api` prefix. Middleware order: `ErrorLoggerMiddleware` → `I18nMidd
 
 **Stale data issue:** Delete `docker/postgres/data/*` and `docker/mongo/data/*` before `make docker-fresh` or tests may fail.
 
-**Chain persistence:** The `anvil` service in `docker-compose.yml` persists chain state
-to `./docker/anvil/data/state.json` via bind mount. State survives container restarts
-and `docker compose down`. Deploy contracts with:
+**Chain persistence:** The `anvil` service persists chain state to
+`./docker/anvil/data/state.json` via bind mount. State survives
+container restarts and `docker compose down`. For local development,
+the Go backend runs natively (no Docker build) and connects to Anvil
+via `RPC_URL=http://127.0.0.1:8545` in `.env`.
+
+Setup:
 ```bash
-INITIAL_SUPER_ADMIN_WALLET_ADDRESS=0x70997970C51812dc3A010C7d01b50e0d17dc79C8 \
-  npx hardhat run scripts/deploy.ts --network localhost
+docker compose up -d anvil postgres mongo          # infrastructure only
+make migrate-up && make init-super-admin            # schema + super admin
+make seed && make seed-chain                        # populate + register
+make serve                                          # start Go locally
 ```
-Then update `.env.docker` with the output contract addresses and run the one-time
-setup: `migrate-up`, `init-super-admin`, `seed`, `seed-chain`. After that, chain
-state persists across reboots — only the database services need to be running.
 
 ### Postman Collection
 
