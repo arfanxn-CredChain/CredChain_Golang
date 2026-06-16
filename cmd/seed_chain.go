@@ -13,7 +13,6 @@ import (
 	gormInfra "CredChain_Golang/infrastructure/database/gorm"
 	infraLogger "CredChain_Golang/infrastructure/logger"
 
-	"github.com/samber/lo"
 	"github.com/spf13/cobra"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
@@ -90,10 +89,21 @@ func seedChainRun(cfg *config.Config, userRepo domain.UserRepository, authorityS
 		return fmt.Errorf("seed-chain: no users in database — run 'seed' first")
 	}
 
-	// Filter out users with RoleNone (no on-chain effect for role 0).
-	usersToRegister := lo.Filter(allUsers, func(u domain.User, _ int) bool {
-		return u.Role != domain.RoleNone
-	})
+	// Build the on-chain update list. SuperAdmin is skipped (set during deploy,
+	// contract blocks SuperAdmin updates via batchUpdateUserRoleWithSignature).
+	// Deleted users get RoleNone on-chain while preserving their DB role.
+	// Active users get their DB role as-is.
+	var usersToRegister []domain.User
+	for _, u := range allUsers {
+		if u.Role == domain.RoleSuperAdmin {
+			continue
+		}
+		update := u
+		if u.DeletedAt != nil {
+			update.Role = domain.RoleNone
+		}
+		usersToRegister = append(usersToRegister, update)
+	}
 
 	logger.Info("users loaded for chain registration",
 		zap.Int("total_in_db", total),
