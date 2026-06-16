@@ -93,6 +93,8 @@ func seedChainRun(cfg *config.Config, userRepo domain.UserRepository, authorityS
 	// contract blocks SuperAdmin updates via batchUpdateUserRoleWithSignature).
 	// Deleted users get RoleNone on-chain while preserving their DB role.
 	// Active users get their DB role as-is.
+	// SameRoleUpdateError is avoided by also skipping users whose target role
+	// matches their current on-chain role (RoleNone for new deployments).
 	var usersToRegister []domain.User
 	for _, u := range allUsers {
 		if u.Role == domain.RoleSuperAdmin {
@@ -101,6 +103,9 @@ func seedChainRun(cfg *config.Config, userRepo domain.UserRepository, authorityS
 		update := u
 		if u.DeletedAt != nil {
 			update.Role = domain.RoleNone
+		}
+		if update.Role == domain.RoleNone {
+			continue // already None on-chain on fresh deploy
 		}
 		usersToRegister = append(usersToRegister, update)
 	}
