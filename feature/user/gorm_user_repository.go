@@ -291,7 +291,7 @@ func (r *gormUserRepository) UpdateRole(ctx context.Context, users ...domain.Use
 		ids[i] = user.Id
 	}
 
-	sql, finalArgs := gormhelpers.BuildBatchUpdateSQL("users", "id", []string{clause}, [][]interface{}{clauseArgs}, ids)
+	sql, finalArgs := gormhelpers.BuildBatchUpdateSQL("users", "id", []string{clause}, [][]interface{}{clauseArgs}, ids, "updated_at = CURRENT_TIMESTAMP")
 
 	result := r.db.WithContext(ctx).Exec(sql, finalArgs...)
 	if err := result.Error; err != nil {
