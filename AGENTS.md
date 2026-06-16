@@ -428,11 +428,22 @@ All under `/api` prefix. Middleware order: `ErrorLoggerMiddleware` → `I18nMidd
 
 ### Docker
 
-`.env` uses `localhost` hostnames; `.env.docker` uses Docker network hostnames (`postgres`, `mongo`, `host.docker.internal`). The `docker-compose.yml` includes nginx reverse proxy on ports 80/443.
+`.env` uses `localhost` hostnames; `.env.docker` uses Docker network hostnames (`postgres`, `mongo`, `anvil`). The `docker-compose.yml` includes nginx reverse proxy on ports 80/443.
 
 **Note:** `docker-compose.yml` healthcheck hardcodes port 8080 (`wget -qO- http://localhost:8080/api/health`). If you change `GIN_PORT`, update the healthcheck too.
 
 **Stale data issue:** Delete `docker/postgres/data/*` and `docker/mongo/data/*` before `make docker-fresh` or tests may fail.
+
+**Chain persistence:** The `anvil` service in `docker-compose.yml` persists chain state
+to `./docker/anvil/data/state.json` via bind mount. State survives container restarts
+and `docker compose down`. Deploy contracts with:
+```bash
+INITIAL_SUPER_ADMIN_WALLET_ADDRESS=0x70997970C51812dc3A010C7d01b50e0d17dc79C8 \
+  npx hardhat run scripts/deploy.ts --network localhost
+```
+Then update `.env.docker` with the output contract addresses and run the one-time
+setup: `migrate-up`, `init-super-admin`, `seed`, `seed-chain`. After that, chain
+state persists across reboots — only the database services need to be running.
 
 ### Postman Collection
 
