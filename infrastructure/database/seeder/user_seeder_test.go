@@ -30,20 +30,32 @@ func TestUserSeeder_Seeds15Users(t *testing.T) {
 	assert.Len(t, superAdmins, 1)
 	assert.Equal(t, "arfan2173@gmail.com", superAdmins[0].Email)
 	assert.Equal(t, "Muhammad Arfan", *superAdmins[0].Name)
+	assert.NotNil(t, superAdmins[0].Number)
+	assert.True(t, len(*superAdmins[0].Number) == 18)
+	assert.NotNil(t, superAdmins[0].Meta)
+	assert.Equal(t, "A1B2C3D4", superAdmins[0].Meta["key"])
+	assert.Nil(t, superAdmins[0].DeletedAt)
 
 	admins, err := userRepo.FindByRole(ctx, domain.RoleAdmin)
 	assert.NoError(t, err)
 	assert.Len(t, admins, 1)
 	assert.Equal(t, "arfanforproject@gmail.com", admins[0].Email)
+	assert.NotNil(t, admins[0].Number)
+	assert.Nil(t, admins[0].Meta)
+	assert.Nil(t, admins[0].DeletedAt)
 
 	issuers, err := userRepo.FindByRole(ctx, domain.RoleIssuer)
 	assert.NoError(t, err)
 	assert.GreaterOrEqual(t, len(issuers), 1)
 	hasEdy := false
 	for _, u := range issuers {
+		assert.NotNil(t, u.Number, "all users must have Number")
+		assert.True(t, len(*u.Number) == 18, "issuer number must be 18-digit NIP")
 		if u.Email == "edysusilo17580@gmail.com" {
 			hasEdy = true
-			break
+			assert.NotNil(t, u.Meta)
+			assert.Equal(t, "E5F6G7H8", u.Meta["key"])
+			assert.Nil(t, u.DeletedAt)
 		}
 	}
 	assert.True(t, hasEdy, "Edy Susilo should be an issuer")
@@ -51,11 +63,32 @@ func TestUserSeeder_Seeds15Users(t *testing.T) {
 	holders, err := userRepo.FindByRole(ctx, domain.RoleHolder)
 	assert.NoError(t, err)
 	assert.GreaterOrEqual(t, len(holders), 2)
-	assert.Equal(t, "liesbethsh19@gmail.com", holders[0].Email)
-	assert.Equal(t, "annasorokin2173@gmail.com", holders[1].Email)
+	for _, u := range holders {
+		assert.NotNil(t, u.Number, "all users must have Number")
+		assert.True(t, len(*u.Number) == 8)
+		assert.True(t, (*u.Number)[:4] == "2209")
+	}
 
 	total := len(superAdmins) + len(admins) + len(issuers) + len(holders)
 	assert.Equal(t, 15, total)
+
+	deletedCount := 0
+	for _, groups := range [][]domain.User{superAdmins, admins, issuers, holders} {
+		for _, u := range groups {
+			if u.DeletedAt != nil {
+				deletedCount++
+			}
+		}
+	}
+	assert.Equal(t, 5, deletedCount)
+
+	annaDeleted := false
+	for _, u := range holders {
+		if u.Email == "annasorokin2173@gmail.com" && u.DeletedAt != nil {
+			annaDeleted = true
+		}
+	}
+	assert.True(t, annaDeleted, "Anna Sorokin should be soft-deleted")
 }
 
 func TestUserSeeder_Name(t *testing.T) {
@@ -93,8 +126,10 @@ func TestUserSeeder_DeterministicRandomUsers(t *testing.T) {
 
 	for i := range issuers1 {
 		assert.Equal(t, issuers1[i].Email, issuers2[i].Email)
+		assert.Equal(t, issuers1[i].Number, issuers2[i].Number)
 	}
 	for i := range holders1 {
 		assert.Equal(t, holders1[i].Email, holders2[i].Email)
+		assert.Equal(t, holders1[i].Number, holders2[i].Number)
 	}
 }

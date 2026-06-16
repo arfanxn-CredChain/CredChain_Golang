@@ -27,131 +27,172 @@ func NewUserSeeder(repo domain.UserRepository, mnemonic string, encryptKey strin
 func (s *UserSeeder) Name() string { return "user" }
 
 func (s *UserSeeder) Seed(ctx context.Context) error {
-	users := s.seedBuildUsers()
-	_, err := s.repo.Store(ctx, users...)
-	if err != nil {
-		return fmt.Errorf("user seeder: store: %w", err)
-	}
-	return nil
-}
-
-func (s *UserSeeder) seedBuildUsers() []domain.User {
-	defined := s.seedBuildDefinedUsers()
-	random := s.seedBuildRandomUsers()
-	return append(defined, random...)
-}
-
-func (s *UserSeeder) seedBuildDefinedUsers() []domain.User {
-	type definedUser struct {
-		index       uint32
-		name        *string
-		email       string
-		phoneNumber *string
-		birthDate   *time.Time
-		gender      *domain.Gender
-		role        domain.Role
-	}
-
-	defs := []definedUser{
-		{
-			index: 1, name: lo.ToPtr("Muhammad Arfan"), email: "arfan2173@gmail.com",
-			phoneNumber: lo.ToPtr("+6289506089254"), birthDate: seedMustParseDate("2003-07-21"),
-			gender: seedGenderPtr(domain.GenderOther), role: domain.RoleSuperAdmin,
-		},
-		{
-			index: 2, name: lo.ToPtr("Project"), email: "arfanforproject@gmail.com",
-			role: domain.RoleAdmin,
-		},
-		{
-			index: 3, name: lo.ToPtr("Edy Susilo"), email: "edysusilo17580@gmail.com",
-			phoneNumber: lo.ToPtr("+6285228296172"), birthDate: seedMustParseDate("1980-05-17"),
-			gender: seedGenderPtr(domain.GenderMale), role: domain.RoleIssuer,
-		},
-		{
-			index: 4, name: lo.ToPtr("Liesbeth Stifanny"), email: "liesbethsh19@gmail.com",
-			phoneNumber: lo.ToPtr("+6289676624902"), birthDate: seedMustParseDate("2003-09-19"),
-			gender: seedGenderPtr(domain.GenderFemale), role: domain.RoleHolder,
-		},
-		{
-			index: 5, name: lo.ToPtr("Anna Sorokin"), email: "annasorokin2173@gmail.com",
-			gender: seedGenderPtr(domain.GenderFemale), role: domain.RoleHolder,
-		},
-	}
-
-	users := make([]domain.User, len(defs))
-	for i, d := range defs {
-		privKeyHex, address, err := cryptoInfra.DeriveKeyFromMnemonic(s.mnemonic, d.index)
-		if err != nil {
-			panic(fmt.Sprintf("failed to derive key for defined user index %d: %v", d.index, err))
-		}
-
-		encryptedKey, err := cryptoInfra.Encrypt([]byte(privKeyHex), []byte(s.encryptKey))
-		if err != nil {
-			panic(fmt.Sprintf("failed to encrypt key for defined user index %d: %v", d.index, err))
-		}
-
-		phone := d.phoneNumber
-		if phone != nil {
-			phone = lo.ToPtr(SanitizePhone(*phone))
-		}
-
-		users[i] = domain.User{
-			Name:                      d.name,
-			Email:                     d.email,
-			PhoneNumber:               phone,
-			BirthDate:                 d.birthDate,
-			Gender:                    d.gender,
-			Role:                      d.role,
-			WalletAddress:             address,
-			EncryptedWalletPrivateKey: encryptedKey,
-		}
-	}
-
-	return users
-}
-
-func (s *UserSeeder) seedBuildRandomUsers() []domain.User {
 	seed := seedHashSeed("credchain-seed")
 	rng := rand.New(rand.NewSource(seed))
 	gofakeit.Seed(seed)
 
-	users := make([]domain.User, 10)
+	users := s.seedBuildUsers(rng)
+	_, err := s.repo.Store(ctx, users...)
+	if err != nil {
+		return fmt.Errorf("user seeder: store: %w", err)
+	}
+
+	deleteIDs := make([]string, 0, 5)
+	deleteIDs = append(deleteIDs, users[4].Id)
+	for i := 10; i <= 13; i++ {
+		deleteIDs = append(deleteIDs, users[i].Id)
+	}
+	if _, err := s.repo.Delete(ctx, deleteIDs...); err != nil {
+		return fmt.Errorf("user seeder: delete: %w", err)
+	}
+
+	return nil
+}
+
+func (s *UserSeeder) seedBuildUsers(rng *rand.Rand) []domain.User {
+	var nipSeq, nimSeq int
+	users := make([]domain.User, 15)
+
+	users[0] = s.seedBuildUser(seedBuildUserParams{
+		index: 1, name: "Muhammad Arfan", email: "arfan2173@gmail.com",
+		phoneNumber: lo.ToPtr("+6289506089254"), birthDate: seedMustParseDate("2003-07-21"),
+		gender: seedGenderPtr(domain.GenderOther),
+		meta:   map[string]any{"key": "A1B2C3D4"},
+		role:   domain.RoleSuperAdmin,
+		number: seedGenerateNIP(time.Date(2003, 7, 21, 0, 0, 0, 0, time.UTC), seedGenderPtr(domain.GenderOther), &nipSeq),
+	})
+
+	users[1] = s.seedBuildUser(seedBuildUserParams{
+		index: 2, name: "Project", email: "arfanforproject@gmail.com",
+		birthDate: seedMustParseDate("1992-05-15"),
+		role:      domain.RoleAdmin,
+		number:    seedGenerateNIP(time.Date(1992, 5, 15, 0, 0, 0, 0, time.UTC), nil, &nipSeq),
+	})
+
+	users[2] = s.seedBuildUser(seedBuildUserParams{
+		index: 3, name: "Edy Susilo", email: "edysusilo17580@gmail.com",
+		phoneNumber: lo.ToPtr("+6285228296172"), birthDate: seedMustParseDate("1980-05-17"),
+		gender: seedGenderPtr(domain.GenderMale),
+		meta:   map[string]any{"key": "E5F6G7H8"},
+		role:   domain.RoleIssuer,
+		number: seedGenerateNIP(time.Date(1980, 5, 17, 0, 0, 0, 0, time.UTC), seedGenderPtr(domain.GenderMale), &nipSeq),
+	})
+
+	users[3] = s.seedBuildUser(seedBuildUserParams{
+		index: 4, name: "Liesbeth Stifanny", email: "liesbethsh19@gmail.com",
+		phoneNumber: lo.ToPtr("+6289676624902"), birthDate: seedMustParseDate("2003-09-19"),
+		gender: seedGenderPtr(domain.GenderFemale),
+		role:   domain.RoleHolder,
+		number: seedGenerateNIM(&nimSeq),
+	})
+
+	users[4] = s.seedBuildUser(seedBuildUserParams{
+		index: 5, name: "Anna Sorokin", email: "annasorokin2173@gmail.com",
+		gender: seedGenderPtr(domain.GenderFemale),
+		meta:   map[string]any{"key": "I9J0K1L2"},
+		role:   domain.RoleHolder,
+		number: seedGenerateNIM(&nimSeq),
+	})
+
 	for i := range 10 {
+		idx := i + 5
 		walletIdx := uint32(i + 6)
-		privKeyHex, address, err := cryptoInfra.DeriveKeyFromMnemonic(s.mnemonic, walletIdx)
-		if err != nil {
-			panic(fmt.Sprintf("failed to derive key for random user index %d: %v", walletIdx, err))
-		}
-
-		encryptedKey, err := cryptoInfra.Encrypt([]byte(privKeyHex), []byte(s.encryptKey))
-		if err != nil {
-			panic(fmt.Sprintf("failed to encrypt key for random user index %d: %v", walletIdx, err))
-		}
-
+		role := seedRandomUserRole(rng)
 		name := seedRandomIndonesianName(rng)
 		email := seedNameToEmail(name)
-		phone := seedRandomIndonesianPhone(rng)
-		phone = SanitizePhone(phone)
+		phone := SanitizePhone(seedRandomIndonesianPhone(rng))
 		birthDate := seedRandomBirthDate(rng)
 		gender := seedRandomGender(rng)
-		role := seedRandomUserRole(rng)
 
-		users[i] = domain.User{
-			Name:                      lo.ToPtr(name),
-			Email:                     email,
-			PhoneNumber:               lo.ToPtr(phone),
-			BirthDate:                 &birthDate,
-			Gender:                    &gender,
-			Role:                      role,
-			WalletAddress:             address,
-			EncryptedWalletPrivateKey: encryptedKey,
+		var meta map[string]any
+		if i%2 == 0 {
+			meta = map[string]any{"key": seedRandomAlphaKey(rng)}
 		}
+
+		var number string
+		if role == domain.RoleIssuer {
+			number = seedGenerateNIP(birthDate, &gender, &nipSeq)
+		} else {
+			number = seedGenerateNIM(&nimSeq)
+		}
+
+		users[idx] = s.seedBuildUser(seedBuildUserParams{
+			index:       walletIdx,
+			name:        name,
+			email:       email,
+			phoneNumber: &phone,
+			birthDate:   &birthDate,
+			gender:      &gender,
+			meta:        meta,
+			role:        role,
+			number:      number,
+		})
 	}
 
 	return users
 }
 
-// --- Helpers (all prefixed with "seed") ---
+type seedBuildUserParams struct {
+	index       uint32
+	name        string
+	email       string
+	phoneNumber *string
+	birthDate   *time.Time
+	gender      *domain.Gender
+	meta        map[string]any
+	role        domain.Role
+	number      string
+}
+
+func (s *UserSeeder) seedBuildUser(p seedBuildUserParams) domain.User {
+	privKeyHex, address, err := cryptoInfra.DeriveKeyFromMnemonic(s.mnemonic, p.index)
+	if err != nil {
+		panic(fmt.Sprintf("failed to derive key for index %d: %v", p.index, err))
+	}
+	encryptedKey, err := cryptoInfra.Encrypt([]byte(privKeyHex), []byte(s.encryptKey))
+	if err != nil {
+		panic(fmt.Sprintf("failed to encrypt key for index %d: %v", p.index, err))
+	}
+	return domain.User{
+		Name: lo.ToPtr(p.name), Number: lo.ToPtr(p.number),
+		PhoneNumber: p.phoneNumber, Email: p.email,
+		Gender: p.gender, BirthDate: p.birthDate,
+		Meta: p.meta, Role: p.role,
+		WalletAddress: address, EncryptedWalletPrivateKey: encryptedKey,
+	}
+}
+
+func seedGenerateNIP(dob time.Time, gender *domain.Gender, seq *int) string {
+	recruit := dob.AddDate(21, 0, 0)
+	genderDigit := '0'
+	if gender != nil {
+		switch *gender {
+		case domain.GenderMale:
+			genderDigit = '1'
+		case domain.GenderFemale:
+			genderDigit = '2'
+		default:
+			genderDigit = '3'
+		}
+	}
+	*seq++
+	return fmt.Sprintf("%s%04d%02d%c%03d",
+		dob.Format("20060102"), recruit.Year(), recruit.Month(), genderDigit, *seq)
+}
+
+func seedGenerateNIM(seq *int) string {
+	*seq++
+	return fmt.Sprintf("2209%04d", *seq)
+}
+
+func seedRandomAlphaKey(rng *rand.Rand) string {
+	const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	b := make([]byte, 8)
+	for i := range b {
+		b[i] = chars[rng.Intn(len(chars))]
+	}
+	return string(b)
+}
 
 func seedMustParseDate(date string) *time.Time {
 	t, _ := time.Parse(time.DateOnly, date)
@@ -170,16 +211,13 @@ var seedIndoFirstNames = []string{
 	"Ahmad", "Budi", "Citra", "Dewi", "Eko", "Fitri", "Gunawan", "Hadi", "Indah", "Joko",
 	"Kartika", "Lestari", "Mega", "Nur", "Putri", "Rizky", "Sari", "Tono", "Wati", "Yanto",
 }
-
 var seedIndoLastNames = []string{
 	"Santoso", "Wijaya", "Pratama", "Kusuma", "Hidayat", "Saputra", "Nugroho", "Permana",
 	"Mahendra", "Setiawan", "Purnama", "Gunawan", "Hartono", "Wibowo", "Kurniawan",
 }
 
 func seedRandomIndonesianName(rng *rand.Rand) string {
-	first := seedIndoFirstNames[rng.Intn(len(seedIndoFirstNames))]
-	last := seedIndoLastNames[rng.Intn(len(seedIndoLastNames))]
-	return first + " " + last
+	return seedIndoFirstNames[rng.Intn(len(seedIndoFirstNames))] + " " + seedIndoLastNames[rng.Intn(len(seedIndoLastNames))]
 }
 
 func seedNameToEmail(name string) string {
@@ -240,8 +278,7 @@ func seedRandomBirthDate(rng *rand.Rand) time.Time {
 	min := time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
 	max := time.Date(2005, 12, 31, 0, 0, 0, 0, time.UTC)
 	delta := max.Unix() - min.Unix()
-	sec := rng.Int63n(delta)
-	return min.Add(time.Duration(sec) * time.Second)
+	return min.Add(time.Duration(rng.Int63n(delta)) * time.Second)
 }
 
 var seedGenders = []domain.Gender{domain.GenderMale, domain.GenderFemale, domain.GenderOther}
