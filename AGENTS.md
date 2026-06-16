@@ -26,6 +26,8 @@ make migrate-up-mongo               # Run MongoDB index migrations
 make migrate-down-mongo             # Rollback MongoDB index migrations
 make init-super-admin               # Create super admin (CLI only, not via API)
 make get-google-id-token            # Obtain Google ID token via OAuth (for Postman)
+make seed                           # Run database seeders (populate 15 users)
+make seed-chain                     # Register seeded users on-chain
 make build                          # Build binary to bin/credchain
 make docker-up-build                # Start all services in Docker
 make docker-fresh                   # Full reset: down → clean → up → migrate
@@ -131,6 +133,7 @@ CredChain_Golang/
       helpers.go        → shared filter/sort/pagination/CASE update helpers (ApplyFilters, ApplySorts, ApplyPagination, BuildCaseColumnSQL, BuildBatchUpdateSQL)
       model/            → GORM structs: User, UserToken, Credential
     database/migrations → 000001_initial_schema.up.sql / .down.sql
+    database/seeder/    → Seeder interface, Registry runner, UserSeeder, phone sanitizer
     http/               → router.go + sub-packages
       context/          → auth user injection helpers
       middleware/        → AuthMiddleware, ErrorLoggerMiddleware,
@@ -418,6 +421,10 @@ All under `/api` prefix. Middleware order: `ErrorLoggerMiddleware` → `I18nMidd
 **Repository UpdateRole:** batch CASE statement with `WHERE id IN (?)` — pass IDs as a single `[]interface{}` slice (not spread) so GORM can expand the placeholder. Also uses shared `BuildCaseColumnSQL` + `BuildBatchUpdateSQL` helpers.
 
 **Repository Get (pagination):** uses shared `ApplyFilters`, `ApplySorts`, and `ApplyPagination` helpers from `infrastructure/database/gorm/helpers.go`. Default sort for users: `updated_at DESC`. Default sort for credentials: `credentials.issued_at DESC`.
+
+**Repository nil-safety (Get):** `Get` and the shared helpers `ApplySorts` / `ApplyPagination` accept a nil `*Query` — nil queries skip search, filters, and pagination, returning all rows. The default sort is still applied.
+
+**Database Seeder:** `infrastructure/database/seeder/` implements a `Seeder` interface with a `Registry` runner accepting variadic `--names` flags, executable via `make seed` and `make seed-chain`. The `UserSeeder` creates 15 users (5 defined + 10 randomised Indonesian names) with wallet keys derived from the standard Hardhat mnemonic via BIP44 (`DeriveKeyFromMnemonic`). All users receive an employee number (NIP, 18-digit `YYYYMMDDYYYYMMXNNN`) for Issuer+ roles or a student number (NIM, `2209XXXX`) for Holder roles. Half the users receive random `{"key":"...}` metadata. Five users are soft-deleted. Chain roles are registered via `make seed-chain`, which reads the database with a nil query and signs a single batch `UpdateUserRole` transaction with the SuperAdmin wallet (Hardhat node #1). SuperAdmin and users whose target role is `RoleNone` on a fresh deploy are skipped to avoid contract reverts (`SuperAdminRoleNotUpdatableError`, `SameRoleUpdateError`). The phone sanitizer (`SanitizePhone`) ensures E.164 compliance for all generated phone numbers.
 
 ### Docker
 
