@@ -629,6 +629,7 @@ Before pushing, run the repo's canonical verification command and confirm it pas
 ## See Also
 
 - `ROLES.md` — comprehensive role system reference
+- `CREDENTIAL.md` — comprehensive credential system reference
 - `Makefile` — canonical commands
 - `CredChain_postman_collection.json` — endpoint testing collection
 - `.air.toml` — hot reload config
