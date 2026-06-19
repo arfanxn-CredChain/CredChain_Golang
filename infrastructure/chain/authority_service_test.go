@@ -86,6 +86,16 @@ func (m *localRegistryBinding) BatchRevokeCredentialsWithSignature(opts *bind.Tr
 	return nil, args.Error(1)
 }
 
+func (m *localRegistryBinding) GetCredentialsByIds(opts *bind.CallOpts, ids []*big.Int) ([]contracts.CredentialRegistryCredential, error) {
+	args := m.Called(opts, ids)
+	return args.Get(0).([]contracts.CredentialRegistryCredential), args.Error(1)
+}
+
+func (m *localRegistryBinding) GetCredentialHashPerHolderStatuses(opts *bind.CallOpts, holders []common.Address, hashes [][32]byte) ([]contracts.CredentialRegistryCredentialHashStatus, error) {
+	args := m.Called(opts, holders, hashes)
+	return args.Get(0).([]contracts.CredentialRegistryCredentialHashStatus), args.Error(1)
+}
+
 // testEncKey returns a 32-byte encryption key as a string.
 func testEncKey() string {
 	raw := make([]byte, 32)

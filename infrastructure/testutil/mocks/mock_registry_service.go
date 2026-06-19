@@ -8,6 +8,7 @@ import (
 	"CredChain_Golang/infrastructure/chain"
 	"CredChain_Golang/infrastructure/chain/contracts"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -39,6 +40,11 @@ func (m *MockRegistryService) FindNonce(ctx context.Context, addr string) (*big.
 func (m *MockRegistryService) GetCredentialsByIds(ctx context.Context, ids []*big.Int) ([]contracts.CredentialRegistryCredential, error) {
 	args := m.Called(ctx, ids)
 	return args.Get(0).([]contracts.CredentialRegistryCredential), args.Error(1)
+}
+
+func (m *MockRegistryService) GetCredentialHashPerHolderStatuses(ctx context.Context, holders []common.Address, hashes [][32]byte) ([]contracts.CredentialRegistryCredentialHashStatus, error) {
+	args := m.Called(ctx, holders, hashes)
+	return args.Get(0).([]contracts.CredentialRegistryCredentialHashStatus), args.Error(1)
 }
 
 var _ chain.RegistryService = (*MockRegistryService)(nil)

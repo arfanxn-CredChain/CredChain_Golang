@@ -16,10 +16,12 @@ import (
 	domainQuery "CredChain_Golang/domain/query"
 	pyai "CredChain_Golang/infrastructure/ai/pyai"
 	"CredChain_Golang/infrastructure/chain"
+	"CredChain_Golang/infrastructure/chain/contracts"
 	httpContext "CredChain_Golang/infrastructure/http/context"
 	"CredChain_Golang/infrastructure/jobs"
 	"CredChain_Golang/infrastructure/storage"
 
+	"github.com/ethereum/go-ethereum/common"
 	ethCrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/oklog/ulid/v2"
 	"github.com/samber/lo"
@@ -209,14 +211,23 @@ func (s *credentialService) Issue(ctx context.Context, items []CredentialIssuanc
 	for i, it := range items {
 		hashes[i] = "0x" + hex.EncodeToString(ethCrypto.Keccak256(it.FileBytes))
 	}
-	existing, err := s.repo.FindByFileHashes(ctx, hashes, nil)
-	if err != nil {
-		return nil, nil, err
+
+	// On-chain per-holder duplicate check (1 RPC)
+	statusHolders := make([]common.Address, len(items))
+	statusHashes := make([][32]byte, len(items))
+	for i, it := range items {
+		statusHolders[i] = common.HexToAddress(holderByID[it.HolderUserID].WalletAddress)
+		copy(statusHashes[i][:], ethCrypto.Keccak256(it.FileBytes))
+	}
+	statuses, statusErr := s.registryService.GetCredentialHashPerHolderStatuses(ctx, statusHolders, statusHashes)
+	if statusErr != nil {
+		return nil, nil, domain.NewError(domain.CodeCredentialIssueBlockchainSyncFailed,
+			domain.WithError(statusErr))
 	}
 	activeDup := map[string]bool{}
-	for _, e := range existing {
-		if e.RevokedAt == nil {
-			activeDup[e.FileHash] = true
+	for i, st := range statuses {
+		if st.Status == 1 { // 1 = Issued
+			activeDup[items[i].HolderUserID+"|"+hashes[i]] = true
 		}
 	}
 
@@ -236,7 +247,7 @@ func (s *credentialService) Issue(ctx context.Context, items []CredentialIssuanc
 			errs[key] = append(errs[key], "holder not found")
 			continue
 		}
-		if activeDup[hashes[i]] || claimedHash[hashes[i]] {
+		if activeDup[it.HolderUserID+"|"+hashes[i]] || claimedHash[it.HolderUserID+"|"+hashes[i]] {
 			errs[key] = append(errs[key], "duplicate file hash")
 			continue
 		}
@@ -267,7 +278,7 @@ func (s *credentialService) Issue(ctx context.Context, items []CredentialIssuanc
 			ExtractStatus: domain.ExtractStatusPending,
 		}
 		survivors = append(survivors, prepared{idx: i, cred: cred})
-		claimedHash[hashes[i]] = true
+		claimedHash[it.HolderUserID+"|"+hashes[i]] = true
 	}
 
 	if len(survivors) == 0 {
@@ -464,33 +475,67 @@ func (s *credentialService) Verify(ctx context.Context, file pyai.ExtractFile) (
 		return code, cred, cached.SimilarityScore, cached.SimilarityPercent, nil
 	}
 
-	// EXACT-HASH PATH
+	// EXACT-HASH PATH: Postgres bridge → on-chain cross-check
 	existing, err := s.repo.FindByFileHashes(ctx, []string{uploadedHash}, verifyQuery)
 	if err != nil {
 		return 0, nil, nil, nil, err
 	}
 	if len(existing) > 0 {
-		cred := existing[0]
-		_, onChain, chainErr := s.registryService.FindCredentialByHash(ctx, uploadedHash)
-		code := domain.CodeCredentialVerifyAuthentic
-		if chainErr != nil || !onChain {
-			code = domain.CodeCredentialVerifyIntegrityWarning
-		} else if cred.RevokedAt != nil {
-			code = domain.CodeCredentialVerifyRevoked
-		}
-		if code == domain.CodeCredentialVerifyAuthentic {
-			holderGone := cred.Holder == nil || cred.Holder.DeletedAt != nil
-			issuerGone := cred.Issuer == nil || cred.Issuer.DeletedAt != nil
-			if holderGone && issuerGone {
-				code = domain.CodeCredentialVerifyPartyDisabled
-			} else if holderGone {
-				code = domain.CodeCredentialVerifyHolderDisabled
-			} else if issuerGone {
-				code = domain.CodeCredentialVerifyIssuerDisabled
+		tokenIds := make([]*big.Int, 0, len(existing))
+		credByTokenId := make(map[string]*domain.Credential, len(existing))
+		for i := range existing {
+			if existing[i].TokenID != nil {
+				tid, ok := new(big.Int).SetString(*existing[i].TokenID, 10)
+				if ok {
+					tokenIds = append(tokenIds, tid)
+					credByTokenId[tid.String()] = &existing[i]
+				}
 			}
 		}
-		s.verifyCacheVerdict(ctx, uploadedHash, code, &cred.ID, nil, nil)
-		return code, &cred, nil, nil, nil
+		if len(tokenIds) > 0 {
+			onChainCreds, chainErr := s.registryService.GetCredentialsByIds(ctx, tokenIds)
+			if chainErr == nil {
+				var best *domain.Credential
+				var bestOnChain *contracts.CredentialRegistryCredential
+				bestIsRevoked := true
+				for i := range onChainCreds {
+					if onChainCreds[i].Hash != uploadedHash {
+						continue
+					}
+					revoked := onChainCreds[i].RevokedAt != nil && onChainCreds[i].RevokedAt.Cmp(big.NewInt(0)) > 0
+					if best == nil || (bestIsRevoked && !revoked) ||
+						(bestIsRevoked == revoked && onChainCreds[i].IssuedAt.Cmp(bestOnChain.IssuedAt) > 0) {
+						idStr := onChainCreds[i].Id.String()
+						best = credByTokenId[idStr]
+						bestOnChain = &onChainCreds[i]
+						bestIsRevoked = revoked
+					}
+				}
+				if best != nil {
+					code := domain.CodeCredentialVerifyAuthentic
+					if bestIsRevoked {
+						code = domain.CodeCredentialVerifyRevoked
+					}
+					if code == domain.CodeCredentialVerifyAuthentic {
+						holderGone := best.Holder == nil || best.Holder.DeletedAt != nil
+						issuerGone := best.Issuer == nil || best.Issuer.DeletedAt != nil
+						if holderGone && issuerGone {
+							code = domain.CodeCredentialVerifyPartyDisabled
+						} else if holderGone {
+							code = domain.CodeCredentialVerifyHolderDisabled
+						} else if issuerGone {
+							code = domain.CodeCredentialVerifyIssuerDisabled
+						}
+					}
+					s.verifyCacheVerdict(ctx, uploadedHash, code, &best.ID, nil, nil)
+					return code, best, nil, nil, nil
+				}
+			}
+		}
+		// No valid on-chain match found
+		code := domain.CodeCredentialVerifyIntegrityWarning
+		s.verifyCacheVerdict(ctx, uploadedHash, code, &existing[0].ID, nil, nil)
+		return code, &existing[0], nil, nil, nil
 	}
 
 	// FUZZY PATH
