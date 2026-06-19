@@ -30,21 +30,6 @@ import (
 // contract binding and provides a higher-level API for feature services.
 // All methods return raw errors; feature layer translates to domain codes.
 type RegistryService interface {
-	// IssueCredentials issues multiple credentials in a single transaction.
-	// It handles the complete signature-based authentication flow:
-	//  1. Fetches the current nonce from CredentialRegistry for the signer
-	//  2. Packs transaction data: issuer || nonce || (holder || hash || uri)[]
-	//  3. Signs with the signer's encrypted private key
-	//  4. Executes BatchIssueCredentialsWithSignature on CredentialRegistry
-	//
-	// Parameters:
-	//   - ctx: Context for timeout/cancellation
-	//   - signer: Wallet containing Address and EncryptedPrivateKey
-	//   - credentials: Variadic list of CredentialIssuance structs
-	//
-	// Returns token IDs (on-chain derived from keccak256(hash)) and error.
-	IssueCredentials(ctx context.Context, signer domain.Wallet, credentials ...CredentialIssuance) ([]*big.Int, error)
-
 	// RevokeCredentials revokes multiple credentials by token ID.
 	// Sets revokedAt = block.timestamp on-chain; the NFT is soulbound and cannot be burned.
 	//
@@ -57,10 +42,23 @@ type RegistryService interface {
 	// FindNonce retrieves the nonce for the given address from the Registry contract.
 	FindNonce(ctx context.Context, addr string) (*big.Int, error)
 
-	// FindCredentialByHash reads the on-chain credential whose token id is
-	// derived from the file hash. Returns (hashOnChain, found, error).
-	// An unminted token yields a zero-value struct (empty Hash) => found=false.
-	FindCredentialByHash(ctx context.Context, hash string) (string, bool, error)
+	// GetCredentialsByIds batch-reads multiple credentials from the registry by token ID.
+	GetCredentialsByIds(ctx context.Context, ids []*big.Int) ([]contracts.CredentialRegistryCredential, error)
+
+	// IssueCredentials issues multiple credentials in a single transaction.
+	// It handles the complete signature-based authentication flow:
+	//  1. Fetches the current nonce from CredentialRegistry for the signer
+	//  2. Packs transaction data: issuer || nonce || (holder || hash || uri)[]
+	//  3. Signs with the signer's encrypted private key
+	//  4. Executes BatchIssueCredentialsWithSignature on CredentialRegistry
+	//
+	// Parameters:
+	//   - ctx: Context for timeout/cancellation
+	//   - signer: Wallet containing Address and EncryptedPrivateKey
+	//   - credentials: Variadic list of CredentialIssuance structs
+	//
+	// Returns token IDs (on-chain derived from keccak256(issuer, nonce, holder, hash)) and error.
+	IssueCredentials(ctx context.Context, signer domain.Wallet, credentials ...CredentialIssuance) ([]*big.Int, error)
 }
 
 // CredentialIssuance is the input struct for credential issuance.
@@ -95,16 +93,12 @@ func (s *registryService) FindNonce(ctx context.Context, addr string) (*big.Int,
 	return nonce, nil
 }
 
-func (s *registryService) FindCredentialByHash(ctx context.Context, hash string) (string, bool, error) {
-	id := tokenIdFromHash(hash)
-	cred, err := s.client.Registry.FindCredential(&bind.CallOpts{Context: ctx}, id)
+func (s *registryService) GetCredentialsByIds(ctx context.Context, ids []*big.Int) ([]contracts.CredentialRegistryCredential, error) {
+	creds, err := s.client.Registry.GetCredentialsByIds(&bind.CallOpts{Context: ctx}, ids)
 	if err != nil {
-		return "", false, fmt.Errorf("failed to find credential on-chain: %w", err)
+		return nil, fmt.Errorf("failed to get credentials by ids: %w", err)
 	}
-	if cred.Hash == "" {
-		return "", false, nil
-	}
-	return cred.Hash, true, nil
+	return creds, nil
 }
 
 func (s *registryService) IssueCredentials(ctx context.Context, signer domain.Wallet, credentials ...CredentialIssuance) ([]*big.Int, error) {
@@ -177,7 +171,7 @@ func (s *registryService) IssueCredentials(ctx context.Context, signer domain.Wa
 
 	tokenIds := make([]*big.Int, len(issuances))
 	for i, iss := range issuances {
-		tokenIds[i] = tokenIdFromHash(iss.Hash)
+		tokenIds[i] = tokenIdFromIssuance(issuerAddr, nonce, iss.Holder, iss.Hash)
 	}
 
 	return tokenIds, nil
@@ -243,8 +237,11 @@ func (s *registryService) RevokeCredentials(ctx context.Context, signer domain.W
 	return nil
 }
 
-// tokenIdFromHash derives the on-chain token ID from the file hash.
-// Matches Solidity: id = uint256(keccak256(abi.encodePacked(hash)))
-func tokenIdFromHash(hash string) *big.Int {
-	return new(big.Int).SetBytes(crypto.Keccak256([]byte(hash)))
+// tokenIdFromIssuance derives the on-chain token ID from the issuance parameters.
+// Matches Solidity: id = uint256(keccak256(abi.encodePacked(issuer, nonce, holder, hash)))
+func tokenIdFromIssuance(issuer common.Address, nonce *big.Int, holder common.Address, hash string) *big.Int {
+	packed := append(issuer.Bytes(), common.LeftPadBytes(nonce.Bytes(), 32)...)
+	packed = append(packed, holder.Bytes()...)
+	packed = append(packed, []byte(hash)...)
+	return new(big.Int).SetBytes(crypto.Keccak256(packed))
 }

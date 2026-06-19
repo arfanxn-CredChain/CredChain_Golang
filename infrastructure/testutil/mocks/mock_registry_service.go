@@ -6,6 +6,7 @@ import (
 
 	"CredChain_Golang/domain"
 	"CredChain_Golang/infrastructure/chain"
+	"CredChain_Golang/infrastructure/chain/contracts"
 
 	"github.com/stretchr/testify/mock"
 )
@@ -35,9 +36,9 @@ func (m *MockRegistryService) FindNonce(ctx context.Context, addr string) (*big.
 	return nil, args.Error(1)
 }
 
-func (m *MockRegistryService) FindCredentialByHash(ctx context.Context, hash string) (string, bool, error) {
-	args := m.Called(ctx, hash)
-	return args.String(0), args.Bool(1), args.Error(2)
+func (m *MockRegistryService) GetCredentialsByIds(ctx context.Context, ids []*big.Int) ([]contracts.CredentialRegistryCredential, error) {
+	args := m.Called(ctx, ids)
+	return args.Get(0).([]contracts.CredentialRegistryCredential), args.Error(1)
 }
 
 var _ chain.RegistryService = (*MockRegistryService)(nil)
