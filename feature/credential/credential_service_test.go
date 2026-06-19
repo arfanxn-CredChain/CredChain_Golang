@@ -9,12 +9,14 @@ import (
 	"CredChain_Golang/domain"
 	domainQuery "CredChain_Golang/domain/query"
 	pyai "CredChain_Golang/infrastructure/ai/pyai"
+	"CredChain_Golang/infrastructure/chain/contracts"
 	httpContext "CredChain_Golang/infrastructure/http/context"
 	"CredChain_Golang/infrastructure/jobs"
 	"CredChain_Golang/infrastructure/storage"
 	"CredChain_Golang/infrastructure/testutil/fixtures"
 	"CredChain_Golang/infrastructure/testutil/mocks"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -90,7 +92,7 @@ func TestVerify_CacheHit(t *testing.T) {
 	m.aiClient.AssertNotCalled(t, "ExtractIDs", mock.Anything, mock.Anything)
 	m.aiClient.AssertNotCalled(t, "Verify", mock.Anything, mock.Anything, mock.Anything)
 	m.extRepo.AssertNotCalled(t, "FindRankedByIds", mock.Anything, mock.Anything, mock.Anything)
-	m.regSvc.AssertNotCalled(t, "FindCredentialByHash", mock.Anything, mock.Anything)
+	m.regSvc.AssertNotCalled(t, "GetCredentialsByIds", mock.Anything, mock.Anything)
 }
 
 func TestVerify_ExactAuthentic(t *testing.T) {
@@ -107,9 +109,20 @@ func TestVerify_ExactAuthentic(t *testing.T) {
 
 	m.verRepo.On("FindByUploadedFileHash", mock.Anything, mock.Anything).Return(nil, nil)
 	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything, mock.Anything).Return([]domain.Credential{
-		{ID: "cred-1", FileHash: "0xabc", RevokedAt: nil, Holder: &domain.User{}, Issuer: &domain.User{}},
+		{ID: "cred-1", FileHash: "0x1b2fd4f3ca18fadafcd57a833257bbd533935aa2849e92e34c79387577fc725f", RevokedAt: nil, Holder: &domain.User{}, Issuer: &domain.User{}, TokenID: lo.ToPtr("12345")},
 	}, nil)
-	m.regSvc.On("FindCredentialByHash", mock.Anything, mock.Anything).Return("0xtokenid", true, nil)
+	m.regSvc.On("GetCredentialsByIds", mock.Anything, mock.Anything).Return(
+		[]contracts.CredentialRegistryCredential{{
+			Id:        big.NewInt(12345),
+			Holder:    common.HexToAddress("0x1234567890abcdef1234567890abcdef12345678"),
+			Hash:      "0x1b2fd4f3ca18fadafcd57a833257bbd533935aa2849e92e34c79387577fc725f",
+			Issuer:    common.HexToAddress("0xabcdef1234567890abcdef1234567890abcdef12"),
+			Revoker:   common.Address{},
+			IssuedAt:  big.NewInt(1000),
+			RevokedAt: big.NewInt(0),
+			Uri:       "testUri",
+		}}, nil,
+	)
 	m.verRepo.On("Store", mock.Anything, mock.Anything).Return(nil)
 
 	svc := newTestCredentialService(m)
@@ -139,9 +152,20 @@ func TestVerify_ExactRevoked(t *testing.T) {
 	now := time.Now()
 	m.verRepo.On("FindByUploadedFileHash", mock.Anything, mock.Anything).Return(nil, nil)
 	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything, mock.Anything).Return([]domain.Credential{
-		{ID: "cred-1", FileHash: "0xabc", RevokedAt: &now},
+		{ID: "cred-1", FileHash: "0x1b2fd4f3ca18fadafcd57a833257bbd533935aa2849e92e34c79387577fc725f", RevokedAt: &now, TokenID: lo.ToPtr("12345")},
 	}, nil)
-	m.regSvc.On("FindCredentialByHash", mock.Anything, mock.Anything).Return("0xtokenid", true, nil)
+	m.regSvc.On("GetCredentialsByIds", mock.Anything, mock.Anything).Return(
+		[]contracts.CredentialRegistryCredential{{
+			Id:        big.NewInt(12345),
+			Holder:    common.HexToAddress("0x1234567890abcdef1234567890abcdef12345678"),
+			Hash:      "0x1b2fd4f3ca18fadafcd57a833257bbd533935aa2849e92e34c79387577fc725f",
+			Issuer:    common.HexToAddress("0xabcdef1234567890abcdef1234567890abcdef12"),
+			Revoker:   common.Address{},
+			IssuedAt:  big.NewInt(1000),
+			RevokedAt: big.NewInt(2000),
+			Uri:       "testUri",
+		}}, nil,
+	)
 	m.verRepo.On("Store", mock.Anything, mock.Anything).Return(nil)
 
 	svc := newTestCredentialService(m)
@@ -169,9 +193,14 @@ func TestVerify_ExactIntegrityWarning(t *testing.T) {
 
 	m.verRepo.On("FindByUploadedFileHash", mock.Anything, mock.Anything).Return(nil, nil)
 	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything, mock.Anything).Return([]domain.Credential{
-		{ID: "cred-1", FileHash: "0xabc", RevokedAt: nil},
+		{ID: "cred-1", FileHash: "0x1b2fd4f3ca18fadafcd57a833257bbd533935aa2849e92e34c79387577fc725f", RevokedAt: nil, TokenID: lo.ToPtr("12345")},
 	}, nil)
-	m.regSvc.On("FindCredentialByHash", mock.Anything, mock.Anything).Return("", false, nil)
+	m.regSvc.On("GetCredentialsByIds", mock.Anything, mock.Anything).Return(
+		[]contracts.CredentialRegistryCredential{{
+			Id:   big.NewInt(99999),
+			Hash: "0xnonmatchinghash00000000000000000000000000000000000000000000000000",
+		}}, nil,
+	)
 	m.verRepo.On("Store", mock.Anything, mock.Anything).Return(nil)
 
 	svc := newTestCredentialService(m)
@@ -506,13 +535,19 @@ func TestIssue_AllFailed(t *testing.T) {
 	credRepo := &mocks.MockCredentialRepository{}
 	credRepo.On("FindByFileHashes", mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
 
+	regSvc := &mocks.MockRegistryService{}
+	regSvc.On("GetCredentialHashPerHolderStatuses", mock.Anything, mock.Anything, mock.Anything).Return(
+		[]contracts.CredentialRegistryCredentialHashStatus{}, nil,
+	)
+
 	svc := &credentialService{
-		repo:     credRepo,
-		storage:  stor,
-		policy:   &credentialPolicy{},
-		userRepo: userRepo,
-		logger:   zap.NewNop(),
-		enqueuer: enq,
+		repo:            credRepo,
+		registryService: regSvc,
+		storage:         stor,
+		policy:          &credentialPolicy{},
+		userRepo:        userRepo,
+		logger:          zap.NewNop(),
+		enqueuer:        enq,
 	}
 	items := []CredentialIssuance{
 		{HolderUserID: "holder-1", Name: "a", Filename: "x.pdf", FileBytes: []byte("x")},
@@ -539,6 +574,9 @@ func TestIssue_ChainRollback(t *testing.T) {
 		[]domain.User{{Id: "holder-valid"}}, nil)
 
 	regSvc := &mocks.MockRegistryService{}
+	regSvc.On("GetCredentialHashPerHolderStatuses", mock.Anything, mock.Anything, mock.Anything).Return(
+		[]contracts.CredentialRegistryCredentialHashStatus{}, nil,
+	)
 	regSvc.On("IssueCredentials", mock.Anything, mock.Anything, mock.Anything).
 		Return(nil, assert.AnError)
 
@@ -595,6 +633,9 @@ func TestIssue_PartialSuccess(t *testing.T) {
 	innerCredRepo.On("Update", mock.Anything, mock.Anything, mock.Anything).Return(
 		[]domain.Credential{{ID: "stored-2", TokenID: lo.ToPtr("1")}}, nil)
 	uow.On("Credential").Return(innerCredRepo)
+	m.regSvc.On("GetCredentialHashPerHolderStatuses", mock.Anything, mock.Anything, mock.Anything).Return(
+		[]contracts.CredentialRegistryCredentialHashStatus{}, nil,
+	)
 	m.regSvc.On("IssueCredentials", mock.Anything, mock.Anything, mock.Anything).
 		Return([]*big.Int{big.NewInt(1)}, nil)
 	enq.On("EnqueueExtract", mock.Anything, mock.Anything).Return(nil)
@@ -971,8 +1012,19 @@ func TestVerify_HolderDisabled_OverridesAuthentic(t *testing.T) {
 		regSvc:   &mocks.MockRegistryService{},
 	}
 	m.verRepo.On("FindByUploadedFileHash", mock.Anything, mock.Anything).Return((*domain.CredentialVerification)(nil), nil)
-	m.regSvc.On("FindCredentialByHash", mock.Anything, mock.Anything).Return("0xtokenid", true, nil)
-	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything, mock.Anything).Return([]domain.Credential{cred}, nil)
+	m.regSvc.On("GetCredentialsByIds", mock.Anything, mock.Anything).Return(
+		[]contracts.CredentialRegistryCredential{{
+			Id:        big.NewInt(12345),
+			Hash:      "0x9c22ff5f21f0b81b113e63f7db6da94fedef11b2119b4088b89664fb9a3cb658",
+			IssuedAt:  big.NewInt(1000),
+			RevokedAt: big.NewInt(0),
+		}}, nil,
+	)
+	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything, mock.Anything).Return([]domain.Credential{func() domain.Credential {
+		c := cred
+		c.TokenID = lo.ToPtr("12345")
+		return c
+	}()}, nil)
 	m.verRepo.On("Store", mock.Anything, mock.Anything).Return(nil)
 
 	svc := newTestCredentialService(m)
@@ -1005,8 +1057,19 @@ func TestVerify_IssuerDisabled_OverridesAuthentic(t *testing.T) {
 		regSvc:   &mocks.MockRegistryService{},
 	}
 	m.verRepo.On("FindByUploadedFileHash", mock.Anything, mock.Anything).Return((*domain.CredentialVerification)(nil), nil)
-	m.regSvc.On("FindCredentialByHash", mock.Anything, mock.Anything).Return("0xtokenid", true, nil)
-	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything, mock.Anything).Return([]domain.Credential{cred}, nil)
+	m.regSvc.On("GetCredentialsByIds", mock.Anything, mock.Anything).Return(
+		[]contracts.CredentialRegistryCredential{{
+			Id:        big.NewInt(12345),
+			Hash:      "0x9c22ff5f21f0b81b113e63f7db6da94fedef11b2119b4088b89664fb9a3cb658",
+			IssuedAt:  big.NewInt(1000),
+			RevokedAt: big.NewInt(0),
+		}}, nil,
+	)
+	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything, mock.Anything).Return([]domain.Credential{func() domain.Credential {
+		c := cred
+		c.TokenID = lo.ToPtr("12345")
+		return c
+	}()}, nil)
 	m.verRepo.On("Store", mock.Anything, mock.Anything).Return(nil)
 
 	svc := newTestCredentialService(m)
@@ -1040,8 +1103,19 @@ func TestVerify_PartyDisabled_BothDeleted(t *testing.T) {
 		regSvc:   &mocks.MockRegistryService{},
 	}
 	m.verRepo.On("FindByUploadedFileHash", mock.Anything, mock.Anything).Return((*domain.CredentialVerification)(nil), nil)
-	m.regSvc.On("FindCredentialByHash", mock.Anything, mock.Anything).Return("0xtokenid", true, nil)
-	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything, mock.Anything).Return([]domain.Credential{cred}, nil)
+	m.regSvc.On("GetCredentialsByIds", mock.Anything, mock.Anything).Return(
+		[]contracts.CredentialRegistryCredential{{
+			Id:        big.NewInt(12345),
+			Hash:      "0x9c22ff5f21f0b81b113e63f7db6da94fedef11b2119b4088b89664fb9a3cb658",
+			IssuedAt:  big.NewInt(1000),
+			RevokedAt: big.NewInt(0),
+		}}, nil,
+	)
+	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything, mock.Anything).Return([]domain.Credential{func() domain.Credential {
+		c := cred
+		c.TokenID = lo.ToPtr("12345")
+		return c
+	}()}, nil)
 	m.verRepo.On("Store", mock.Anything, mock.Anything).Return(nil)
 
 	svc := newTestCredentialService(m)
@@ -1076,8 +1150,19 @@ func TestVerify_DoesNotOverrideRevoked_WhenHolderDeleted(t *testing.T) {
 		regSvc:   &mocks.MockRegistryService{},
 	}
 	m.verRepo.On("FindByUploadedFileHash", mock.Anything, mock.Anything).Return((*domain.CredentialVerification)(nil), nil)
-	m.regSvc.On("FindCredentialByHash", mock.Anything, mock.Anything).Return("0xtokenid", true, nil)
-	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything, mock.Anything).Return([]domain.Credential{cred}, nil)
+	m.regSvc.On("GetCredentialsByIds", mock.Anything, mock.Anything).Return(
+		[]contracts.CredentialRegistryCredential{{
+			Id:        big.NewInt(12345),
+			Hash:      "0x9c22ff5f21f0b81b113e63f7db6da94fedef11b2119b4088b89664fb9a3cb658",
+			IssuedAt:  big.NewInt(1000),
+			RevokedAt: big.NewInt(2000),
+		}}, nil,
+	)
+	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything, mock.Anything).Return([]domain.Credential{func() domain.Credential {
+		c := cred
+		c.TokenID = lo.ToPtr("12345")
+		return c
+	}()}, nil)
 	m.verRepo.On("Store", mock.Anything, mock.Anything).Return(nil)
 
 	svc := newTestCredentialService(m)
@@ -1106,8 +1191,19 @@ func TestVerify_PartyDisabled_MissingHolderTreatedAsDisabled(t *testing.T) {
 		regSvc:   &mocks.MockRegistryService{},
 	}
 	m.verRepo.On("FindByUploadedFileHash", mock.Anything, mock.Anything).Return((*domain.CredentialVerification)(nil), nil)
-	m.regSvc.On("FindCredentialByHash", mock.Anything, mock.Anything).Return("0xtokenid", true, nil)
-	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything, mock.Anything).Return([]domain.Credential{cred}, nil)
+	m.regSvc.On("GetCredentialsByIds", mock.Anything, mock.Anything).Return(
+		[]contracts.CredentialRegistryCredential{{
+			Id:        big.NewInt(12345),
+			Hash:      "0x9c22ff5f21f0b81b113e63f7db6da94fedef11b2119b4088b89664fb9a3cb658",
+			IssuedAt:  big.NewInt(1000),
+			RevokedAt: big.NewInt(0),
+		}}, nil,
+	)
+	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything, mock.Anything).Return([]domain.Credential{func() domain.Credential {
+		c := cred
+		c.TokenID = lo.ToPtr("12345")
+		return c
+	}()}, nil)
 	m.verRepo.On("Store", mock.Anything, mock.Anything).Return(nil)
 
 	svc := newTestCredentialService(m)
