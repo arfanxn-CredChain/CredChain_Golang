@@ -107,6 +107,7 @@ func RegisterRoutes(p RouteParams) {
 				creds.POST("/batch/revoke", gin.HandlerFunc(p.IssuerRoleMiddleware), p.CredentialHandler.Revoke)
 				creds.POST("/batch/reextract", gin.HandlerFunc(p.IssuerRoleMiddleware), p.CredentialHandler.ReExtract)
 			}
+			secure.GET("/credentials/:id/file", p.CredentialHandler.DownloadFile)
 		}
 	}
 	p.Lifecycle.Append(fx.Hook{
