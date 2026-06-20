@@ -5,13 +5,13 @@ import (
 	"time"
 )
 
-// ExtractedID is one identifier extracted from a credential document.
+// CredentialExtractedID is one identifier extracted from a credential document.
 //
 // Distinct from pyai.ExtractedID (the HTTP wire type returned by the Python
 // AI client): this domain copy carries BSON tags for MongoDB persistence.
 // The service/worker layer maps between the two — keep them separate so the
 // domain package stays free of infrastructure dependencies.
-type ExtractedID struct {
+type CredentialExtractedID struct {
 	Type  string `bson:"type"  json:"type"`
 	Value string `bson:"value" json:"value"`
 }
@@ -23,7 +23,7 @@ type CredentialExtraction struct {
 	CredentialID string        `bson:"credential_id" json:"credential_id"`
 	FileHash     string        `bson:"file_hash"     json:"file_hash"`
 	Text         string        `bson:"text"          json:"text"`
-	IDs          []ExtractedID `bson:"ids"           json:"ids"`
+	IDs          []CredentialExtractedID `bson:"ids"           json:"ids"`
 	Embedding    []float64     `bson:"embedding"     json:"embedding"`
 	CreatedAt    time.Time     `bson:"created_at"    json:"created_at"`
 	UpdatedAt    time.Time     `bson:"updated_at"    json:"updated_at"`

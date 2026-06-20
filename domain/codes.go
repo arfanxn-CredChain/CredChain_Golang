@@ -134,4 +134,11 @@ const (
 	CodeCredentialReExtractSuccess   = 400500
 	CodeCredentialReExtractNotFound  = 400540
 	CodeCredentialReExtractNotFailed = 400541
+
+	// ── Credential File Download (06) ──────────────────────────────────────
+	CodeCredentialFileDownloadSuccess          = 400600
+	CodeCredentialFileDownloadNotFound         = 400640
+	CodeCredentialFileDownloadForbidden        = 400641
+	CodeCredentialFileDownloadDecryptionFailed = 400642
+	CodeCredentialFileDownloadNoFile           = 400643
 )
