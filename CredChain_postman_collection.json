@@ -2766,6 +2766,20 @@
               ]
             },
             {
+              "name": "Download File",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/credentials/{{TARGET_CREDENTIAL_ID}}/file",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["api", "credentials", "{{TARGET_CREDENTIAL_ID}}", "file"]
+                },
+                "description": "Download a single credential file. Returns the decrypted file with Content-Disposition: inline for browser preview. Authorization via policy: holder owns OR Issuer+."
+              },
+              "response": []
+            },
+            {
               "name": "Verify",
               "event": [
                 {
