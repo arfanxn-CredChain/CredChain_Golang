@@ -66,6 +66,7 @@ Middleware chain: `ErrorLoggerMiddleware` → `I18nMiddleware` → `ApiRateLimit
 | `/api/users/self/transfer-super-admin` | POST | Authenticated | SuperAdmin |
 | `/api/users/self/credentials` | GET | Authenticated | Any — lists own credentials (handler `SelfPaginate`) |
 | `/api/users/self/credentials/:id` | GET | Authenticated | Any — fetch own credential; 404 if not owned (handler `SelfFind`) |
+| `/api/credentials/:id/file` | GET | Authenticated | Any — download own credential or any if Issuer+ (policy-checked) |
 | `/api/users` | GET | Authenticated | **Issuer+** (read-only) |
 | `/api/users/:id` | GET | Authenticated | **Issuer+** (read-only) |
 | `/api/users/batch` | POST | Authenticated | Admin+ |
@@ -226,6 +227,7 @@ Update own phone                —      ✓       ✓       ✓       ✓
 Update own email                —      ✓       ✓       ✓       ✓
 List own credentials             —      ✓       ✓       ✓       ✓
 Find own credential              —      ✓       ✓       ✓       ✓
+Download own credential file     —      ✓       ✓       ✓       ✓
 ──
 Transfer SuperAdmin             —      —       —       —       ✓
 ──

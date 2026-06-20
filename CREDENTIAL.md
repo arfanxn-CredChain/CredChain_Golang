@@ -171,10 +171,11 @@ No separate DB status column — revocation is timestamp-driven. The on-chain `C
 **Source:** `infrastructure/http/router.go:79-109`
 
 | Route | Method | Auth | Handler | Notes |
-|-------|--------|------|---------|-------|
+|---|---|---|---|---|
 | `/api/credentials/verify` | POST | None (public) | `Verify` | Rate-limited by global ApiRateLimitMiddleware |
 | `/api/credentials` | GET | Issuer+ (on-chain) | `Paginate` | Search, filters, sorts, includes (holder/issuer/revoker) |
 | `/api/credentials/:id` | GET | Issuer+ (on-chain) | `Find` | Single credential with optional Preload |
+| `/api/credentials/:id/file` | GET | Authenticated (no role gate) | `DownloadFile` | Download decrypted credential file; authorization via policy (holder OR Issuer+) |
 | `/api/credentials/batch/issue` | POST | Issuer+ (on-chain) | `Issue` | Multipart form, 1-100 items |
 | `/api/credentials/batch/revoke` | POST | Issuer+ (on-chain) | `Revoke` | JSON body `{"ids": [...]}` |
 | `/api/credentials/batch/reextract` | POST | Issuer+ (on-chain) | `ReExtract` | JSON body `{"ids": [...]}` |
@@ -368,9 +369,13 @@ Repository: `domain.CredentialVerificationRepository` (`credential_verification.
 
 ### Local File Storage (IPFS-compatible interface)
 
-Persisted via `storage.Storage` interface. Files stored before DB insert; cleaned up on failure.
+Persisted via `storage.Storage`. Storage base path configured by `STORAGE_PATH` (default `"uploads"`). Credential files stored under `{STORAGE_PATH}/{CREDENTIAL_FILE_STORAGE_PATH}/{filename}` where `CREDENTIAL_FILE_STORAGE_PATH` defaults to `"credentials"`. The DB `file_uri` field stores only the filename — subdirectory is reconstructed at read time.
 
-**File URI format:** `local:///uploads/<uuid><ext>` (current local storage). Extendable to IPFS via `storage.Storage` interface.
+Files are encrypted at rest with AES-256-GCM using `FILE_ENCRYPTION_KEY`. The file hash (keccak256) is computed from the **original plaintext** before encryption, so on-chain fingerprints always represent the original document.
+
+**File URI format:** `ULID.ext` (e.g. `01JQNXYZ...pdf`). Full on-disk path: `uploads/credentials/01JQNXYZ...pdf`.
+
+Extendable to IPFS via `storage.Storage` interface.
 
 ---
 
@@ -445,6 +450,16 @@ Verdict codes (400401-400412) deliberately avoid CC 01-12 for other credential c
 | 400500 | `CodeCredentialReExtractSuccess` | 200 | Re-extraction queued |
 | 400540 | `CodeCredentialReExtractNotFound` | 404 | One or more credential IDs not found |
 | 400541 | `CodeCredentialReExtractNotFailed` | 409 | One or more credentials not in failed state (or missing file_uri) |
+
+### Credential File Download (40-06)
+
+| Code | Constant | HTTP | Meaning |
+|------|----------|------|---------|
+| 400600 | `CodeCredentialFileDownloadSuccess` | 200 | File downloaded |
+| 400640 | `CodeCredentialFileDownloadNotFound` | 404 | Credential not found |
+| 400641 | `CodeCredentialFileDownloadForbidden` | 403 | Not authorized (not holder, not Issuer+) |
+| 400642 | `CodeCredentialFileDownloadDecryptionFailed` | 500 | File decryption error |
+| 400643 | `CodeCredentialFileDownloadNoFile` | 404 | Credential has no stored file |
 
 ---
 

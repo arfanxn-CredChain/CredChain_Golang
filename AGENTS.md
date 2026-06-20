@@ -74,6 +74,7 @@ rm -rf docker/postgres/data/* docker/mongo/data/*
 | `GIN_PORT` | HTTP port (default 8080) |
 | `JWT_SECRET` | fatal if empty |
 | `WALLET_ENCRYPTION_KEY` | **must be exactly 32 bytes** (AES-256); fatal if wrong length |
+| `FILE_ENCRYPTION_KEY` | **must be exactly 32 bytes** (AES-256); fatal if wrong length — for credential file at-rest encryption |
 | `GEMINI_API_KEY` | no fatal check, but AI features break |
 | `GOOGLE_CLIENT_ID` | Google OAuth client ID |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
@@ -118,7 +119,8 @@ CredChain_Golang/
                           user_request.go, gorm_user_repository.go,
                           gorm_user_token_repository.go (+ tests)
     credential/         → credential_handler.go, credential_service.go,
-                          gorm_credential_repository.go (stub, no tests yet)
+                          gorm_credential_repository.go, credential_policy.go,
+                          credential_request.go, mock_credential_service_test.go (+ tests, 67% coverage)
   infrastructure/
     ai/gemini.go        → Gemini API client (no tests)
     chain/              → go-ethereum chain infrastructure
@@ -145,7 +147,9 @@ CredChain_Golang/
     logger/logger.go    → Zap logger
     oauth/google.go     → GoogleOAuthClient interface + impl
     security/jwt.go     → JWT generate/verify
-    storage/            → ipfs.go, local.go (no tests)
+    storage/            → local.go, ipfs.go (no tests). Storage holds *Config, methods
+                          use all-in-one `path` argument: SaveBytes/SaveFile/ReadBytes/Delete(path).
+                          Base directory from STORAGE_PATH env (default "uploads").
     testutil/           → test-only helpers (never imported by production)
       db/sqlite.go      → in-memory SQLite via glebarez (pure Go, no CGO)
       fixtures/         → NewDomainUser, NewModelUser, NewDomainUserToken, NewWallet, TestWalletEncryptionKey
@@ -244,7 +248,7 @@ Every HTTP response uses `{code, message, data?}` envelope. Helpers:
 - `responder.SendError(c, err)` — error (auto-resolves code → message via i18n)
 - `responder.SendValidationError(c, errors)` — Ozzo validation errors
 
-Response codes follow a 6-digit `AABBCC` format defined in `domain/codes.go`. Categories: `10` (system), `20` (auth), `30` (user), `40` (credential). The `50` category is owned by `CredChain_Python` (AI service) and propagates through this backend untouched.
+Response codes follow a 6-digit `AABBCC` format defined in `domain/codes.go`. Categories: `10` (system), `20` (auth), `30` (user), `40` (credential — sub-categories 01=fetch, 02=issue, 03=revoke, 04=verify, 05=reextract, 06=file download). The `50` category is owned by `CredChain_Python` (AI service) and propagates through this backend untouched.
 
 `SendError` detects malformed-body errors (`io.EOF`, `io.ErrUnexpectedEOF`, `*json.SyntaxError`, `*json.UnmarshalTypeError` from `c.ShouldBindJSON`) via `isMalformedBodyError` helper and returns `CodeSystemValidation` (400) instead of falling through to `CodeSystemInternal` (500).
 
@@ -309,6 +313,7 @@ Adding a new `domain.Code*` constant requires updating: `mapper.go` (both `CodeT
 - `DeletePostFetch` blocks Admin-deleting-Admin/SuperAdmin.
 - `RestorePreFetch` blocks below-Admin signers and self-targeting.
 - `RestorePostFetch` blocks SuperAdmin target restoration and non-trashed targets.
+- `DownloadFilePreFetch` allows if user owns credential or is Issuer+; returns `CodeCredentialFileDownloadForbidden` (400641, 403) otherwise.
 
 Service methods contain zero role/rank comparisons — all authorization lives in policy. `UpdatePostFetch` signature: `(ctx, targets []domain.User, updates []domain.User)` — receives both the fetched targets and the proposed updates so role-hierarchy rules apply to both current and requested roles.
 
@@ -391,6 +396,7 @@ All under `/api` prefix. Middleware order: `ErrorLoggerMiddleware` → `I18nMidd
 | PUT | `/api/users/batch/restore` | Admin+ | Restore trashed users (handler `Restore`); clears soft-delete, re-syncs DB role to chain |
 | GET | `/api/credentials` | Issuer+ | List credentials |
 | GET | `/api/credentials/:id` | Issuer+ | Single credential |
+| GET | `/api/credentials/:id/file` | Authenticated (no role gate) | Download decrypted file; authorization via policy (holder OR Issuer+) |
 | POST | `/api/credentials/batch/issue` | Issuer+ | Issue credentials |
 | POST | `/api/credentials/batch/revoke` | Issuer+ | Revoke credentials |
 | POST | `/api/credentials/batch/reextract` | Issuer+ | Re-extract failed credentials |
@@ -476,6 +482,7 @@ All Config fields are pointers (`*T`); `nil` = not provided, non-nil = provided 
 | `GIN_PORT` | no | `8080` | HTTP port |
 | `JWT_SECRET` | **yes** | — | JWT signing key (fatal if empty) |
 | `WALLET_ENCRYPTION_KEY` | **yes** | — | exactly 32 bytes (AES-256); fatal otherwise |
+| `FILE_ENCRYPTION_KEY` | **yes** | — | exactly 32 bytes (AES-256); for credential file at-rest encryption; fatal otherwise |
 | `GEMINI_API_KEY` | recommended | — | AI features break without it |
 | `GOOGLE_CLIENT_ID` | **yes** | — | OAuth client ID |
 | `GOOGLE_CLIENT_SECRET` | **yes** | — | OAuth client secret |
@@ -511,6 +518,8 @@ All Config fields are pointers (`*T`); `nil` = not provided, non-nil = provided 
 | `MONGO_DATABASE` | no | `credchain` | MongoDB database name |
 | `AI_VERIFICATION_CACHE_TTL_HOURS` | no | `24` | Verify cache TTL hours before auto-expiry |
 | `RIVER_MAX_WORKERS` | no | `10` | River job worker pool size |
+| `STORAGE_PATH` | no | `uploads` | Base directory for file storage |
+| `CREDENTIAL_FILE_STORAGE_PATH` | no | `credentials` | Subdirectory under STORAGE_PATH for credential files |
 
 ## Testing
 
@@ -526,9 +535,9 @@ All Config fields are pointers (`*T`); `nil` = not provided, non-nil = provided 
 |---|---|
 | 100% | `config`, `infrastructure/http/context` |
 | 90%+ | `response` (97%), `security` (93%), `middleware` (92%), `request/query` (92%), `i18n` (90%) |
-| 60–85% | `crypto` (83%), `domain` (79%), `domain/query` (69%), `chain` (69%), `responder` (67%), `model` (67%), `feature/user` (67%) |
+| 60–85% | `crypto` (83%), `domain` (79%), `domain/query` (69%), `chain` (69%), `responder` (67%), `model` (67%), `feature/credential` (67%), `feature/user` (67%) |
 | 30–55% | `feature/auth` (54%), `oauth` (50%), `database/gorm` (32%) |
-| 0% (intentional) | `cmd`, `ai`, `chain/contracts`, `feature/credential` (stubs), `http`, `logger`, `storage` |
+| 0% (intentional) | `cmd`, `ai`, `chain/contracts`, `http`, `logger`, `storage` |
 
 **Test Infrastructure** (`infrastructure/testutil/`, test-only, never imported by production):
 
@@ -585,6 +594,7 @@ When adding a new endpoint or service method, add at least: one happy-path test,
 
 - **Go module path** is `CredChain_Golang` (with underscore) — imports use this, not a URL path.
 - **`WALLET_ENCRYPTION_KEY`** must be exactly 32 bytes (AES-256 key). Validated at startup in `config.NewConfig` — app fails fast with clear error if length is wrong.
+- **`FILE_ENCRYPTION_KEY`** must be exactly 32 bytes (AES-256). Same validation — credential files encrypted at rest with this key.
 - **SuperAdmin** can only be created via `make init-super-admin` CLI, never via API.
 - **Transfer Super Admin**: Only the current SuperAdmin can transfer their role via `POST /api/users/self/transfer-super-admin`. Caller is downgraded to Admin, target promoted to SuperAdmin. Refresh tokens for both users are revoked.
 - **Self-profile lockdown**: `PUT /api/users/self/profile` only accepts `phone_number`. Name, number, birth_date, and meta are admin-managed via `PUT /api/users/batch`. **SuperAdmin** may include their own ID in `PUT /api/users/batch` to self-edit profile fields (other roles cannot self-target via batch — `CodeUserUpdateSelfForbidden`). However, **no role can change their own email via batch** (`CodeUserUpdateSelfEmailForbidden` 300847, 403) — email changes must go through `PUT /api/users/self/email` which requires a fresh Google ID token. This prevents accidentally locking the account out with an inaccessible email.
