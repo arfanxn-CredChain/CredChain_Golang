@@ -3,24 +3,40 @@ package jobs
 import (
 	"context"
 	"encoding/json"
-	"os"
-	"path/filepath"
 	"testing"
 
+	"CredChain_Golang/config"
 	"CredChain_Golang/domain"
 	"CredChain_Golang/infrastructure/ai/pyai"
+	infraCrypto "CredChain_Golang/infrastructure/crypto"
+	"CredChain_Golang/infrastructure/storage"
 	"CredChain_Golang/infrastructure/testutil/mocks"
 
 	"github.com/riverqueue/river/rivertype"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
 
+func setupTestStorage(t *testing.T, key []byte, plaintext []byte) (*storage.Storage, string) {
+	t.Helper()
+	s := &storage.Storage{Config: &config.Config{StoragePath: lo.ToPtr(t.TempDir())}}
+	relPath := "test.pdf"
+	encHex, err := infraCrypto.Encrypt(plaintext, key)
+	require.NoError(t, err)
+	_, err = s.SaveBytes([]byte(encHex), relPath)
+	require.NoError(t, err)
+	return s, relPath
+}
+
 func TestWorkExtract_Success(t *testing.T) {
-	tmpFile := filepath.Join(t.TempDir(), "test.pdf")
-	assert.NoError(t, os.WriteFile(tmpFile, []byte("test-data"), 0644))
+	key := make([]byte, 32)
+	for i := range key {
+		key[i] = byte(i)
+	}
+	s, relPath := setupTestStorage(t, key, []byte("test-data"))
 
 	credRepo := &mocks.MockCredentialRepository{}
 	extRepo := &mocks.MockCredentialExtractionRepository{}
@@ -40,26 +56,35 @@ func TestWorkExtract_Success(t *testing.T) {
 		credRepo:       credRepo,
 		extractionRepo: extRepo,
 		aiClient:       aiClient,
+		storage:        s,
+		config:         &config.Config{FileEncryptionKey: lo.ToPtr(string(key))},
 		logger:         zap.NewNop(),
 	}
-	err := w.workExtract(context.Background(), CredentialExtractArgs{CredentialID: "cred-id", FileURI: tmpFile})
+	err := w.workExtract(context.Background(), CredentialExtractArgs{CredentialID: "cred-id", FileURI: relPath})
 	assert.NoError(t, err)
 	extRepo.AssertCalled(t, "Store", mock.Anything, mock.Anything)
 	credRepo.AssertCalled(t, "Update", mock.Anything, mock.Anything)
 }
 
 func TestWorkExtract_FileNotFound(t *testing.T) {
+	s := &storage.Storage{Config: &config.Config{StoragePath: lo.ToPtr(t.TempDir())}}
 	w := &CredentialExtractWorker{
 		aiClient: &mocks.MockPythonAIClient{},
+		storage:  s,
 		logger:   zap.NewNop(),
 	}
-	err := w.workExtract(context.Background(), CredentialExtractArgs{CredentialID: "cred-id", FileURI: "/nonexistent/file.pdf"})
+	err := w.workExtract(context.Background(), CredentialExtractArgs{
+		CredentialID: "cred-id", FileURI: "nonexistent.pdf",
+	})
 	assert.Error(t, err)
 }
 
 func TestWorkExtract_EmptyEmbedding(t *testing.T) {
-	tmpFile := filepath.Join(t.TempDir(), "test.pdf")
-	assert.NoError(t, os.WriteFile(tmpFile, []byte("test-data"), 0644))
+	key := make([]byte, 32)
+	for i := range key {
+		key[i] = byte(i)
+	}
+	s, relPath := setupTestStorage(t, key, []byte("test-data"))
 
 	credRepo := &mocks.MockCredentialRepository{}
 	extRepo := &mocks.MockCredentialExtractionRepository{}
@@ -72,17 +97,22 @@ func TestWorkExtract_EmptyEmbedding(t *testing.T) {
 		credRepo:       credRepo,
 		extractionRepo: extRepo,
 		aiClient:       aiClient,
+		storage:        s,
+		config:         &config.Config{FileEncryptionKey: lo.ToPtr(string(key))},
 		logger:         zap.NewNop(),
 	}
-	err := w.workExtract(context.Background(), CredentialExtractArgs{CredentialID: "cred-id", FileURI: tmpFile})
+	err := w.workExtract(context.Background(), CredentialExtractArgs{CredentialID: "cred-id", FileURI: relPath})
 	assert.Error(t, err)
 	extRepo.AssertNotCalled(t, "Store", mock.Anything, mock.Anything)
 	credRepo.AssertNotCalled(t, "Update", mock.Anything, mock.Anything)
 }
 
 func TestWorkExtract_StoreFails(t *testing.T) {
-	tmpFile := filepath.Join(t.TempDir(), "test.pdf")
-	assert.NoError(t, os.WriteFile(tmpFile, []byte("test-data"), 0644))
+	key := make([]byte, 32)
+	for i := range key {
+		key[i] = byte(i)
+	}
+	s, relPath := setupTestStorage(t, key, []byte("test-data"))
 
 	credRepo := &mocks.MockCredentialRepository{}
 	extRepo := &mocks.MockCredentialExtractionRepository{}
@@ -100,9 +130,11 @@ func TestWorkExtract_StoreFails(t *testing.T) {
 		credRepo:       credRepo,
 		extractionRepo: extRepo,
 		aiClient:       aiClient,
+		storage:        s,
+		config:         &config.Config{FileEncryptionKey: lo.ToPtr(string(key))},
 		logger:         zap.NewNop(),
 	}
-	err := w.workExtract(context.Background(), CredentialExtractArgs{CredentialID: "cred-id", FileURI: tmpFile})
+	err := w.workExtract(context.Background(), CredentialExtractArgs{CredentialID: "cred-id", FileURI: relPath})
 	assert.Error(t, err)
 	credRepo.AssertNotCalled(t, "Update", mock.Anything, mock.Anything)
 }

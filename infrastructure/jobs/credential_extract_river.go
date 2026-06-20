@@ -4,12 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"time"
 
+	"CredChain_Golang/config"
 	"CredChain_Golang/domain"
 	"CredChain_Golang/infrastructure/ai/pyai"
+	infraCrypto "CredChain_Golang/infrastructure/crypto"
+	"CredChain_Golang/infrastructure/storage"
 
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
@@ -36,6 +38,8 @@ type CredentialExtractWorker struct {
 	credRepo       domain.CredentialRepository
 	extractionRepo domain.CredentialExtractionRepository
 	aiClient       pyai.PythonAIClient
+	storage        *storage.Storage
+	config         *config.Config
 	logger         *zap.Logger
 }
 
@@ -44,6 +48,8 @@ type CredentialExtractWorkerParams struct {
 	CredRepo       domain.CredentialRepository
 	ExtractionRepo domain.CredentialExtractionRepository
 	AIClient       pyai.PythonAIClient
+	Storage        *storage.Storage
+	Config         *config.Config
 	Logger         *zap.Logger
 }
 
@@ -52,6 +58,8 @@ func NewCredentialExtractWorker(p CredentialExtractWorkerParams) *CredentialExtr
 		credRepo:       p.CredRepo,
 		extractionRepo: p.ExtractionRepo,
 		aiClient:       p.AIClient,
+		storage:        p.Storage,
+		config:         p.Config,
 		logger:         p.Logger,
 	}
 }
@@ -106,9 +114,13 @@ func (w *CredentialExtractWorker) Work(ctx context.Context, job *river.Job[Crede
 //   - Each step is individually idempotent: os.ReadFile, aiClient.Extract,
 //     credRepo.Find, extractionRepo.Store (upsert).
 func (w *CredentialExtractWorker) workExtract(ctx context.Context, args CredentialExtractArgs) error {
-	data, err := os.ReadFile(args.FileURI)
+	encryptedHex, err := w.storage.ReadBytes(args.FileURI)
 	if err != nil {
 		return fmt.Errorf("read file %q: %w", args.FileURI, err)
+	}
+	data, err := infraCrypto.Decrypt(string(encryptedHex), []byte(*w.config.FileEncryptionKey))
+	if err != nil {
+		return fmt.Errorf("decrypt file %q: %w", args.FileURI, err)
 	}
 
 	results, err := w.aiClient.Extract(ctx, pyai.ExtractFile{
@@ -168,10 +180,10 @@ func (w *CredentialExtractWorker) workMarkFailed(ctx context.Context, credential
 	return updateErr
 }
 
-func workToDomainIDs(ids []pyai.ExtractedID) []domain.ExtractedID {
-	out := make([]domain.ExtractedID, len(ids))
+func workToDomainIDs(ids []pyai.ExtractedID) []domain.CredentialExtractedID {
+	out := make([]domain.CredentialExtractedID, len(ids))
 	for i, v := range ids {
-		out[i] = domain.ExtractedID{Type: v.Type, Value: v.Value}
+		out[i] = domain.CredentialExtractedID{Type: v.Type, Value: v.Value}
 	}
 	return out
 }
