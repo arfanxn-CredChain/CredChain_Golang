@@ -47,3 +47,6 @@ temp/
 # Go workspace file
 go.work
 docker/anvil/data/
+
+# User uploads
+uploads/

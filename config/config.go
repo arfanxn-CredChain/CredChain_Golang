@@ -23,6 +23,7 @@ type Config struct {
 	InitialSuperAdminGender            *string
 	InitialSuperAdminMeta              map[string]any
 	WalletEncryptionKey                *string
+	FileEncryptionKey                  *string
 	RPCURL                             *string
 	RelayerPrivateKey                  *string
 	HardhatMnemonic                    *string
@@ -68,6 +69,7 @@ type Config struct {
 	CredentialExtractWorkerPollSeconds *int
 	CredentialExtractWorkerMaxAttempts *int
 	StoragePath                        *string
+	CredentialFileStoragePath          *string
 }
 
 func getIntEnv(key string, defaultVal *int) *int {
@@ -129,7 +131,8 @@ func NewConfig(envPath string) (*Config, error) {
 	defaultCredentialExtractWorkerCount := 1
 	defaultCredentialExtractWorkerPoll := 2
 	defaultCredentialExtractWorkerMaxAttempts := 3
-	defaultStoragePath := "uploads/credentials"
+	defaultStoragePath := "uploads"
+	defaultCredentialFileStoragePath := "credentials"
 
 	cfg := &Config{
 		GinPort:                            getEnv("GIN_PORT", lo.ToPtr("8080")),
@@ -142,6 +145,7 @@ func NewConfig(envPath string) (*Config, error) {
 		InitialSuperAdminGender:            getEnv("INITIAL_SUPER_ADMIN_GENDER", nil),
 		InitialSuperAdminMeta:              getJSONEnv("INITIAL_SUPER_ADMIN_META", nil),
 		WalletEncryptionKey:                getEnv("WALLET_ENCRYPTION_KEY", nil),
+		FileEncryptionKey:                  getEnv("FILE_ENCRYPTION_KEY", nil),
 		RPCURL:                             getEnv("RPC_URL", nil),
 		RelayerPrivateKey:                  getEnv("RELAYER_PRIVATE_KEY", nil),
 		HardhatMnemonic:                    getEnv("HARDHAT_MNEMONIC", nil),
@@ -187,6 +191,7 @@ func NewConfig(envPath string) (*Config, error) {
 		CredentialExtractWorkerPollSeconds: getIntEnv("CREDENTIAL_EXTRACT_WORKER_POLL_SECONDS", &defaultCredentialExtractWorkerPoll),
 		CredentialExtractWorkerMaxAttempts: getIntEnv("CREDENTIAL_EXTRACT_WORKER_MAX_ATTEMPTS", &defaultCredentialExtractWorkerMaxAttempts),
 		StoragePath:                        getEnv("STORAGE_PATH", &defaultStoragePath),
+		CredentialFileStoragePath:          getEnv("CREDENTIAL_FILE_STORAGE_PATH", &defaultCredentialFileStoragePath),
 	}
 
 	if cfg.JWTSecret == nil {
@@ -199,6 +204,13 @@ func NewConfig(envPath string) (*Config, error) {
 
 	if keyLen := len([]byte(*cfg.WalletEncryptionKey)); keyLen != 32 {
 		return nil, fmt.Errorf("wallet_encryption_key must be exactly 32 bytes (AES-256), got %d", keyLen)
+	}
+
+	if cfg.FileEncryptionKey == nil {
+		return nil, fmt.Errorf("file_encryption_key is required")
+	}
+	if keyLen := len([]byte(*cfg.FileEncryptionKey)); keyLen != 32 {
+		return nil, fmt.Errorf("file_encryption_key must be exactly 32 bytes (AES-256), got %d", keyLen)
 	}
 
 	if cfg.CookieSameSite != nil {
