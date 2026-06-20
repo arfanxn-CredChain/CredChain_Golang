@@ -130,5 +130,11 @@
   "error_users_restore_self_target_forbidden": "You cannot restore your own account.",
   "error_users_restore_super_admin_target_forbidden": "SuperAdmin users cannot be restored via this endpoint.",
   "error_users_restore_not_trashed_forbidden": "All target users must be previously deleted.",
-  "error_users_restore_blockchain_sync_failed": "Failed to sync user restore to blockchain."
+  "error_users_restore_blockchain_sync_failed": "Failed to sync user restore to blockchain.",
+
+  "success_credential_file_download": "File downloaded successfully.",
+  "error_credential_file_download_not_found": "Credential file not found.",
+  "error_credential_file_download_forbidden": "You are not authorized to download this credential file.",
+  "error_credential_file_download_decryption_failed": "Failed to decrypt credential file.",
+  "error_credential_file_download_no_file": "This credential has no stored file."
 }

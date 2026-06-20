@@ -123,6 +123,13 @@ var CodeToMessageKey = map[int]string{
 	domain.CodeCredentialReExtractSuccess:   "success_credential_reextract",
 	domain.CodeCredentialReExtractNotFound:  "error_credential_reextract_not_found",
 	domain.CodeCredentialReExtractNotFailed: "error_credential_reextract_not_failed",
+
+	// Credential File Download codes
+	domain.CodeCredentialFileDownloadSuccess:          "success_credential_file_download",
+	domain.CodeCredentialFileDownloadNotFound:         "error_credential_file_download_not_found",
+	domain.CodeCredentialFileDownloadForbidden:        "error_credential_file_download_forbidden",
+	domain.CodeCredentialFileDownloadDecryptionFailed: "error_credential_file_download_decryption_failed",
+	domain.CodeCredentialFileDownloadNoFile:           "error_credential_file_download_no_file",
 }
 
 // HttpCodes maps every domain status code to its exact HTTP status code.
@@ -235,6 +242,12 @@ var HttpCodes = map[int]int{
 	domain.CodeCredentialReExtractSuccess:   http.StatusOK,
 	domain.CodeCredentialReExtractNotFound:  http.StatusNotFound,
 	domain.CodeCredentialReExtractNotFailed: http.StatusConflict,
+
+	domain.CodeCredentialFileDownloadSuccess:          http.StatusOK,
+	domain.CodeCredentialFileDownloadNotFound:         http.StatusNotFound,
+	domain.CodeCredentialFileDownloadForbidden:        http.StatusForbidden,
+	domain.CodeCredentialFileDownloadDecryptionFailed: http.StatusInternalServerError,
+	domain.CodeCredentialFileDownloadNoFile:           http.StatusNotFound,
 }
 
 // HttpCodeFromCode looks up the HTTP status for a given domain status code.

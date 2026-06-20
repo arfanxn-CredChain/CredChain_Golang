@@ -120,6 +120,11 @@ var allDomainCodes = []int{
 	domain.CodeCredentialReExtractSuccess,
 	domain.CodeCredentialReExtractNotFound,
 	domain.CodeCredentialReExtractNotFailed,
+	domain.CodeCredentialFileDownloadSuccess,
+	domain.CodeCredentialFileDownloadNotFound,
+	domain.CodeCredentialFileDownloadForbidden,
+	domain.CodeCredentialFileDownloadDecryptionFailed,
+	domain.CodeCredentialFileDownloadNoFile,
 }
 
 func TestHttpCodeFromCode_KnownCodes(t *testing.T) {

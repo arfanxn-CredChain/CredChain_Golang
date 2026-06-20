@@ -130,5 +130,11 @@
   "error_users_restore_self_target_forbidden": "Anda tidak dapat memulihkan akun Anda sendiri.",
   "error_users_restore_super_admin_target_forbidden": "Pengguna SuperAdmin tidak dapat dipulihkan melalui endpoint ini.",
   "error_users_restore_not_trashed_forbidden": "Semua pengguna target harus telah dihapus sebelumnya.",
-  "error_users_restore_blockchain_sync_failed": "Gagal menyinkronkan pemulihan pengguna ke blockchain."
+  "error_users_restore_blockchain_sync_failed": "Gagal menyinkronkan pemulihan pengguna ke blockchain.",
+
+  "success_credential_file_download": "File berhasil diunduh.",
+  "error_credential_file_download_not_found": "File kredensial tidak ditemukan.",
+  "error_credential_file_download_forbidden": "Anda tidak berwenang mengunduh file kredensial ini.",
+  "error_credential_file_download_decryption_failed": "Gagal mendekripsi file kredensial.",
+  "error_credential_file_download_no_file": "Kredensial ini tidak memiliki file tersimpan."
 }
