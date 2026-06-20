@@ -24,6 +24,8 @@ type CredentialPolicy interface {
 	VerifyPreFetch(ctx context.Context) error
 	// ReExtractPreFetch checks signer rank only (Issuer+).
 	ReExtractPreFetch(ctx context.Context) error
+	// DownloadFilePreFetch checks holder owns credential OR signer is Issuer+.
+	DownloadFilePreFetch(ctx context.Context, target domain.Credential) error
 }
 
 type credentialPolicy struct{}
@@ -68,6 +70,17 @@ func (p *credentialPolicy) ReExtractPreFetch(ctx context.Context) error {
 		return domain.NewError(domain.CodeAuthForbidden)
 	}
 	return nil
+}
+
+func (p *credentialPolicy) DownloadFilePreFetch(ctx context.Context, target domain.Credential) error {
+	user := httpContext.MustGetUser(ctx)
+	if target.HolderUserID == user.Id {
+		return nil
+	}
+	if user.Role.Rank() >= domain.RoleIssuer.Rank() {
+		return nil
+	}
+	return domain.NewError(domain.CodeCredentialFileDownloadForbidden)
 }
 
 func signerIsIssuerOrAbove(ctx context.Context) bool {

@@ -59,6 +59,9 @@ var allowedSortColumns = map[string]bool{
 // query. Supported keys: "holder", "issuer", "revoker". A single batch
 // IN-clause query runs per Preload regardless of result size (no N+1).
 func preloadByIncludes(db *gorm.DB, query *domainQuery.Query) *gorm.DB {
+	if query == nil {
+		return db
+	}
 	for _, inc := range query.Includes {
 		switch inc {
 		case "holder":
@@ -78,6 +81,9 @@ func preloadByIncludes(db *gorm.DB, query *domainQuery.Query) *gorm.DB {
 // given query. Search always needs the holder join (name/email/number/phone
 // search predicates); sorts on holder_* columns also require it.
 func needsHolderJoin(query *domainQuery.Query) bool {
+	if query == nil {
+		return false
+	}
 	return query.HasSearch() ||
 		lo.ContainsBy(query.Sorts, func(s domainQuery.Sort) bool { return strings.HasPrefix(s.Column, "holder_") })
 }
@@ -117,21 +123,23 @@ func (r *gormCredentialRepository) Get(ctx context.Context, query *domainQuery.Q
 		db = db.Joins("LEFT JOIN users AS holder ON holder.id = credentials.holder_user_id")
 	}
 
-	if query.HasSearch() {
-		needle := "%" + query.Search + "%"
-		db = db.Where(
-			"LOWER(credentials.name) LIKE LOWER(?) OR "+
-				"LOWER(CAST(credentials.meta AS TEXT)) LIKE LOWER(?) OR "+
-				"LOWER(holder.name) LIKE LOWER(?) OR "+
-				"LOWER(holder.email) LIKE LOWER(?) OR "+
-				"LOWER(holder.number) LIKE LOWER(?) OR "+
-				"LOWER(holder.phone_number) LIKE LOWER(?)",
-			needle, needle, needle, needle, needle, needle,
-		)
-	}
+	if query != nil {
+		if query.HasSearch() {
+			needle := "%" + query.Search + "%"
+			db = db.Where(
+				"LOWER(credentials.name) LIKE LOWER(?) OR "+
+					"LOWER(CAST(credentials.meta AS TEXT)) LIKE LOWER(?) OR "+
+					"LOWER(holder.name) LIKE LOWER(?) OR "+
+					"LOWER(holder.email) LIKE LOWER(?) OR "+
+					"LOWER(holder.number) LIKE LOWER(?) OR "+
+					"LOWER(holder.phone_number) LIKE LOWER(?)",
+				needle, needle, needle, needle, needle, needle,
+			)
+		}
 
-	if query.HasFilters() {
-		db = gormhelpers.ApplyFilters(db, query.Filters, allowedFilterColumns, "credentials.")
+		if query.HasFilters() {
+			db = gormhelpers.ApplyFilters(db, query.Filters, allowedFilterColumns, "credentials.")
+		}
 	}
 
 	var total int64
@@ -161,7 +169,9 @@ func (r *gormCredentialRepository) Get(ctx context.Context, query *domainQuery.Q
 // from query.Includes.
 func (r *gormCredentialRepository) Find(ctx context.Context, id string, query *domainQuery.Query) (*domain.Credential, error) {
 	db := r.db.WithContext(ctx).Model(&model.Credential{})
-	db = preloadByIncludes(db, query)
+	if query != nil {
+		db = preloadByIncludes(db, query)
+	}
 	var c model.Credential
 	if err := db.First(&c, "id = ?", id).Error; err != nil {
 		return nil, err

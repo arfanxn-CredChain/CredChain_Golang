@@ -75,3 +75,8 @@ func (m *mockCredentialService) ReExtract(ctx context.Context, ids ...string) ([
 	args := m.Called(ctx, ids)
 	return args.Get(0).([]domain.Credential), args.Error(1)
 }
+
+func (m *mockCredentialService) DownloadFile(ctx context.Context, id string) ([]byte, string, string, error) {
+	args := m.Called(ctx, id)
+	return args.Get(0).([]byte), args.String(1), args.String(2), args.Error(3)
+}

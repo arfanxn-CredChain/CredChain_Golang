@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"CredChain_Golang/config"
 	"CredChain_Golang/domain"
 	domainQuery "CredChain_Golang/domain/query"
 	pyai "CredChain_Golang/infrastructure/ai/pyai"
@@ -41,6 +42,14 @@ func newTestCredentialService(m *testCredentialMocks) *credentialService {
 		registryService:  m.regSvc,
 		policy:           &credentialPolicy{},
 		logger:           zap.NewNop(),
+	}
+}
+
+func testConfig() *config.Config {
+	return &config.Config{
+		FileEncryptionKey:         lo.ToPtr("12345678901234567890123456789012"),
+		CredentialFileStoragePath: lo.ToPtr("credentials"),
+		StoragePath:               lo.ToPtr("uploads"),
 	}
 }
 
@@ -288,7 +297,7 @@ func TestVerify_FuzzyTampered(t *testing.T) {
 		{Type: "student_id", Value: "12345"},
 	}, nil)
 	m.extRepo.On("FindRankedByIds", mock.Anything, mock.Anything, 10).Return([]domain.CredentialExtraction{
-		{CredentialID: "cred-1", IDs: []domain.ExtractedID{{Value: "12345"}}, Embedding: []float64{0.1, 0.2}},
+		{CredentialID: "cred-1", IDs: []domain.CredentialExtractedID{{Value: "12345"}}, Embedding: []float64{0.1, 0.2}},
 	}, nil)
 	m.aiClient.On("Verify", mock.Anything, mock.Anything, mock.Anything).Return(&pyai.VerifyResult{
 		Verdict: "tampered", SimilarityScore: 0.3, SimilarityPercent: "30%",
@@ -327,7 +336,7 @@ func TestVerify_FuzzySuspicious(t *testing.T) {
 		{Type: "student_id", Value: "12345"},
 	}, nil)
 	m.extRepo.On("FindRankedByIds", mock.Anything, mock.Anything, 10).Return([]domain.CredentialExtraction{
-		{CredentialID: "cred-1", IDs: []domain.ExtractedID{{Value: "12345"}}, Embedding: []float64{0.1, 0.2}},
+		{CredentialID: "cred-1", IDs: []domain.CredentialExtractedID{{Value: "12345"}}, Embedding: []float64{0.1, 0.2}},
 	}, nil)
 	m.aiClient.On("Verify", mock.Anything, mock.Anything, mock.Anything).Return(&pyai.VerifyResult{
 		Verdict: "suspicious", SimilarityScore: 0.5, SimilarityPercent: "50%",
@@ -364,7 +373,7 @@ func TestVerify_FuzzyLowSimilarity(t *testing.T) {
 		{Type: "student_id", Value: "12345"},
 	}, nil)
 	m.extRepo.On("FindRankedByIds", mock.Anything, mock.Anything, 10).Return([]domain.CredentialExtraction{
-		{CredentialID: "cred-1", IDs: []domain.ExtractedID{{Value: "12345"}}, Embedding: []float64{0.1, 0.2}},
+		{CredentialID: "cred-1", IDs: []domain.CredentialExtractedID{{Value: "12345"}}, Embedding: []float64{0.1, 0.2}},
 	}, nil)
 	m.aiClient.On("Verify", mock.Anything, mock.Anything, mock.Anything).Return(&pyai.VerifyResult{
 		Verdict: "low_similarity", SimilarityScore: 0.4, SimilarityPercent: "40%",
@@ -400,7 +409,7 @@ func TestVerify_FuzzyNotSimilar(t *testing.T) {
 		{Type: "student_id", Value: "12345"},
 	}, nil)
 	m.extRepo.On("FindRankedByIds", mock.Anything, mock.Anything, 10).Return([]domain.CredentialExtraction{
-		{CredentialID: "cred-1", IDs: []domain.ExtractedID{{Value: "12345"}}, Embedding: []float64{0.1, 0.2}},
+		{CredentialID: "cred-1", IDs: []domain.CredentialExtractedID{{Value: "12345"}}, Embedding: []float64{0.1, 0.2}},
 	}, nil)
 	m.aiClient.On("Verify", mock.Anything, mock.Anything, mock.Anything).Return(&pyai.VerifyResult{
 		Verdict: "not_similar", SimilarityScore: 0.2, SimilarityPercent: "20%",
@@ -441,8 +450,8 @@ func TestVerify_TieBreakNonRevokedPreferred(t *testing.T) {
 	earlier := now.Add(-24 * time.Hour)
 
 	m.extRepo.On("FindRankedByIds", mock.Anything, mock.Anything, 10).Return([]domain.CredentialExtraction{
-		{CredentialID: "cred-revoked", IDs: []domain.ExtractedID{{Value: "ID1"}, {Value: "ID2"}}, Embedding: []float64{1.0, 0.0}},
-		{CredentialID: "cred-live", IDs: []domain.ExtractedID{{Value: "ID1"}, {Value: "ID2"}}, Embedding: []float64{2.0, 0.0}},
+		{CredentialID: "cred-revoked", IDs: []domain.CredentialExtractedID{{Value: "ID1"}, {Value: "ID2"}}, Embedding: []float64{1.0, 0.0}},
+		{CredentialID: "cred-live", IDs: []domain.CredentialExtractedID{{Value: "ID1"}, {Value: "ID2"}}, Embedding: []float64{2.0, 0.0}},
 	}, nil)
 
 	m.credRepo.On("FindByIds", mock.Anything, mock.Anything, mock.Anything).Return([]domain.Credential{
@@ -494,8 +503,8 @@ func TestVerify_TieBreakNewestIssuedAt(t *testing.T) {
 	newer := now.Add(-24 * time.Hour)
 
 	m.extRepo.On("FindRankedByIds", mock.Anything, mock.Anything, 10).Return([]domain.CredentialExtraction{
-		{CredentialID: "cred-old", IDs: []domain.ExtractedID{{Value: "ID1"}, {Value: "ID2"}}, Embedding: []float64{1.0, 0.0}},
-		{CredentialID: "cred-new", IDs: []domain.ExtractedID{{Value: "ID1"}, {Value: "ID2"}}, Embedding: []float64{3.0, 0.0}},
+		{CredentialID: "cred-old", IDs: []domain.CredentialExtractedID{{Value: "ID1"}, {Value: "ID2"}}, Embedding: []float64{1.0, 0.0}},
+		{CredentialID: "cred-new", IDs: []domain.CredentialExtractedID{{Value: "ID1"}, {Value: "ID2"}}, Embedding: []float64{3.0, 0.0}},
 	}, nil)
 
 	m.credRepo.On("FindByIds", mock.Anything, mock.Anything, mock.Anything).Return([]domain.Credential{
@@ -528,7 +537,7 @@ func TestIssue_AllFailed(t *testing.T) {
 	ctx := ctxWithAuth(&user)
 	enq := &localMockEnqueuer{}
 	userRepo := &mocks.MockUserRepository{}
-	stor := &storage.Storage{BaseDir: t.TempDir()}
+	stor := &storage.Storage{Config: &config.Config{StoragePath: lo.ToPtr(t.TempDir())}}
 
 	userRepo.On("FindByIds", mock.Anything, mock.Anything, mock.Anything).Return([]domain.User{}, nil)
 
@@ -542,6 +551,7 @@ func TestIssue_AllFailed(t *testing.T) {
 
 	svc := &credentialService{
 		repo:            credRepo,
+		cfg:             testConfig(),
 		registryService: regSvc,
 		storage:         stor,
 		policy:          &credentialPolicy{},
@@ -568,7 +578,7 @@ func TestIssue_ChainRollback(t *testing.T) {
 	ctx := ctxWithAuth(&user)
 	enq := &localMockEnqueuer{}
 	userRepo := &mocks.MockUserRepository{}
-	stor := &storage.Storage{BaseDir: t.TempDir()}
+	stor := &storage.Storage{Config: &config.Config{StoragePath: lo.ToPtr(t.TempDir())}}
 
 	userRepo.On("FindByIds", mock.Anything, mock.Anything, mock.Anything).Return(
 		[]domain.User{{Id: "holder-valid"}}, nil)
@@ -592,6 +602,7 @@ func TestIssue_ChainRollback(t *testing.T) {
 	svc := &credentialService{
 		repo:            credRepo,
 		uow:             uow,
+		cfg:             testConfig(),
 		registryService: regSvc,
 		storage:         stor,
 		policy:          &credentialPolicy{},
@@ -619,7 +630,7 @@ func TestIssue_PartialSuccess(t *testing.T) {
 	}
 	enq := &localMockEnqueuer{}
 
-	stor := &storage.Storage{BaseDir: t.TempDir()}
+	stor := &storage.Storage{Config: &config.Config{StoragePath: lo.ToPtr(t.TempDir())}}
 
 	userRepo := &mocks.MockUserRepository{}
 	userRepo.On("FindByIds", mock.Anything, mock.Anything, mock.Anything).
@@ -643,6 +654,7 @@ func TestIssue_PartialSuccess(t *testing.T) {
 	svc := &credentialService{
 		repo:            m.credRepo,
 		uow:             uow,
+		cfg:             testConfig(),
 		registryService: m.regSvc,
 		aiClient:        m.aiClient,
 		storage:         stor,
@@ -1234,7 +1246,7 @@ func TestVerify_DoesNotOverrideTampered_WhenHolderDeleted(t *testing.T) {
 		{Type: "student_id", Value: "12345"},
 	}, nil)
 	m.extRepo.On("FindRankedByIds", mock.Anything, mock.Anything, 10).Return([]domain.CredentialExtraction{
-		{CredentialID: "cred-1", IDs: []domain.ExtractedID{{Value: "12345"}}, Embedding: []float64{0.1, 0.2}},
+		{CredentialID: "cred-1", IDs: []domain.CredentialExtractedID{{Value: "12345"}}, Embedding: []float64{0.1, 0.2}},
 	}, nil)
 	m.aiClient.On("Verify", mock.Anything, mock.Anything, mock.Anything).Return(&pyai.VerifyResult{
 		Verdict: "tampered", SimilarityScore: 0.3, SimilarityPercent: "30%",

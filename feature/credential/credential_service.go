@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"os"
+	"mime"
 	"path/filepath"
 	"strings"
 	"time"
@@ -17,6 +17,7 @@ import (
 	pyai "CredChain_Golang/infrastructure/ai/pyai"
 	"CredChain_Golang/infrastructure/chain"
 	"CredChain_Golang/infrastructure/chain/contracts"
+	infraCrypto "CredChain_Golang/infrastructure/crypto"
 	httpContext "CredChain_Golang/infrastructure/http/context"
 	"CredChain_Golang/infrastructure/jobs"
 	"CredChain_Golang/infrastructure/storage"
@@ -45,6 +46,7 @@ type CredentialService interface {
 	Revoke(ctx context.Context, ids ...string) ([]domain.Credential, error)
 	Verify(ctx context.Context, file pyai.ExtractFile) (int, *domain.Credential, *float64, *string, error)
 	ReExtract(ctx context.Context, ids ...string) ([]domain.Credential, error)
+	DownloadFile(ctx context.Context, id string) (data []byte, filename string, mimeType string, err error)
 }
 
 // CredentialIssuance is the service-layer input for one credential issuance. File
@@ -255,18 +257,21 @@ func (s *credentialService) Issue(ctx context.Context, items []CredentialIssuanc
 		if ext == "" {
 			ext = ".bin"
 		}
-		path, err := s.storage.SaveBytes(it.FileBytes, ext)
+		encryptedHex, encErr := infraCrypto.Encrypt(it.FileBytes, []byte(*s.cfg.FileEncryptionKey))
+		if encErr != nil {
+			errs[key] = append(errs[key], "encryption failed")
+			continue
+		}
+		filename := ulid.Make().String() + ext
+		filePath := filepath.Join(*s.cfg.CredentialFileStoragePath, filename)
+		_, err := s.storage.SaveBytes([]byte(encryptedHex), filePath)
 		if err != nil {
 			errs[key] = append(errs[key], "storage failed")
 			continue
 		}
-		if path == "" {
-			s.cleanupOrphanFiles(fileURIs)
-			return nil, nil, domain.NewError(domain.CodeCredentialIssueStorageFailed,
-				domain.WithError(errors.New("storage returned empty path")))
-		}
-		fileURIs = append(fileURIs, path)
+		fileURIs = append(fileURIs, filePath)
 		id := ulid.Make().String()
+		dbFileURI := filename
 		cred := domain.Credential{
 			ID:            id,
 			HolderUserID:  it.HolderUserID,
@@ -274,7 +279,7 @@ func (s *credentialService) Issue(ctx context.Context, items []CredentialIssuanc
 			Name:          it.Name,
 			Meta:          it.Meta,
 			FileHash:      hashes[i],
-			FileURI:       &path,
+			FileURI:       &dbFileURI,
 			ExtractStatus: domain.ExtractStatusPending,
 		}
 		survivors = append(survivors, prepared{idx: i, cred: cred})
@@ -331,7 +336,8 @@ func (s *credentialService) Issue(ctx context.Context, items []CredentialIssuanc
 		// Enqueue is inside the UoW closure but uses a separate pgx pool — see
 		// issueEnqueueExtractJob doc for the cross-pool tradeoff.
 		for _, c := range stored {
-			if err := s.issueEnqueueExtractJob(ctx, c.ID, *c.FileURI); err != nil {
+			fileURI := filepath.Join(*s.cfg.CredentialFileStoragePath, *c.FileURI)
+			if err := s.issueEnqueueExtractJob(ctx, c.ID, fileURI); err != nil {
 				return err
 			}
 		}
@@ -626,7 +632,7 @@ func (s *credentialService) verifyPickBestMatch(ctx context.Context, ranked []do
 
 // verifyCountIntersection counts how many of the extraction's IDs appear in
 // the uploaded file's value set.
-func (s *credentialService) verifyCountIntersection(ids []domain.ExtractedID, values []string) int {
+func (s *credentialService) verifyCountIntersection(ids []domain.CredentialExtractedID, values []string) int {
 	set := lo.SliceToMap(values, func(v string) (string, struct{}) { return v, struct{}{} })
 	count := 0
 	for _, id := range ids {
@@ -757,6 +763,46 @@ func (s *credentialService) reExtractValidate(ids []string, targets []domain.Cre
 	return nil
 }
 
+// ── DownloadFile ──────────────────────────────────────────────────────────
+
+// DownloadFile retrieves a single credential file, validates authorization,
+// decrypts with FILE_ENCRYPTION_KEY, and returns the plaintext bytes along
+// with the filename and MIME type for HTTP response.
+func (s *credentialService) DownloadFile(ctx context.Context, id string) ([]byte, string, string, error) {
+	query := &domainQuery.Query{Includes: []string{"holder"}}
+	target, err := s.repo.Find(ctx, id, query)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, "", "", domain.NewError(domain.CodeCredentialFileDownloadNotFound,
+				domain.WithMetadata("credential_id", id))
+		}
+		return nil, "", "", err
+	}
+	if err := s.policy.DownloadFilePreFetch(ctx, *target); err != nil {
+		return nil, "", "", err
+	}
+	if target.FileURI == nil {
+		return nil, "", "", domain.NewError(domain.CodeCredentialFileDownloadNoFile,
+			domain.WithMetadata("credential_id", id))
+	}
+	filePath := filepath.Join(*s.cfg.CredentialFileStoragePath, *target.FileURI)
+	encryptedHex, err := s.storage.ReadBytes(filePath)
+	if err != nil {
+		return nil, "", "", err
+	}
+	key := []byte(*s.cfg.FileEncryptionKey)
+	decrypted, err := infraCrypto.Decrypt(string(encryptedHex), key)
+	if err != nil {
+		return nil, "", "", domain.NewError(domain.CodeCredentialFileDownloadDecryptionFailed,
+			domain.WithError(err))
+	}
+	mimeType := mime.TypeByExtension(strings.ToLower(filepath.Ext(*target.FileURI)))
+	if mimeType == "" {
+		mimeType = "application/octet-stream"
+	}
+	return decrypted, *target.FileURI, mimeType, nil
+}
+
 // ── Blockchain sync helpers ───────────────────────────────────────────────
 
 // syncBlockchainIssue calls RegistryService.IssueCredentials and translates
@@ -803,7 +849,7 @@ func (s *credentialService) cleanupOrphanFiles(paths []string) {
 		if p == "" {
 			continue
 		}
-		if err := os.Remove(p); err != nil {
+		if err := s.storage.Delete(p); err != nil {
 			s.logger.Warn("failed to clean up orphan file",
 				zap.String("path", p),
 				zap.Error(err))

@@ -2,6 +2,7 @@ package credential
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"mime"
 	"mime/multipart"
@@ -35,6 +36,7 @@ type CredentialHandler interface {
 	ReExtract(c *gin.Context)
 	SelfPaginate(c *gin.Context)
 	SelfFind(c *gin.Context)
+	DownloadFile(c *gin.Context)
 }
 
 // ── Implementation & constructor ──────────────────────────────────────────
@@ -355,6 +357,28 @@ func (h *credentialHandler) ReExtract(c *gin.Context) {
 		return
 	}
 	responder.Send(c, domain.CodeCredentialReExtractSuccess, mapCredentialsToResponse(updated))
+}
+
+// ── DownloadFile ──────────────────────────────────────────────────────────
+
+// DownloadFile returns a single credential file with correct Content-Type for
+// browser preview. Uses domain.CodeCredentialFileDownloadSuccess (200) on
+// success. Authorization via policy (holder owns OR Issuer+).
+func (h *credentialHandler) DownloadFile(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		responder.SendError(c, domain.NewError(domain.CodeCredentialFileDownloadNotFound))
+		return
+	}
+	data, filename, mimeType, err := h.credSvc.DownloadFile(c.Request.Context(), id)
+	if err != nil {
+		c.Error(err)
+		responder.SendError(c, err)
+		return
+	}
+	c.Header("Content-Type", mimeType)
+	c.Header("Content-Disposition", fmt.Sprintf(`inline; filename="%s"`, filepath.Base(filename)))
+	c.Data(200, mimeType, data)
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────
