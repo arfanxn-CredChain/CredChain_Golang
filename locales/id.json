@@ -8,7 +8,8 @@
     "gender": "Jenis Kelamin",
     "role": "Peran",
     "users": "Pengguna",
-    "user_ids": "ID Pengguna"
+    "user_ids": "ID Pengguna",
+    "file": "File"
   },
 
   "validation_required": "{{.field}} tidak boleh kosong",
@@ -28,6 +29,8 @@
   "validation_update_role_same_role_update_forbidden": "Tidak dapat mengubah pengguna dengan peran yang sama",
   "validation_update_role_super_admin_batch_forbidden": "Tidak dapat memberikan peran SuperAdmin dalam operasi batch",
   "validation_delete_admin_forbidden": "Admin tidak dapat menghapus pengguna Admin atau SuperAdmin",
+  "validation_file_type_invalid": "{{.field}} harus berupa PDF, JPEG, PNG, WebP, atau TIFF",
+  "validation_file_max_size": "{{.field}} maksimal 10 MB",
 
   "error_email_duplicate_in_batch": "Ditemukan email duplikat dalam batch: {{.emails}}",
   "error_email_duplicate_in_database": "Email sudah ada di database: {{.emails}}",

@@ -8,7 +8,8 @@
     "gender": "Gender",
     "role": "Role",
     "users": "Users",
-    "user_ids": "User IDs"
+    "user_ids": "User IDs",
+    "file": "File"
   },
 
   "validation_required": "{{.field}} cannot be blank",
@@ -28,6 +29,8 @@
   "validation_update_role_same_role_update_forbidden": "Cannot update user with the same role",
   "validation_update_role_super_admin_batch_forbidden": "Cannot assign SuperAdmin role in batch operation",
   "validation_delete_admin_forbidden": "Admins cannot delete Admin or SuperAdmin users",
+  "validation_file_type_invalid": "{{.field}} must be PDF, JPEG, PNG, WebP, or TIFF",
+  "validation_file_max_size": "{{.field}} must be 10 MB or less",
 
   "error_email_duplicate_in_batch": "Duplicate emails found in batch: {{.emails}}",
   "error_email_duplicate_in_database": "Email already exists in database: {{.emails}}",
