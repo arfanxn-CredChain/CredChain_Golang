@@ -20,6 +20,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
 	"go.uber.org/fx"
+	validation "github.com/go-ozzo/ozzo-validation/v4"
 )
 
 // ── Interface ─────────────────────────────────────────────────────────────
@@ -218,13 +219,17 @@ func (h *credentialHandler) Issue(c *gin.Context) {
 			return
 		}
 		if !allowedMIMETypes[mime] {
-			responder.SendError(c, domain.NewError(domain.CodeCredentialIssueValidation,
-				domain.WithMetadata("file_mime", mime)))
+			verrs := validation.Errors{
+				fmt.Sprintf("credentials.%d.file", i): validation.NewError("validation_file_type_invalid", ""),
+			}
+			responder.SendValidationError(c, verrs)
 			return
 		}
 		if int64(len(fileBytes)) > maxFileBytes {
-			responder.SendError(c, domain.NewError(domain.CodeCredentialIssueValidation,
-				domain.WithMetadata("file_size", len(fileBytes))))
+			verrs := validation.Errors{
+				fmt.Sprintf("credentials.%d.file", i): validation.NewError("validation_file_max_size", ""),
+			}
+			responder.SendValidationError(c, verrs)
 			return
 		}
 		serviceItems[i] = CredentialIssuance{
