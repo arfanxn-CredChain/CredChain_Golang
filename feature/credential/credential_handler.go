@@ -259,7 +259,7 @@ func (h *credentialHandler) Issue(c *gin.Context) {
 		successCount++
 	}
 	code := domain.CodeCredentialIssueSuccess
-	if successCount == 0 {
+	if successCount == 0 || len(fieldErrs) > 0 {
 		code = domain.CodeCredentialIssueFailed
 	}
 	responder.SendPartial(c, code, out, fieldErrs)
