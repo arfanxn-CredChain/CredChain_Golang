@@ -18,9 +18,9 @@ import (
 	"CredChain_Golang/infrastructure/http/response"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/samber/lo"
 	"go.uber.org/fx"
-	validation "github.com/go-ozzo/ozzo-validation/v4"
 )
 
 // ── Interface ─────────────────────────────────────────────────────────────
