@@ -244,13 +244,14 @@ func (s *credentialService) Issue(ctx context.Context, items []CredentialIssuanc
 	claimedHash := map[string]bool{} // hashes claimed by earlier survivors in THIS batch
 
 	for i, it := range items {
-		key := fmt.Sprintf("credentials.%d", i)
 		if _, ok := holderByID[it.HolderUserID]; !ok {
-			errs[key] = append(errs[key], "holder not found")
+			errs[fmt.Sprintf("credentials.%d.holder_user_id", i)] = append(
+				errs[fmt.Sprintf("credentials.%d.holder_user_id", i)], "credential.issue.holder_not_found")
 			continue
 		}
 		if activeDup[it.HolderUserID+"|"+hashes[i]] || claimedHash[it.HolderUserID+"|"+hashes[i]] {
-			errs[key] = append(errs[key], "duplicate file hash")
+			errs[fmt.Sprintf("credentials.%d.file", i)] = append(
+				errs[fmt.Sprintf("credentials.%d.file", i)], "credential.issue.duplicate_file_hash")
 			continue
 		}
 		ext := strings.ToLower(filepath.Ext(it.Filename))
@@ -259,14 +260,16 @@ func (s *credentialService) Issue(ctx context.Context, items []CredentialIssuanc
 		}
 		encryptedHex, encErr := infraCrypto.Encrypt(it.FileBytes, []byte(*s.cfg.FileEncryptionKey))
 		if encErr != nil {
-			errs[key] = append(errs[key], "encryption failed")
+			errs[fmt.Sprintf("credentials.%d.file", i)] = append(
+				errs[fmt.Sprintf("credentials.%d.file", i)], "credential.issue.encryption_failed")
 			continue
 		}
 		filename := ulid.Make().String() + ext
 		filePath := filepath.Join(*s.cfg.CredentialFileStoragePath, filename)
 		_, err := s.storage.SaveBytes([]byte(encryptedHex), filePath)
 		if err != nil {
-			errs[key] = append(errs[key], "storage failed")
+			errs[fmt.Sprintf("credentials.%d.file", i)] = append(
+				errs[fmt.Sprintf("credentials.%d.file", i)], "credential.issue.storage_failed")
 			continue
 		}
 		fileURIs = append(fileURIs, filePath)

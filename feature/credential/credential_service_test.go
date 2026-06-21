@@ -568,8 +568,8 @@ func TestIssue_AllFailed(t *testing.T) {
 	assert.Len(t, results, 2)
 	assert.Equal(t, "", results[0].ID)
 	assert.Equal(t, "", results[1].ID)
-	assert.Contains(t, errs, "credentials.0")
-	assert.Contains(t, errs, "credentials.1")
+	assert.Contains(t, errs, "credentials.0.holder_user_id")
+	assert.Contains(t, errs, "credentials.1.holder_user_id")
 	enq.AssertNotCalled(t, "EnqueueExtract", mock.Anything, mock.Anything)
 }
 
@@ -671,7 +671,7 @@ func TestIssue_PartialSuccess(t *testing.T) {
 	results, errs, err := svc.Issue(ctx, items)
 	assert.NoError(t, err)
 	assert.Len(t, results, 2)
-	assert.Contains(t, errs, "credentials.0")
+	assert.Contains(t, errs, "credentials.0.holder_user_id")
 	assert.Equal(t, "", results[0].ID)
 	assert.Equal(t, "stored-2", results[1].ID)
 	enq.AssertNumberOfCalls(t, "EnqueueExtract", 1)
