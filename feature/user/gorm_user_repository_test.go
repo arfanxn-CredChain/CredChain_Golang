@@ -220,6 +220,49 @@ func TestGormUserRepository_Get_SearchCaseInsensitive(t *testing.T) {
 	assert.Len(t, users, 1, "search must be case-insensitive")
 }
 
+func TestGormUserRepository_Get_SearchByPhoneNumber(t *testing.T) {
+	repo := newRepo(t)
+	_, _ = repo.Store(context.Background(),
+		fixtures.NewDomainUser(fixtures.WithPhoneNumber("+6281234567890"), fixtures.WithEmail("phone@x.com")),
+		fixtures.NewDomainUser(fixtures.WithEmail("other@x.com")),
+	)
+	q := &domainQuery.Query{Page: 1, Limit: 10, Search: "+6281234567890"}
+	users, total, err := repo.Get(context.Background(), q)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, total)
+	assert.Len(t, users, 1)
+	assert.Equal(t, "phone@x.com", users[0].Email)
+}
+
+func TestGormUserRepository_Get_SearchByNumber(t *testing.T) {
+	repo := newRepo(t)
+	num := "2209123456"
+	_, _ = repo.Store(context.Background(),
+		fixtures.NewDomainUser(fixtures.WithNumber(num), fixtures.WithEmail("num@x.com")),
+		fixtures.NewDomainUser(fixtures.WithEmail("other@x.com")),
+	)
+	q := &domainQuery.Query{Page: 1, Limit: 10, Search: "2209123456"}
+	users, total, err := repo.Get(context.Background(), q)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, total)
+	assert.Len(t, users, 1)
+	assert.Equal(t, "num@x.com", users[0].Email)
+}
+
+func TestGormUserRepository_Get_SearchByWalletAddress(t *testing.T) {
+	repo := newRepo(t)
+	_, _ = repo.Store(context.Background(),
+		fixtures.NewDomainUser(fixtures.WithWalletAddress("0xDEADBEEF"), fixtures.WithEmail("wallet@x.com")),
+		fixtures.NewDomainUser(fixtures.WithEmail("other@x.com")),
+	)
+	q := &domainQuery.Query{Page: 1, Limit: 10, Search: "0xdeadbeef"}
+	users, total, err := repo.Get(context.Background(), q)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, total)
+	assert.Len(t, users, 1)
+	assert.Equal(t, "wallet@x.com", users[0].Email)
+}
+
 func TestGormUserRepository_Get_PageLimit(t *testing.T) {
 	repo := newRepo(t)
 	for i := 0; i < 5; i++ {

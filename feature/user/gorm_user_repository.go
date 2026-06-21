@@ -65,8 +65,10 @@ func (r *gormUserRepository) Get(ctx context.Context, query *domainQuery.Query) 
 
 	if query != nil {
 		if query.HasSearch() {
-			db = db.Where("LOWER(name) LIKE LOWER(?) OR LOWER(email) LIKE LOWER(?)",
-				"%"+query.Search+"%", "%"+query.Search+"%")
+			db = db.Where(
+				"LOWER(name) LIKE LOWER(?) OR LOWER(email) LIKE LOWER(?) OR LOWER(phone_number) LIKE LOWER(?) OR LOWER(number) LIKE LOWER(?) OR LOWER(wallet_address) LIKE LOWER(?)",
+				"%"+query.Search+"%", "%"+query.Search+"%", "%"+query.Search+"%", "%"+query.Search+"%", "%"+query.Search+"%",
+			)
 		}
 
 		if query.HasFilters() {
