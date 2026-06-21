@@ -54,13 +54,13 @@ func TestCredentialIssueInput_ToDomain(t *testing.T) {
 
 func TestCredentialIssueRequest_Validate(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
-		r := CredentialIssueRequest{Items: []CredentialIssueInput{
+		r := CredentialIssueRequest{Credentials: []CredentialIssueInput{
 			{HolderUserID: "h", Name: "n"},
 		}}
 		assert.NoError(t, r.Validate())
 	})
 	t.Run("empty items", func(t *testing.T) {
-		r := CredentialIssueRequest{Items: []CredentialIssueInput{}}
+		r := CredentialIssueRequest{Credentials: []CredentialIssueInput{}}
 		assert.Error(t, r.Validate())
 	})
 	t.Run("too many items", func(t *testing.T) {
@@ -68,17 +68,17 @@ func TestCredentialIssueRequest_Validate(t *testing.T) {
 		for i := range items {
 			items[i] = CredentialIssueInput{HolderUserID: "h", Name: "n"}
 		}
-		r := CredentialIssueRequest{Items: items}
+		r := CredentialIssueRequest{Credentials: items}
 		assert.Error(t, r.Validate())
 	})
 	t.Run("invalid nested item", func(t *testing.T) {
-		r := CredentialIssueRequest{Items: []CredentialIssueInput{{Name: "no-holder"}}}
+		r := CredentialIssueRequest{Credentials: []CredentialIssueInput{{Name: "no-holder"}}}
 		assert.Error(t, r.Validate())
 	})
 }
 
 func TestCredentialIssueRequest_ToDomain(t *testing.T) {
-	r := CredentialIssueRequest{Items: []CredentialIssueInput{
+	r := CredentialIssueRequest{Credentials: []CredentialIssueInput{
 		{HolderUserID: "h1", Name: "n1"},
 		{HolderUserID: "h2", Name: "n2"},
 	}}

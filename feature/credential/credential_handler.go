@@ -203,7 +203,7 @@ func (h *credentialHandler) Issue(c *gin.Context) {
 		return
 	}
 
-	req := CredentialIssueRequest{Items: items}
+	req := CredentialIssueRequest{Credentials: items}
 	if err := req.Validate(); err != nil {
 		responder.SendValidationError(c, err)
 		return

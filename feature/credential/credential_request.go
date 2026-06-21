@@ -44,12 +44,12 @@ func (n CredentialIssueInput) ToDomain() domain.Credential {
 // Gin does not support nested multipart structs, so the handler builds this
 // manually from c.MultipartForm().
 type CredentialIssueRequest struct {
-	Items []CredentialIssueInput
+	Credentials []CredentialIssueInput
 }
 
 func (r CredentialIssueRequest) Validate() error {
 	return validation.ValidateStruct(&r,
-		validation.Field(&r.Items,
+		validation.Field(&r.Credentials,
 			validation.Required,
 			validation.Length(1, 100),
 			validation.Each(validation.By(func(v any) error {
@@ -60,8 +60,8 @@ func (r CredentialIssueRequest) Validate() error {
 }
 
 func (r CredentialIssueRequest) ToDomain() []domain.Credential {
-	out := make([]domain.Credential, len(r.Items))
-	for i, item := range r.Items {
+	out := make([]domain.Credential, len(r.Credentials))
+	for i, item := range r.Credentials {
 		out[i] = item.ToDomain()
 	}
 	return out
