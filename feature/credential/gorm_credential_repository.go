@@ -37,6 +37,7 @@ var allowedFilterColumns = map[string]bool{
 	"issued_at":      true,
 	"revoked_at":     true,
 	"holder_user_id": true,
+	"extract_status": true,
 }
 
 // allowedSortColumns whitelists credential columns plus virtual joined-user
@@ -88,6 +89,14 @@ func needsHolderJoin(query *domainQuery.Query) bool {
 		lo.ContainsBy(query.Sorts, func(s domainQuery.Sort) bool { return strings.HasPrefix(s.Column, "holder_") })
 }
 
+func needsIssuerJoin(query *domainQuery.Query) bool {
+	return query != nil && query.HasSearch()
+}
+
+func needsRevokerJoin(query *domainQuery.Query) bool {
+	return query != nil && query.HasSearch()
+}
+
 // mapSortColumn translates a user-facing sort column into a DB-qualified
 // column expression (e.g. "holder_name" → "holder.name").
 func mapSortColumn(col string) string {
@@ -110,8 +119,9 @@ func mapSortColumn(col string) string {
 // ── Pagination ────────────────────────────────────────────────────────────
 
 // Get retrieves credentials with pagination, search, filters, sorts, and
-// optional includes. Search spans credentials.name, credentials.meta, and
-// the holder user's name/email/number/phone_number (via holder_user_id JOIN).
+// optional includes. Search spans credentials identity fields (id, token_id,
+// file_hash, name, meta) plus the holder/issuer/revoker users' name/email/number
+// via LEFT JOINs (all activated when HasSearch is true).
 //
 // When query.Includes contains "holder", "issuer", or "revoker", the
 // corresponding GORM Preload runs — a single batch IN-clause query per
@@ -123,17 +133,36 @@ func (r *gormCredentialRepository) Get(ctx context.Context, query *domainQuery.Q
 		db = db.Joins("LEFT JOIN users AS holder ON holder.id = credentials.holder_user_id")
 	}
 
+	if needsIssuerJoin(query) {
+		db = db.Joins("LEFT JOIN users AS issuer ON issuer.id = credentials.issuer_user_id")
+	}
+
+	if needsRevokerJoin(query) {
+		db = db.Joins("LEFT JOIN users AS revoker ON revoker.id = credentials.revoker_user_id")
+	}
+
 	if query != nil {
 		if query.HasSearch() {
 			needle := "%" + query.Search + "%"
 			db = db.Where(
 				"LOWER(credentials.name) LIKE LOWER(?) OR "+
 					"LOWER(CAST(credentials.meta AS TEXT)) LIKE LOWER(?) OR "+
+					"LOWER(credentials.id) LIKE LOWER(?) OR "+
+					"LOWER(credentials.token_id) LIKE LOWER(?) OR "+
+					"LOWER(credentials.file_hash) LIKE LOWER(?) OR "+
 					"LOWER(holder.name) LIKE LOWER(?) OR "+
 					"LOWER(holder.email) LIKE LOWER(?) OR "+
 					"LOWER(holder.number) LIKE LOWER(?) OR "+
-					"LOWER(holder.phone_number) LIKE LOWER(?)",
-				needle, needle, needle, needle, needle, needle,
+					"LOWER(issuer.name) LIKE LOWER(?) OR "+
+					"LOWER(issuer.email) LIKE LOWER(?) OR "+
+					"LOWER(issuer.number) LIKE LOWER(?) OR "+
+					"LOWER(revoker.name) LIKE LOWER(?) OR "+
+					"LOWER(revoker.email) LIKE LOWER(?) OR "+
+					"LOWER(revoker.number) LIKE LOWER(?)",
+				needle, needle, needle, needle, needle, // 5 credential cols
+				needle, needle, needle, // 3 holder cols
+				needle, needle, needle, // 3 issuer cols
+				needle, needle, needle, // 3 revoker cols
 			)
 		}
 

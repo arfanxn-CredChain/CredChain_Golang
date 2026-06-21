@@ -20,13 +20,13 @@ type CredentialExtractedID struct {
 // payload for a credential (text, ids, embedding). Lives in Mongo so the
 // Postgres credentials table stays lean; searchable by ids.value.
 type CredentialExtraction struct {
-	CredentialID string        `bson:"credential_id" json:"credential_id"`
-	FileHash     string        `bson:"file_hash"     json:"file_hash"`
-	Text         string        `bson:"text"          json:"text"`
+	CredentialID string                  `bson:"credential_id" json:"credential_id"`
+	FileHash     string                  `bson:"file_hash"     json:"file_hash"`
+	Text         string                  `bson:"text"          json:"text"`
 	IDs          []CredentialExtractedID `bson:"ids"           json:"ids"`
-	Embedding    []float64     `bson:"embedding"     json:"embedding"`
-	CreatedAt    time.Time     `bson:"created_at"    json:"created_at"`
-	UpdatedAt    time.Time     `bson:"updated_at"    json:"updated_at"`
+	Embedding    []float64               `bson:"embedding"     json:"embedding"`
+	CreatedAt    time.Time               `bson:"created_at"    json:"created_at"`
+	UpdatedAt    time.Time               `bson:"updated_at"    json:"updated_at"`
 }
 
 // CredentialExtractionRepository is the MongoDB contract for extraction docs.
