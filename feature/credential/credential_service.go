@@ -232,6 +232,16 @@ func (s *credentialService) Issue(ctx context.Context, items []CredentialIssuanc
 			activeDup[items[i].HolderUserID+"|"+hashes[i]] = true
 		}
 	}
+	if statusErr != nil {
+		existing, dbErr := s.repo.FindByFileHashes(ctx, hashes, nil)
+		if dbErr != nil {
+			s.logger.Error("DB hash lookup fallback failed", zap.Error(dbErr))
+		} else {
+			for _, cred := range existing {
+				activeDup[cred.HolderUserID+"|"+cred.FileHash] = true
+			}
+		}
+	}
 
 	type prepared struct {
 		idx  int
