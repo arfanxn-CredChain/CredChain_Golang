@@ -223,8 +223,8 @@ func (s *credentialService) Issue(ctx context.Context, items []CredentialIssuanc
 	}
 	statuses, statusErr := s.registryService.GetCredentialHashPerHolderStatuses(ctx, statusHolders, statusHashes)
 	if statusErr != nil {
-		return nil, nil, domain.NewError(domain.CodeCredentialIssueBlockchainSyncFailed,
-			domain.WithError(statusErr))
+		s.logger.Warn("on-chain status check failed, falling back to per-item dedup",
+			zap.Error(statusErr))
 	}
 	activeDup := map[string]bool{}
 	for i, st := range statuses {
