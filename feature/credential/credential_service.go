@@ -223,23 +223,13 @@ func (s *credentialService) Issue(ctx context.Context, items []CredentialIssuanc
 	}
 	statuses, statusErr := s.registryService.GetCredentialHashPerHolderStatuses(ctx, statusHolders, statusHashes)
 	if statusErr != nil {
-		s.logger.Warn("on-chain status check failed, falling back to per-item dedup",
-			zap.Error(statusErr))
+		return nil, nil, domain.NewError(domain.CodeCredentialIssueBlockchainSyncFailed,
+			domain.WithError(statusErr))
 	}
 	activeDup := map[string]bool{}
 	for i, st := range statuses {
 		if st.Status == 1 { // 1 = Issued
 			activeDup[items[i].HolderUserID+"|"+hashes[i]] = true
-		}
-	}
-	if statusErr != nil {
-		existing, dbErr := s.repo.FindByFileHashes(ctx, hashes, nil)
-		if dbErr != nil {
-			s.logger.Error("DB hash lookup fallback failed", zap.Error(dbErr))
-		} else {
-			for _, cred := range existing {
-				activeDup[cred.HolderUserID+"|"+cred.FileHash] = true
-			}
 		}
 	}
 
