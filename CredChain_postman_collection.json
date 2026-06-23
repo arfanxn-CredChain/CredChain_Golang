@@ -68,6 +68,68 @@
           "description": "Liveness/readiness endpoint."
         },
         {
+          "name": "Overview",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const r = pm.response.json();",
+                  "pm.test('Overview fetched', () => pm.expect(r.code).to.eql(100100));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/overview",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "overview"
+              ]
+            },
+            "description": "Role-conditional dashboard overview. Issuer+ receive system-wide data (credential counts, user counts, recents, chain details). Holder receives own credential counts and recents only."
+          },
+          "response": [
+            {
+              "name": "100100 OK — Issuer+ (system-wide)",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"code\": 100100,\n    \"message\": \"Overview fetched successfully\",\n    \"data\": {\n        \"credential_counts\": { \"total\": 500, \"active\": 450, \"revoked\": 40, \"pending\": 10, \"failed\": 3 },\n        \"user_counts\": { \"total\": 150, \"holder\": 120, \"issuer\": 20, \"admin\": 8, \"super_admin\": 1, \"active\": 145, \"trashed\": 5 },\n        \"recents\": { \"active_credentials\": [], \"revoked_credentials\": [], \"stored_users\": [] },\n        \"chain_details\": { \"authority_contract\": \"0x9A...\", \"registry_contract\": \"0x8B...\", \"last_block\": 12345678 }\n    }\n}"
+            },
+            {
+              "name": "100100 OK — Holder (own only)",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"code\": 100100,\n    \"message\": \"Overview fetched successfully\",\n    \"data\": {\n        \"credential_counts\": { \"total\": 12, \"active\": 10, \"revoked\": 2, \"pending\": 1, \"failed\": 0 },\n        \"recents\": { \"active_credentials\": [], \"revoked_credentials\": [] }\n    }\n}"
+            }
+          ]
+        },
+        {
           "name": "Auth",
           "item": [
             {
