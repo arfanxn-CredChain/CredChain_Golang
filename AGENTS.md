@@ -401,6 +401,7 @@ All under `/api` prefix. Middleware order: `ErrorLoggerMiddleware` → `I18nMidd
 | POST | `/api/credentials/batch/revoke` | Issuer+ | Revoke credentials |
 | POST | `/api/credentials/batch/reextract` | Issuer+ | Re-extract failed credentials |
 | POST | `/api/credentials/verify` | None (public) | Returns verdict code (400401-400412) + locale description; used by external verifiers (HR, employers) — no auth required |
+| GET | `/api/overview` | Authenticated (no role gate) | Role-conditional dashboard: credential counts, user counts, recents, chain details. Issuer+ get system-wide data; Holder get own only. |
 
 ### Database
 

@@ -80,6 +80,7 @@ Middleware chain: `ErrorLoggerMiddleware` → `I18nMiddleware` → `ApiRateLimit
 | `/api/credentials/batch/revoke` | POST | Authenticated | Issuer+ |
 | `/api/credentials/batch/reextract` | POST | Authenticated | Issuer+ |
 | `/api/credentials/verify` | POST | **None (public)** | None — used by external verifiers (HR, employers); returns verdict 400401-400412 including party-disabled (400410-400412) for trashed holder/issuer |
+| `/api/overview` | GET | Authenticated | Any — role-conditional response (Holder: own data; Issuer+: system-wide) |
 
 **Role middlewares** (`infrastructure/http/middleware/auth.go:94-146`):
 - `AdminRoleMiddleware` → checks `HasRoleOrAbove(ctx, wallet, RoleAdmin)` on-chain
@@ -219,6 +220,7 @@ Additional check in `_updateUserRole` (`CredentialAuthority.sol:222`):
 ```
 Capability                      None   Holder  Issuer  Admin   SuperAdmin
 ──                             ────   ──────  ──────  ─────   ──────────
+View overview dashboard            —      ✓       ✓       ✓       ✓
 Google Login                    —      ✓       ✓       ✓       ✓
 Refresh Token                   —      ✓       ✓       ✓       ✓
 Logout                          —      ✓       ✓       ✓       ✓
