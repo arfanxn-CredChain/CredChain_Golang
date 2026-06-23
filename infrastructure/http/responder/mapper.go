@@ -124,9 +124,9 @@ var CodeToMessageKey = map[int]string{
 	domain.CodeCredentialVerifyPartyDisabled:        "success_credential_verify_party_disabled",
 
 	// Credential Re-Extract codes
-	domain.CodeCredentialReExtractSuccess:   "success_credential_reextract",
-	domain.CodeCredentialReExtractNotFound:  "error_credential_reextract_not_found",
-	domain.CodeCredentialReExtractNotFailed: "error_credential_reextract_not_failed",
+	domain.CodeCredentialReExtractSuccess:     "success_credential_reextract",
+	domain.CodeCredentialReExtractNotFound:    "error_credential_reextract_not_found",
+	domain.CodeCredentialReExtractNotEligible: "error_credential_reextract_not_eligible",
 
 	// Credential File Download codes
 	domain.CodeCredentialFileDownloadSuccess:          "success_credential_file_download",
@@ -246,9 +246,9 @@ var HttpCodes = map[int]int{
 	domain.CodeCredentialVerifyIssuerDisabled:       http.StatusOK,
 	domain.CodeCredentialVerifyPartyDisabled:        http.StatusOK,
 
-	domain.CodeCredentialReExtractSuccess:   http.StatusOK,
-	domain.CodeCredentialReExtractNotFound:  http.StatusNotFound,
-	domain.CodeCredentialReExtractNotFailed: http.StatusConflict,
+	domain.CodeCredentialReExtractSuccess:     http.StatusOK,
+	domain.CodeCredentialReExtractNotFound:    http.StatusNotFound,
+	domain.CodeCredentialReExtractNotEligible: http.StatusConflict,
 
 	domain.CodeCredentialFileDownloadSuccess:          http.StatusOK,
 	domain.CodeCredentialFileDownloadNotFound:         http.StatusNotFound,

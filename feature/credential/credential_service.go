@@ -760,7 +760,7 @@ func (s *credentialService) reExtractValidate(ids []string, targets []domain.Cre
 		}
 	}
 	if len(notFailed) > 0 {
-		return domain.NewError(domain.CodeCredentialReExtractNotFailed,
+		return domain.NewError(domain.CodeCredentialReExtractNotEligible,
 			domain.WithMetadata("credential_ids", notFailed))
 	}
 	return nil

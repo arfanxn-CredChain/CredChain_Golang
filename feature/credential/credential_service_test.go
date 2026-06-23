@@ -753,7 +753,7 @@ func TestReExtract_NotFailed(t *testing.T) {
 	assert.Error(t, err)
 	var domErr *domain.Error
 	if assert.ErrorAs(t, err, &domErr) {
-		assert.Equal(t, domain.CodeCredentialReExtractNotFailed, domErr.Code)
+		assert.Equal(t, domain.CodeCredentialReExtractNotEligible, domErr.Code)
 	}
 	enq.AssertNotCalled(t, "EnqueueExtract", mock.Anything, mock.Anything)
 }

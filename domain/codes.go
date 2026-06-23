@@ -135,9 +135,9 @@ const (
 	CodeCredentialVerifyPartyDisabled    = 400412
 
 	// ── Credential Re-Extract (05) ──────────────────────────────────────────
-	CodeCredentialReExtractSuccess   = 400500
-	CodeCredentialReExtractNotFound  = 400540
-	CodeCredentialReExtractNotFailed = 400541
+	CodeCredentialReExtractSuccess     = 400500
+	CodeCredentialReExtractNotFound    = 400540
+	CodeCredentialReExtractNotEligible = 400541
 
 	// ── Credential File Download (06) ──────────────────────────────────────
 	CodeCredentialFileDownloadSuccess          = 400600

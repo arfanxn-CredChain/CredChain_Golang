@@ -118,7 +118,7 @@
     "error_rate_limit_exceeded": "Terlalu banyak permintaan. Silakan coba lagi nanti.",
     "success_credential_reextract": "Ekstraksi ulang berhasil diantrekan.",
     "error_credential_reextract_not_found": "Satu atau lebih kredensial tidak ditemukan: {{.credential_ids}}",
-    "error_credential_reextract_not_failed": "Satu atau lebih kredensial tidak dalam status ekstraksi gagal: {{.credential_ids}}",
+    "error_credential_reextract_not_eligible": "Hanya kredensial gagal yang dapat diekstrak ulang: {{.credential_ids}}",
     "success_super_admin_transferred": "Peran super admin berhasil dialihkan.",
     "error_transfer_super_admin_self_target_forbidden": "Tidak dapat mengalihkan peran super admin ke diri sendiri.",
     "error_transfer_super_admin_target_not_found": "Pengguna target tidak ditemukan.",
