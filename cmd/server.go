@@ -6,6 +6,7 @@ import (
 	"CredChain_Golang/domain"
 	"CredChain_Golang/feature/auth"
 	"CredChain_Golang/feature/credential"
+	"CredChain_Golang/feature/overview"
 	"CredChain_Golang/feature/user"
 	"CredChain_Golang/infrastructure/ai/pyai"
 	"CredChain_Golang/infrastructure/chain"
@@ -60,6 +61,9 @@ var serverCmd = &cobra.Command{
 				credential.NewCredentialPolicy,
 				credential.NewCredentialService,
 				credential.NewCredentialHandler,
+				overview.NewGormOverviewRepository,
+				overview.NewOverviewService,
+				overview.NewOverviewHandler,
 				infraJobs.NewCredentialExtractWorker,
 				infraJobs.NewRiverClient,
 				func(db *gorm.DB) domain.UnitOfWork {

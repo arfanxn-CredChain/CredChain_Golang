@@ -7,6 +7,7 @@ import (
 	"CredChain_Golang/domain"
 	"CredChain_Golang/feature/auth"
 	"CredChain_Golang/feature/credential"
+	"CredChain_Golang/feature/overview"
 	"CredChain_Golang/feature/user"
 	"CredChain_Golang/infrastructure/http/middleware"
 	"CredChain_Golang/infrastructure/http/responder"
@@ -53,6 +54,7 @@ type RouteParams struct {
 	AuthHandler                auth.AuthHandler
 	UserHandler                user.UserHandler
 	CredentialHandler          credential.CredentialHandler
+	OverviewHandler            overview.OverviewHandler
 	Logger                     *zap.Logger
 	AuthMiddleware             gin.HandlerFunc
 	AdminRoleMiddleware        middleware.AdminRoleMiddleware
@@ -83,6 +85,7 @@ func RegisterRoutes(p RouteParams) {
 		secure.Use(p.AuthMiddleware)
 		{
 			secure.POST("/auth/logout", gin.HandlerFunc(p.LogoutRateLimitMiddleware), p.AuthHandler.Logout)
+			secure.GET("/overview", p.OverviewHandler.Get)
 			users := secure.Group("/users")
 			{
 				users.GET("", gin.HandlerFunc(p.IssuerRoleMiddleware), p.UserHandler.Paginate)
