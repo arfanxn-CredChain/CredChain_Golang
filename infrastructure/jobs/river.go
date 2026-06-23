@@ -34,10 +34,13 @@ func MigrateRiver(ctx context.Context, cfg *config.Config) error {
 // RiverEnqueuer implements the Enqueuer interface by inserting River jobs.
 type RiverEnqueuer struct {
 	client *river.Client[pgx.Tx]
+	cfg    *config.Config
 }
 
 func (e *RiverEnqueuer) EnqueueExtract(ctx context.Context, args CredentialExtractArgs) error {
-	_, err := e.client.Insert(ctx, args, nil)
+	_, err := e.client.Insert(ctx, args, &river.InsertOpts{
+		MaxAttempts: *e.cfg.CredentialExtractWorkerMaxAttempts,
+	})
 	return err
 }
 
@@ -94,5 +97,5 @@ func NewRiverClient(lc fx.Lifecycle, cfg *config.Config, worker *CredentialExtra
 			return nil
 		},
 	})
-	return &RiverEnqueuer{client: client}, nil
+	return &RiverEnqueuer{client: client, cfg: cfg}, nil
 }
