@@ -114,3 +114,7 @@ func NewClient(p ClientParams) (*Client, error) {
 		Relayer:   auth,
 	}, nil
 }
+
+func (c *Client) BlockNumber(ctx context.Context) (uint64, error) {
+	return c.EthClient.BlockNumber(ctx)
+}

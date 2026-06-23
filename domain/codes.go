@@ -12,6 +12,10 @@ const (
 	CodeSystemValidation = 100040
 	CodeSystemInternal   = 100050
 
+	// ── Overview (10) ──────────────────────────────────────────────────────────
+	CodeOverviewSuccess  = 100100
+	CodeOverviewInternal = 100150
+
 	// ── Auth (20) ────────────────────────────────────────────────────────────
 	CodeAuthUnauthorized      = 200140
 	CodeAuthInvalidToken      = 200141
