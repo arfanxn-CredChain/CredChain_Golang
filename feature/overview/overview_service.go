@@ -1,0 +1,171 @@
+package overview
+
+import (
+	"context"
+	"time"
+
+	"CredChain_Golang/config"
+	"CredChain_Golang/domain"
+	domainQuery "CredChain_Golang/domain/query"
+	"CredChain_Golang/infrastructure/chain"
+	httpContext "CredChain_Golang/infrastructure/http/context"
+	"CredChain_Golang/infrastructure/http/response"
+
+	"go.uber.org/fx"
+)
+
+type OverviewService interface {
+	Get(ctx context.Context, q *domainQuery.Query) (*response.Overview, error)
+}
+
+type overviewService struct {
+	overviewRepo domain.OverviewRepository
+	credRepo     domain.CredentialRepository
+	userRepo     domain.UserRepository
+	cfg          *config.Config
+	chainClient  *chain.Client
+}
+
+type OverviewServiceParams struct {
+	fx.In
+	OverviewRepo domain.OverviewRepository
+	CredRepo     domain.CredentialRepository
+	UserRepo     domain.UserRepository
+	Config       *config.Config
+	ChainClient  *chain.Client
+}
+
+func NewOverviewService(p OverviewServiceParams) OverviewService {
+	return &overviewService{
+		overviewRepo: p.OverviewRepo,
+		credRepo:     p.CredRepo,
+		userRepo:     p.UserRepo,
+		cfg:          p.Config,
+		chainClient:  p.ChainClient,
+	}
+}
+
+func (s *overviewService) Get(ctx context.Context, q *domainQuery.Query) (*response.Overview, error) {
+	authUser := httpContext.MustGetUser(ctx)
+	isIssuer := authUser.Role.Rank() >= domain.RoleIssuer.Rank()
+
+	dateFrom, dateTo := extractDateRange(q)
+
+	var holderID *string
+	if !isIssuer {
+		holderID = &authUser.Id
+	}
+
+	credCounts, err := s.overviewRepo.CredentialCounts(ctx, q, holderID)
+	if err != nil {
+		return nil, domain.NewError(domain.CodeOverviewInternal, domain.WithError(err))
+	}
+
+	activeQ := buildRecentActiveCredentialQuery(dateFrom, dateTo, 5, holderID)
+	activeCreds, _, err := s.credRepo.Get(ctx, activeQ)
+	if err != nil {
+		return nil, domain.NewError(domain.CodeOverviewInternal, domain.WithError(err))
+	}
+
+	revokedQ := buildRecentRevokedCredentialQuery(dateFrom, dateTo, 5, holderID)
+	revokedCreds, _, err := s.credRepo.Get(ctx, revokedQ)
+	if err != nil {
+		return nil, domain.NewError(domain.CodeOverviewInternal, domain.WithError(err))
+	}
+
+	dtoCredCounts := response.FromDomainOverviewCredentialCounts(*credCounts)
+	ov := &response.Overview{
+		CredentialCounts: &dtoCredCounts,
+		Recents: &response.OverviewRecents{
+			ActiveCredentials:  mapCredentials(activeCreds),
+			RevokedCredentials: mapCredentials(revokedCreds),
+		},
+	}
+
+	if isIssuer {
+		userCounts, err := s.overviewRepo.UserCounts(ctx, q)
+		if err != nil {
+			return nil, domain.NewError(domain.CodeOverviewInternal, domain.WithError(err))
+		}
+		dtoUserCounts := response.FromDomainOverviewUserCounts(*userCounts)
+		ov.UserCounts = &dtoUserCounts
+
+		recentQ := buildRecentUsersQuery(dateFrom, dateTo, 5)
+		recentUsers, _, err := s.userRepo.Get(ctx, recentQ)
+		if err != nil {
+			return nil, domain.NewError(domain.CodeOverviewInternal, domain.WithError(err))
+		}
+		ov.Recents.StoredUsers = mapUsers(recentUsers)
+
+		var lastBlock uint64
+		if s.chainClient != nil {
+			lastBlock, err = s.chainClient.BlockNumber(ctx)
+			if err != nil {
+				lastBlock = 0
+			}
+		}
+		ov.ChainDetails = &response.OverviewChainDetails{
+			AuthorityContract: *s.cfg.AuthorityContract,
+			RegistryContract:  *s.cfg.RegistryContract,
+			LastBlock:         lastBlock,
+		}
+	}
+
+	return ov, nil
+}
+
+func buildRecentActiveCredentialQuery(dateFrom, dateTo time.Time, limit int, holderID *string) *domainQuery.Query {
+	q := &domainQuery.Query{
+		Filters:  []domainQuery.Filter{
+			{Column: "revoked_at", Operator: domainQuery.OperatorNull},
+		},
+		Includes: []string{"holder", "issuer"},
+		Sorts:    []domainQuery.Sort{{Column: "issued_at", Order: domainQuery.SortDesc}},
+		Limit:    limit,
+		Page:     1,
+	}
+	if holderID != nil {
+		q.Filters = append(q.Filters, domainQuery.Filter{Column: "holder_user_id", Operator: domainQuery.OperatorEqual, Values: []string{*holderID}})
+	}
+	return q
+}
+
+func buildRecentRevokedCredentialQuery(dateFrom, dateTo time.Time, limit int, holderID *string) *domainQuery.Query {
+	q := &domainQuery.Query{
+		Filters:  []domainQuery.Filter{
+			{Column: "revoked_at", Operator: domainQuery.OperatorNotNull},
+		},
+		Includes: []string{"holder", "revoker"},
+		Sorts:    []domainQuery.Sort{{Column: "revoked_at", Order: domainQuery.SortDesc}},
+		Limit:    limit,
+		Page:     1,
+	}
+	if holderID != nil {
+		q.Filters = append(q.Filters, domainQuery.Filter{Column: "holder_user_id", Operator: domainQuery.OperatorEqual, Values: []string{*holderID}})
+	}
+	return q
+}
+
+func buildRecentUsersQuery(dateFrom, dateTo time.Time, limit int) *domainQuery.Query {
+	return &domainQuery.Query{
+		Sorts: []domainQuery.Sort{{Column: "created_at", Order: domainQuery.SortDesc}},
+		Limit: limit,
+		Page:  1,
+	}
+}
+
+func mapCredentials(creds []domain.Credential) []response.Credential {
+	out := make([]response.Credential, len(creds))
+	for i, c := range creds {
+		out[i] = response.FromDomainCredential(c)
+	}
+	return out
+}
+
+func mapUsers(users []domain.User) []response.User {
+	out := make([]response.User, len(users))
+	for i, u := range users {
+		out[i] = response.FromDomainUser(u)
+	}
+	return out
+}
