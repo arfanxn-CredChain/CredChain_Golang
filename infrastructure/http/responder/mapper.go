@@ -12,6 +12,10 @@ var CodeToMessageKey = map[int]string{
 	domain.CodeSystemValidation: "error_invalid_payload",
 	domain.CodeSystemInternal:   "error_internal",
 
+	// Overview codes
+	domain.CodeOverviewSuccess:  "success_overview",
+	domain.CodeOverviewInternal: "error_overview_internal",
+
 	// Auth codes
 	domain.CodeAuthUnauthorized:      "error_unauthorized",
 	domain.CodeAuthInvalidToken:      "error_invalid_token",
@@ -137,6 +141,9 @@ var HttpCodes = map[int]int{
 	domain.CodeSystemSuccess:    http.StatusOK,
 	domain.CodeSystemValidation: http.StatusBadRequest,
 	domain.CodeSystemInternal:   http.StatusInternalServerError,
+
+	domain.CodeOverviewSuccess:  http.StatusOK,
+	domain.CodeOverviewInternal: http.StatusInternalServerError,
 
 	domain.CodeAuthUnauthorized:      http.StatusUnauthorized,
 	domain.CodeAuthInvalidToken:      http.StatusUnauthorized,

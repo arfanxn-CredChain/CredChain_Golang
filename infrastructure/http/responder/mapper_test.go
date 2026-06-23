@@ -16,6 +16,9 @@ var allDomainCodes = []int{
 	domain.CodeSystemSuccess,
 	domain.CodeSystemValidation,
 	domain.CodeSystemInternal,
+	// Overview
+	domain.CodeOverviewSuccess,
+	domain.CodeOverviewInternal,
 	// Auth
 	domain.CodeAuthUnauthorized,
 	domain.CodeAuthInvalidToken,
