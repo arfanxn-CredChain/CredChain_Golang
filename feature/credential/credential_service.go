@@ -22,7 +22,6 @@ import (
 	"CredChain_Golang/infrastructure/jobs"
 	"CredChain_Golang/infrastructure/storage"
 
-	"github.com/ethereum/go-ethereum/common"
 	ethCrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/oklog/ulid/v2"
 	"github.com/samber/lo"
@@ -214,14 +213,12 @@ func (s *credentialService) Issue(ctx context.Context, items []CredentialIssuanc
 		hashes[i] = "0x" + hex.EncodeToString(ethCrypto.Keccak256(it.FileBytes))
 	}
 
-	// On-chain per-holder duplicate check (1 RPC)
-	statusHolders := make([]common.Address, len(items))
+	// On-chain global duplicate check (1 RPC)
 	statusHashes := make([][32]byte, len(items))
 	for i, it := range items {
-		statusHolders[i] = common.HexToAddress(holderByID[it.HolderUserID].WalletAddress)
 		copy(statusHashes[i][:], ethCrypto.Keccak256(it.FileBytes))
 	}
-	statuses, statusErr := s.registryService.GetCredentialHashPerHolderStatuses(ctx, statusHolders, statusHashes)
+	statuses, statusErr := s.registryService.GetCredentialHashStatuses(ctx, statusHashes)
 	if statusErr != nil {
 		return nil, nil, domain.NewError(domain.CodeCredentialIssueBlockchainSyncFailed,
 			domain.WithError(statusErr))
@@ -229,7 +226,7 @@ func (s *credentialService) Issue(ctx context.Context, items []CredentialIssuanc
 	activeDup := map[string]bool{}
 	for i, st := range statuses {
 		if st.Status == 1 { // 1 = Issued
-			activeDup[items[i].HolderUserID+"|"+hashes[i]] = true
+			activeDup[hashes[i]] = true
 		}
 	}
 
@@ -241,7 +238,7 @@ func (s *credentialService) Issue(ctx context.Context, items []CredentialIssuanc
 	results := make([]domain.Credential, len(items))
 	var survivors []prepared
 	var fileURIs []string
-	claimedHash := map[string]bool{} // hashes claimed by earlier survivors in THIS batch
+	claimedHash := map[string]bool{}
 
 	for i, it := range items {
 		if _, ok := holderByID[it.HolderUserID]; !ok {
@@ -249,7 +246,7 @@ func (s *credentialService) Issue(ctx context.Context, items []CredentialIssuanc
 				errs[fmt.Sprintf("credentials.%d.holder_user_id", i)], "credential.issue.holder_not_found")
 			continue
 		}
-		if activeDup[it.HolderUserID+"|"+hashes[i]] || claimedHash[it.HolderUserID+"|"+hashes[i]] {
+		if activeDup[hashes[i]] || claimedHash[hashes[i]] {
 			errs[fmt.Sprintf("credentials.%d.file", i)] = append(
 				errs[fmt.Sprintf("credentials.%d.file", i)], "credential.issue.duplicate_file_hash")
 			continue
@@ -286,7 +283,7 @@ func (s *credentialService) Issue(ctx context.Context, items []CredentialIssuanc
 			ExtractStatus: domain.ExtractStatusPending,
 		}
 		survivors = append(survivors, prepared{idx: i, cred: cred})
-		claimedHash[it.HolderUserID+"|"+hashes[i]] = true
+		claimedHash[hashes[i]] = true
 	}
 
 	if len(survivors) == 0 {
@@ -813,6 +810,10 @@ func (s *credentialService) DownloadFile(ctx context.Context, id string) ([]byte
 func (s *credentialService) syncBlockchainIssue(ctx context.Context, signer domain.Wallet, issuances []chain.CredentialIssuance) ([]*big.Int, error) {
 	tokenIds, err := s.registryService.IssueCredentials(ctx, signer, issuances...)
 	if err != nil {
+		if strings.Contains(err.Error(), "IssuedCredentialError") {
+			return nil, domain.NewError(domain.CodeCredentialIssueDuplicateFileHash,
+				domain.WithError(err))
+		}
 		return nil, domain.NewError(domain.CodeCredentialIssueBlockchainSyncFailed,
 			domain.WithError(err))
 	}
