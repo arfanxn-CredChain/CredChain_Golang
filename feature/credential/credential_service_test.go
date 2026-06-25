@@ -545,7 +545,7 @@ func TestIssue_AllFailed(t *testing.T) {
 	credRepo.On("FindByFileHashes", mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
 
 	regSvc := &mocks.MockRegistryService{}
-	regSvc.On("GetCredentialHashPerHolderStatuses", mock.Anything, mock.Anything, mock.Anything).Return(
+	regSvc.On("GetCredentialHashStatuses", mock.Anything, mock.Anything).Return(
 		[]contracts.CredentialRegistryCredentialHashStatus{}, nil,
 	)
 
@@ -584,7 +584,7 @@ func TestIssue_ChainRollback(t *testing.T) {
 		[]domain.User{{Id: "holder-valid"}}, nil)
 
 	regSvc := &mocks.MockRegistryService{}
-	regSvc.On("GetCredentialHashPerHolderStatuses", mock.Anything, mock.Anything, mock.Anything).Return(
+	regSvc.On("GetCredentialHashStatuses", mock.Anything, mock.Anything).Return(
 		[]contracts.CredentialRegistryCredentialHashStatus{}, nil,
 	)
 	regSvc.On("IssueCredentials", mock.Anything, mock.Anything, mock.Anything).
@@ -644,7 +644,7 @@ func TestIssue_PartialSuccess(t *testing.T) {
 	innerCredRepo.On("Update", mock.Anything, mock.Anything, mock.Anything).Return(
 		[]domain.Credential{{ID: "stored-2", TokenID: lo.ToPtr("1")}}, nil)
 	uow.On("Credential").Return(innerCredRepo)
-	m.regSvc.On("GetCredentialHashPerHolderStatuses", mock.Anything, mock.Anything, mock.Anything).Return(
+	m.regSvc.On("GetCredentialHashStatuses", mock.Anything, mock.Anything).Return(
 		[]contracts.CredentialRegistryCredentialHashStatus{}, nil,
 	)
 	m.regSvc.On("IssueCredentials", mock.Anything, mock.Anything, mock.Anything).
@@ -1281,4 +1281,149 @@ func TestVerifyCacheVerdict_StoreFails(t *testing.T) {
 	svc := &credentialService{verificationRepo: verRepo, logger: zap.NewNop()}
 	svc.verifyCacheVerdict(context.Background(), "0xhash", domain.CodeCredentialVerifyNoMatch, nil, nil, nil)
 	verRepo.AssertCalled(t, "Store", mock.Anything, mock.Anything)
+}
+
+func TestIssue_GlobalDuplicateHash_Batch(t *testing.T) {
+	issuer := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleIssuer))
+	holderA := fixtures.NewDomainUser(
+		fixtures.WithID("hA"),
+		fixtures.WithWalletAddress("0x"+"a1"),
+	)
+	holderB := fixtures.NewDomainUser(
+		fixtures.WithID("hB"),
+		fixtures.WithWalletAddress("0x"+"b2"),
+	)
+	ctx := ctxWithAuth(&issuer)
+
+	regSvc := &mocks.MockRegistryService{}
+	regSvc.On("GetCredentialHashStatuses", mock.Anything, mock.Anything).
+		Return([]contracts.CredentialRegistryCredentialHashStatus{
+			{Status: 0}, {Status: 0},
+		}, nil)
+
+	userRepo := &mocks.MockUserRepository{}
+	userRepo.On("FindByIds", mock.Anything, mock.Anything).
+		Return([]domain.User{holderA, holderB}, nil)
+
+	m := &testCredentialMocks{regSvc: regSvc, credRepo: &mocks.MockCredentialRepository{}}
+	svc := newTestCredentialService(m)
+	svc.userRepo = userRepo
+	svc.cfg = testConfig()
+
+	data := []byte("a")
+	items := []CredentialIssuance{
+		{HolderUserID: "hA", Name: "C1", Filename: "a.pdf", MIMEType: "application/pdf", FileBytes: data},
+		{HolderUserID: "hB", Name: "C2", Filename: "a.pdf", MIMEType: "application/pdf", FileBytes: data},
+	}
+
+	_, fieldErrs, err := svc.Issue(ctx, items)
+	assert.NoError(t, err)
+	assert.NotNil(t, fieldErrs)
+	assert.Contains(t, fieldErrs, "credentials.0.file")
+	assert.Contains(t, fieldErrs["credentials.0.file"][0], "duplicate_file_hash")
+}
+
+func TestIssue_GlobalDuplicateHash_OnChain(t *testing.T) {
+	issuer := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleIssuer))
+	holder := fixtures.NewDomainUser(
+		fixtures.WithID("h"),
+		fixtures.WithWalletAddress("0x"+"c1"),
+	)
+	ctx := ctxWithAuth(&issuer)
+
+	regSvc := &mocks.MockRegistryService{}
+	regSvc.On("GetCredentialHashStatuses", mock.Anything, mock.Anything).
+		Return([]contracts.CredentialRegistryCredentialHashStatus{
+			{Status: 1},
+		}, nil)
+
+	userRepo := &mocks.MockUserRepository{}
+	userRepo.On("FindByIds", mock.Anything, mock.Anything).
+		Return([]domain.User{holder}, nil)
+
+	m := &testCredentialMocks{regSvc: regSvc, credRepo: &mocks.MockCredentialRepository{}}
+	svc := newTestCredentialService(m)
+	svc.userRepo = userRepo
+	svc.cfg = testConfig()
+
+	items := []CredentialIssuance{
+		{HolderUserID: "h", Name: "C", Filename: "a.pdf", MIMEType: "application/pdf", FileBytes: []byte("x")},
+	}
+
+	_, fieldErrs, _ := svc.Issue(ctx, items)
+	assert.NotNil(t, fieldErrs)
+	assert.Contains(t, fieldErrs["credentials.0.file"][0], "duplicate_file_hash")
+}
+
+func TestIssue_RevokedHash_Allowed(t *testing.T) {
+	issuer := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleIssuer))
+	holder := fixtures.NewDomainUser(
+		fixtures.WithID("h"),
+		fixtures.WithWalletAddress("0x"+"d1"),
+	)
+	ctx := ctxWithAuth(&issuer)
+	enq := &localMockEnqueuer{}
+	enq.On("EnqueueExtract", mock.Anything, mock.Anything).Return(nil)
+
+	regSvc := &mocks.MockRegistryService{}
+	regSvc.On("GetCredentialHashStatuses", mock.Anything, mock.Anything).
+		Return([]contracts.CredentialRegistryCredentialHashStatus{
+			{Status: 2},
+		}, nil)
+	regSvc.On("IssueCredentials", mock.Anything, mock.Anything, mock.Anything).
+		Return([]*big.Int{big.NewInt(1)}, nil)
+
+	userRepo := &mocks.MockUserRepository{}
+	userRepo.On("FindByIds", mock.Anything, mock.Anything).
+		Return([]domain.User{holder}, nil)
+
+	uow := mocks.NewPropagatingUnitOfWork()
+	innerCredRepo := &mocks.MockCredentialRepository{}
+	innerCredRepo.On("Store", mock.Anything, mock.Anything, mock.Anything).Return(
+		[]domain.Credential{{ID: "stored-1", FileURI: lo.ToPtr("up/test.pdf")}}, nil)
+	innerCredRepo.On("Update", mock.Anything, mock.Anything, mock.Anything).Return(
+		[]domain.Credential{{ID: "stored-1", TokenID: lo.ToPtr("1")}}, nil)
+	uow.On("Credential").Return(innerCredRepo)
+
+	m := &testCredentialMocks{regSvc: regSvc, credRepo: &mocks.MockCredentialRepository{}}
+	svc := newTestCredentialService(m)
+	svc.uow = uow
+	svc.userRepo = userRepo
+	svc.cfg = testConfig()
+	svc.storage = &storage.Storage{Config: &config.Config{StoragePath: lo.ToPtr(t.TempDir())}}
+	svc.enqueuer = enq
+
+	items := []CredentialIssuance{
+		{HolderUserID: "h", Name: "C", Filename: "a.pdf", MIMEType: "application/pdf", FileBytes: []byte("y")},
+	}
+
+	_, fieldErrs, _ := svc.Issue(ctx, items)
+	assert.Nil(t, fieldErrs)
+}
+
+func TestIssue_HolderNotFound(t *testing.T) {
+	issuer := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleIssuer))
+	ctx := ctxWithAuth(&issuer)
+
+	regSvc := &mocks.MockRegistryService{}
+	regSvc.On("GetCredentialHashStatuses", mock.Anything, mock.Anything).
+		Return([]contracts.CredentialRegistryCredentialHashStatus{{Status: 0}}, nil)
+
+	userRepo := &mocks.MockUserRepository{}
+	userRepo.On("FindByIds", mock.Anything, mock.Anything).
+		Return([]domain.User{}, nil)
+
+	m := &testCredentialMocks{regSvc: regSvc, credRepo: &mocks.MockCredentialRepository{}}
+	svc := newTestCredentialService(m)
+	svc.userRepo = userRepo
+	svc.cfg = testConfig()
+
+	items := []CredentialIssuance{
+		{HolderUserID: "ghost", Name: "C", Filename: "a.pdf", MIMEType: "application/pdf", FileBytes: []byte("z")},
+	}
+
+	_, fieldErrs, err := svc.Issue(ctx, items)
+	assert.NoError(t, err)
+	assert.Contains(t, fieldErrs, "credentials.0.holder_user_id")
+	assert.Contains(t, fieldErrs["credentials.0.holder_user_id"][0], "holder_not_found")
 }

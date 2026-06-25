@@ -230,6 +230,16 @@ func (s *credentialService) Issue(ctx context.Context, items []CredentialIssuanc
 		}
 	}
 
+	// In-batch duplicate pre-check — mark all occurrences of a dup hash so the
+	// first item in a same-hash pair is also rejected.
+	seenHash := map[string]bool{}
+	for _, h := range hashes {
+		if seenHash[h] {
+			activeDup[h] = true
+		}
+		seenHash[h] = true
+	}
+
 	type prepared struct {
 		idx  int
 		cred domain.Credential
