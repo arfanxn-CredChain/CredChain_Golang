@@ -123,6 +123,9 @@ func buildRecentActiveCredentialQuery(dateFrom, dateTo time.Time, limit int, hol
 	q := &domainQuery.Query{
 		Filters: []domainQuery.Filter{
 			{Column: "revoked_at", Operator: domainQuery.OperatorNull},
+			{Column: "issued_at", Operator: domainQuery.OperatorBetween, Values: []string{
+				dateFrom.Format("2006-01-02"), dateTo.Format("2006-01-02"),
+			}},
 		},
 		Includes: []string{"holder", "issuer"},
 		Sorts:    []domainQuery.Sort{{Column: "issued_at", Order: domainQuery.SortDesc}},
@@ -139,6 +142,9 @@ func buildRecentRevokedCredentialQuery(dateFrom, dateTo time.Time, limit int, ho
 	q := &domainQuery.Query{
 		Filters: []domainQuery.Filter{
 			{Column: "revoked_at", Operator: domainQuery.OperatorNotNull},
+			{Column: "revoked_at", Operator: domainQuery.OperatorBetween, Values: []string{
+				dateFrom.Format("2006-01-02"), dateTo.Format("2006-01-02"),
+			}},
 		},
 		Includes: []string{"holder", "revoker"},
 		Sorts:    []domainQuery.Sort{{Column: "revoked_at", Order: domainQuery.SortDesc}},
@@ -153,6 +159,11 @@ func buildRecentRevokedCredentialQuery(dateFrom, dateTo time.Time, limit int, ho
 
 func buildRecentUsersQuery(dateFrom, dateTo time.Time, limit int) *domainQuery.Query {
 	return &domainQuery.Query{
+		Filters: []domainQuery.Filter{
+			{Column: "created_at", Operator: domainQuery.OperatorBetween, Values: []string{
+				dateFrom.Format("2006-01-02"), dateTo.Format("2006-01-02"),
+			}},
+		},
 		Sorts: []domainQuery.Sort{{Column: "created_at", Order: domainQuery.SortDesc}},
 		Limit: limit,
 		Page:  1,

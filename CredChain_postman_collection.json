@@ -85,7 +85,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{BASE_URL}}/api/overview?limit=10",
+              "raw": "{{BASE_URL}}/api/overview?limit=10&filters=date..2026-01-01,2026-06-30",
               "host": [
                 "{{BASE_URL}}"
               ],
@@ -98,6 +98,11 @@
                   "key": "limit",
                   "value": "10",
                   "description": "Number of recent items per category (default: 5)"
+                },
+                {
+                  "key": "filters",
+                  "value": "date..2026-01-01,2026-06-30",
+                  "description": "Date range filter applied to all time-based fields (issued_at, revoked_at, created_at). Uses standard BETWEEN syntax."
                 }
               ]
             },

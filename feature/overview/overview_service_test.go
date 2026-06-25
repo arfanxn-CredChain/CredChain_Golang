@@ -220,4 +220,40 @@ func TestGet_LimitDefault(t *testing.T) {
 	repo.AssertExpectations(t)
 }
 
+func TestGet_DateFilter(t *testing.T) {
+	issuer := &domain.User{Id: "issuer1", Role: domain.RoleIssuer, Email: "issuer@test.com", WalletAddress: "0x1"}
+	svc, repo, credRepo, userRepo, ginCtx := setupTestService(t, issuer)
+
+	q := &domainQuery.Query{
+		Filters: []domainQuery.Filter{
+			{Column: "date", Operator: domainQuery.OperatorBetween, Values: []string{"2026-01-01", "2026-06-30"}},
+		},
+	}
+
+	repo.On("CredentialCounts", mock.Anything, q, (*string)(nil)).Return(&domain.OverviewCredentialCounts{Total: 10}, nil)
+	repo.On("UserCounts", mock.Anything, q).Return(&domain.OverviewUserCounts{Total: 5}, nil)
+	credRepo.On("Get", mock.Anything, mock.MatchedBy(func(q2 *domainQuery.Query) bool {
+		return hasFilter(q2, "issued_at", domainQuery.OperatorBetween)
+	})).Return([]domain.Credential{}, 0, nil).Once()
+	credRepo.On("Get", mock.Anything, mock.MatchedBy(func(q2 *domainQuery.Query) bool {
+		return hasFilter(q2, "revoked_at", domainQuery.OperatorBetween)
+	})).Return([]domain.Credential{}, 0, nil).Once()
+	userRepo.On("Get", mock.Anything, mock.MatchedBy(func(q2 *domainQuery.Query) bool {
+		return hasFilter(q2, "created_at", domainQuery.OperatorBetween)
+	})).Return([]domain.User{}, 0, nil)
+
+	_, err := svc.Get(ginCtx.Request.Context(), q)
+	require.NoError(t, err)
+	repo.AssertExpectations(t)
+}
+
+func hasFilter(q *domainQuery.Query, column string, operator domainQuery.Operator) bool {
+	for _, f := range q.Filters {
+		if f.Column == column && f.Operator == operator && len(f.Values) == 2 {
+			return true
+		}
+	}
+	return false
+}
+
 func ptrStr(s string) *string { return &s }
