@@ -696,6 +696,7 @@ func TestReExtract_HappyPath(t *testing.T) {
 	enq.On("EnqueueExtract", mock.Anything, mock.Anything).Return(nil)
 
 	svc := &credentialService{
+		cfg:      testConfig(),
 		uow:      uow,
 		policy:   &credentialPolicy{},
 		logger:   zap.NewNop(),
@@ -718,6 +719,7 @@ func TestReExtract_NotFound(t *testing.T) {
 	uow.On("Credential").Return(innerCredRepo)
 
 	svc := &credentialService{
+		cfg:      testConfig(),
 		uow:      uow,
 		policy:   &credentialPolicy{},
 		logger:   zap.NewNop(),
@@ -744,6 +746,7 @@ func TestReExtract_NotFailed(t *testing.T) {
 	uow.On("Credential").Return(innerCredRepo)
 
 	svc := &credentialService{
+		cfg:      testConfig(),
 		uow:      uow,
 		policy:   &credentialPolicy{},
 		logger:   zap.NewNop(),

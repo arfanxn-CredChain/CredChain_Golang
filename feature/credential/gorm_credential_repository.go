@@ -66,11 +66,17 @@ func preloadByIncludes(db *gorm.DB, query *domainQuery.Query) *gorm.DB {
 	for _, inc := range query.Includes {
 		switch inc {
 		case "holder":
-			db = db.Preload("HolderUser")
+			db = db.Preload("HolderUser", func(db *gorm.DB) *gorm.DB {
+				return db.Unscoped()
+			})
 		case "issuer":
-			db = db.Preload("IssuerUser")
+			db = db.Preload("IssuerUser", func(db *gorm.DB) *gorm.DB {
+				return db.Unscoped()
+			})
 		case "revoker":
-			db = db.Preload("RevokerUser")
+			db = db.Preload("RevokerUser", func(db *gorm.DB) *gorm.DB {
+				return db.Unscoped()
+			})
 		}
 	}
 	return db

@@ -718,7 +718,7 @@ func (s *credentialService) ReExtract(ctx context.Context, ids ...string) ([]dom
 	// will be extracted normally by the River worker.
 	for _, t := range toEnqueue {
 		if err := s.enqueuer.EnqueueExtract(ctx, jobs.CredentialExtractArgs{
-			CredentialID: t.ID, FileURI: *t.FileURI,
+			CredentialID: t.ID, FileURI: filepath.Join(*s.cfg.CredentialFileStoragePath, *t.FileURI),
 		}); err != nil {
 			if compErr := s.reExtractCompensate(ctx, t); compErr != nil {
 				s.logger.Error("reextract compensate failed",
