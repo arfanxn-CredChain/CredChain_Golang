@@ -60,7 +60,7 @@ CREATE INDEX idx_credentials_holder_user_id ON credentials(holder_user_id);
 CREATE INDEX idx_credentials_issuer_user_id ON credentials(issuer_user_id);
 CREATE INDEX idx_credentials_revoked_at     ON credentials(revoked_at);
 CREATE INDEX idx_credentials_extract_status ON credentials(extract_status);
-CREATE INDEX idx_credentials_file_hash      ON credentials(file_hash);
+CREATE UNIQUE INDEX idx_credentials_file_hash_active ON credentials(file_hash) WHERE revoked_at IS NULL;
 
 -- Token types for user refresh tokens
 CREATE TYPE user_token_type AS ENUM ('refresh');

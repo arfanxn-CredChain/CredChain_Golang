@@ -1,5 +1,5 @@
 -- Drop credentials first (FKs reference users)
-DROP INDEX IF EXISTS idx_credentials_file_hash;
+DROP INDEX IF EXISTS idx_credentials_file_hash_active;
 DROP INDEX IF EXISTS idx_credentials_extract_status;
 DROP INDEX IF EXISTS idx_credentials_revoked_at;
 DROP INDEX IF EXISTS idx_credentials_issuer_user_id;
