@@ -25,7 +25,7 @@ type Credential struct {
 	Name          string               `gorm:"type:varchar(256);column:name;not null"`
 	Meta          map[string]any       `gorm:"type:jsonb;serializer:json;column:meta"`
 	TokenID       *string              `gorm:"type:varchar(256);column:token_id;uniqueIndex"`
-	FileHash      string               `gorm:"type:char(66);column:file_hash;index"`
+	FileHash      string               `gorm:"type:char(66);column:file_hash;index:idx_credentials_file_hash_active,unique,where:revoked_at IS NULL"`
 	FileURI       *string              `gorm:"type:text;column:file_uri"`
 	ExtractStatus domain.ExtractStatus `gorm:"type:credential_extract_status;column:extract_status;not null;default:pending"`
 	ExtractError  *string              `gorm:"type:text;column:extract_error"`

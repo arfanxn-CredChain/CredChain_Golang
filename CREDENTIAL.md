@@ -94,7 +94,7 @@ New credentials are created with `extract_status=pending`. On-chain issuance is 
 
 **Current:** `uint256(keccak256(abi.encodePacked(hash)))` — token ID derived solely from file hash.
 
-**Planned (design change):** `uint256(keccak256(abi.encodePacked(issuer, nonce, holder, hash)))` — token ID derived from issuer address, Registry nonce, holder address, and file hash.
+`uint256(keccak256(abi.encodePacked(issuer, nonce, holder, hash)))` — token ID derived from issuer address, Registry nonce, holder address, and file hash.
 
 This makes each token ID unique even when the same file is issued to multiple holders (same hash across different holders was previously impossible — now allowed by the per-holder duplicate rule below).
 
@@ -102,24 +102,23 @@ This makes each token ID unique even when the same file is issued to multiple ho
 
 ### On-Chain Storage
 
-**Planned mapping** on CredentialRegistry:
+**Mapping** on CredentialRegistry:
 
 ```solidity
 enum CredentialStatus { None, Issued, Revoked }
 
-mapping(address => mapping(bytes32 => CredentialStatus)) public holderToCredentialHashStatus;
+mapping(bytes32 => CredentialStatus) public credentialHashToStatus;
 
-function getCredentialHashPerHolderStatuses(
-    address holder,
+function getCredentialHashStatuses(
     bytes32[] calldata hashes
 ) external view returns (CredentialStatus[] memory);
 ```
 
-- `None (0)`: No credential issued for this holder+hash pair
+- `None (0)`: No credential issued for this hash
 - `Issued (1)`: Active credential on-chain
 - `Revoked (2)`: Credential was revoked
 
-**Sources:** Design discussion; planned Solidity changes to `CredentialRegistry.sol`.
+**Sources:** `CredentialRegistry.sol`.
 
 ### Issue Flow (On-Chain)
 
@@ -208,25 +207,18 @@ All check `user.Role.Rank() >= RoleIssuer.Rank()` from `httpContext.MustGetUser(
 
 ## Duplicate Hash Rules
 
-### Per-User File Hash Duplicates (Planned — Design Change)
-
-**Current behavior (Go-side):** `FindByFileHashes` checks all existing credentials; any active (non-revoked) match blocks the new issuance regardless of holder.
-
-**Planned behavior (on-chain pre-issue check):**
+### Global File Hash Uniqueness
 
 | Scenario | Rule |
-|----------|------|
-| Same hash, same holder, active | **Blocked** — `CredentialStatus != None` on-chain |
-| Same hash, same holder, revoked | **Allowed** — re-issue of previously revoked credential |
-| Same hash, different holder | **Allowed** — each holder manages their own credential set |
+|---|---|
+| Same hash, any holder, active | **Blocked** — `CredentialStatus.Issued` on-chain, DB unique index |
+| Same hash, was revoked | **Allowed** — re-issue after revocation (any holder) |
 
-**Planned enforcement flow:**
+**Enforcement flow:**
 1. Go computes file hash
-2. Go calls `getCredentialHashPerHolderStatuses(holder, [hash])` on-chain
+2. Go calls `getCredentialHashStatuses([hash])` on-chain
 3. If status is `Issued` → return duplicate error (`CodeCredentialIssueDuplicateFileHash` 400242)
 4. If status is `None` or `Revoked` → proceed
-
-**Go-side duplicate check removed** — replaced entirely by the on-chain pre-issue check.
 
 **Sources:** Design discussion; `credential_service.go:216-221` (current Go-side check that will be removed), `credential_service.go:239-241` (current per-batch claimedHash that will be kept for same-batch dedup).
 
