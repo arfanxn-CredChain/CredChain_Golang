@@ -8,7 +8,6 @@ import (
 	"CredChain_Golang/infrastructure/chain"
 	"CredChain_Golang/infrastructure/chain/contracts"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -42,8 +41,8 @@ func (m *MockRegistryService) GetCredentialsByIds(ctx context.Context, ids []*bi
 	return args.Get(0).([]contracts.CredentialRegistryCredential), args.Error(1)
 }
 
-func (m *MockRegistryService) GetCredentialHashPerHolderStatuses(ctx context.Context, holders []common.Address, hashes [][32]byte) ([]contracts.CredentialRegistryCredentialHashStatus, error) {
-	args := m.Called(ctx, holders, hashes)
+func (m *MockRegistryService) GetCredentialHashStatuses(ctx context.Context, hashes [][32]byte) ([]contracts.CredentialRegistryCredentialHashStatus, error) {
+	args := m.Called(ctx, hashes)
 	return args.Get(0).([]contracts.CredentialRegistryCredentialHashStatus), args.Error(1)
 }
 
