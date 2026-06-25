@@ -85,16 +85,23 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{BASE_URL}}/api/overview",
+              "raw": "{{BASE_URL}}/api/overview?limit=10",
               "host": [
                 "{{BASE_URL}}"
               ],
               "path": [
                 "api",
                 "overview"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Number of recent items per category (default: 5)"
+                }
               ]
             },
-            "description": "Role-conditional dashboard overview. Issuer+ receive system-wide data (credential counts, user counts, recents, chain details). Holder receives own credential counts and recents only."
+            "description": "Role-conditional dashboard overview. Issuer+ receive system-wide data (credential counts, user counts, recents, chain details). Holder receives own credential counts and recents only. Optional ?limit=N controls recent items per category (default 5). Optional ?filters=date..YYYY-MM-DD,YYYY-MM-DD for date range."
           },
           "response": [
             {
