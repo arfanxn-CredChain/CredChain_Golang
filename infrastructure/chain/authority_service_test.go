@@ -91,8 +91,8 @@ func (m *localRegistryBinding) GetCredentialsByIds(opts *bind.CallOpts, ids []*b
 	return args.Get(0).([]contracts.CredentialRegistryCredential), args.Error(1)
 }
 
-func (m *localRegistryBinding) GetCredentialHashPerHolderStatuses(opts *bind.CallOpts, holders []common.Address, hashes [][32]byte) ([]contracts.CredentialRegistryCredentialHashStatus, error) {
-	args := m.Called(opts, holders, hashes)
+func (m *localRegistryBinding) GetCredentialHashStatuses(opts *bind.CallOpts, hashes [][32]byte) ([]contracts.CredentialRegistryCredentialHashStatus, error) {
+	args := m.Called(opts, hashes)
 	return args.Get(0).([]contracts.CredentialRegistryCredentialHashStatus), args.Error(1)
 }
 
