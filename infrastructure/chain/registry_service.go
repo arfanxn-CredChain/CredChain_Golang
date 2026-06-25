@@ -45,9 +45,9 @@ type RegistryService interface {
 	// GetCredentialsByIds batch-reads multiple credentials from the registry by token ID.
 	GetCredentialsByIds(ctx context.Context, ids []*big.Int) ([]contracts.CredentialRegistryCredential, error)
 
-	// GetCredentialHashPerHolderStatuses batch-reads hash statuses for each
-	// (holder, hash) pair. Returns 1 (Issued) or 2 (Revoked) per entry.
-	GetCredentialHashPerHolderStatuses(ctx context.Context, holders []common.Address, hashes [][32]byte) ([]contracts.CredentialRegistryCredentialHashStatus, error)
+	// GetCredentialHashStatuses batch-reads hash statuses from the registry.
+	// Returns 1 (Issued) or 2 (Revoked) per entry. No holder dimension.
+	GetCredentialHashStatuses(ctx context.Context, hashes [][32]byte) ([]contracts.CredentialRegistryCredentialHashStatus, error)
 
 	// IssueCredentials issues multiple credentials in a single transaction.
 	// It handles the complete signature-based authentication flow:
@@ -105,10 +105,10 @@ func (s *registryService) GetCredentialsByIds(ctx context.Context, ids []*big.In
 	return creds, nil
 }
 
-func (s *registryService) GetCredentialHashPerHolderStatuses(ctx context.Context, holders []common.Address, hashes [][32]byte) ([]contracts.CredentialRegistryCredentialHashStatus, error) {
-	statuses, err := s.client.Registry.GetCredentialHashPerHolderStatuses(&bind.CallOpts{Context: ctx}, holders, hashes)
+func (s *registryService) GetCredentialHashStatuses(ctx context.Context, hashes [][32]byte) ([]contracts.CredentialRegistryCredentialHashStatus, error) {
+	statuses, err := s.client.Registry.GetCredentialHashStatuses(&bind.CallOpts{Context: ctx}, hashes)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get credential hash per holder statuses: %w", err)
+		return nil, fmt.Errorf("failed to get credential hash statuses: %w", err)
 	}
 	return statuses, nil
 }
