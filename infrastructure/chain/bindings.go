@@ -33,7 +33,7 @@ type RegistryBinding interface {
 	UserToNonce(opts *bind.CallOpts, addr common.Address) (*big.Int, error)
 	FindCredential(opts *bind.CallOpts, id *big.Int) (contracts.CredentialRegistryCredential, error)
 	GetCredentialsByIds(opts *bind.CallOpts, ids []*big.Int) ([]contracts.CredentialRegistryCredential, error)
-	GetCredentialHashPerHolderStatuses(opts *bind.CallOpts, holders []common.Address, hashes [][32]byte) ([]contracts.CredentialRegistryCredentialHashStatus, error)
+	GetCredentialHashStatuses(opts *bind.CallOpts, hashes [][32]byte) ([]contracts.CredentialRegistryCredentialHashStatus, error)
 	BatchIssueCredentialsWithSignature(
 		opts *bind.TransactOpts,
 		params contracts.CredentialRegistryBatchIssueCredentialsWithSignatureParams,
