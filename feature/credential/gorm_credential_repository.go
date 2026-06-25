@@ -3,8 +3,11 @@ package credential
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"sort"
 	"strings"
+
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"CredChain_Golang/domain"
 	domainQuery "CredChain_Golang/domain/query"
@@ -296,6 +299,11 @@ func (r *gormCredentialRepository) Store(ctx context.Context, credentials ...dom
 		rows[i] = model.FromDomainCredential(c)
 	}
 	if err := r.db.WithContext(ctx).Create(&rows).Error; err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return nil, domain.NewError(domain.CodeCredentialIssueDuplicateFileHash,
+				domain.WithError(err))
+		}
 		return nil, err
 	}
 	out := make([]domain.Credential, len(rows))
