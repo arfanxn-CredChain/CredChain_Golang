@@ -177,4 +177,47 @@ func TestGet_RepoError(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestGet_LimitParam(t *testing.T) {
+	issuer := &domain.User{Id: "issuer1", Role: domain.RoleIssuer, Email: "issuer@test.com", WalletAddress: "0x1"}
+	svc, repo, credRepo, userRepo, ginCtx := setupTestService(t, issuer)
+
+	q := &domainQuery.Query{Limit: 3}
+
+	repo.On("CredentialCounts", mock.Anything, q, (*string)(nil)).Return(&domain.OverviewCredentialCounts{Total: 10, Active: 8, Revoked: 1, Pending: 1, Failed: 1}, nil)
+	repo.On("UserCounts", mock.Anything, q).Return(&domain.OverviewUserCounts{Total: 5, Holder: 3, Issuer: 1, Admin: 1, Active: 4, Trashed: 1}, nil)
+	credRepo.On("Get", mock.Anything, mock.MatchedBy(func(q2 *domainQuery.Query) bool {
+		return q2.Limit == 3
+	})).Return([]domain.Credential{{ID: "c1"}}, 1, nil)
+	userRepo.On("Get", mock.Anything, mock.MatchedBy(func(q2 *domainQuery.Query) bool {
+		return q2.Limit == 3
+	})).Return([]domain.User{{Id: "u1", Role: domain.RoleHolder, Email: "h@t.com"}}, 1, nil)
+
+	result, err := svc.Get(ginCtx.Request.Context(), q)
+	require.NoError(t, err)
+
+	assert.Len(t, result.Recents.ActiveCredentials, 1)
+	assert.Len(t, result.Recents.StoredUsers, 1)
+	repo.AssertExpectations(t)
+}
+
+func TestGet_LimitDefault(t *testing.T) {
+	issuer := &domain.User{Id: "issuer1", Role: domain.RoleIssuer, Email: "issuer@test.com", WalletAddress: "0x1"}
+	svc, repo, credRepo, userRepo, ginCtx := setupTestService(t, issuer)
+
+	q := &domainQuery.Query{} // Limit = 0, should default to 5
+
+	repo.On("CredentialCounts", mock.Anything, q, (*string)(nil)).Return(&domain.OverviewCredentialCounts{Total: 10}, nil)
+	repo.On("UserCounts", mock.Anything, q).Return(&domain.OverviewUserCounts{Total: 5}, nil)
+	credRepo.On("Get", mock.Anything, mock.MatchedBy(func(q2 *domainQuery.Query) bool {
+		return q2.Limit == 5
+	})).Return([]domain.Credential{}, 0, nil)
+	userRepo.On("Get", mock.Anything, mock.MatchedBy(func(q2 *domainQuery.Query) bool {
+		return q2.Limit == 5
+	})).Return([]domain.User{}, 0, nil)
+
+	_, err := svc.Get(ginCtx.Request.Context(), q)
+	require.NoError(t, err)
+	repo.AssertExpectations(t)
+}
+
 func ptrStr(s string) *string { return &s }

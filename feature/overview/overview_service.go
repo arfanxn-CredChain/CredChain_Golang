@@ -51,6 +51,11 @@ func (s *overviewService) Get(ctx context.Context, q *domainQuery.Query) (*respo
 
 	dateFrom, dateTo := extractDateRange(q)
 
+	limit := q.Limit
+	if limit <= 0 {
+		limit = 5
+	}
+
 	var holderID *string
 	if !isIssuer {
 		holderID = &authUser.Id
@@ -61,13 +66,13 @@ func (s *overviewService) Get(ctx context.Context, q *domainQuery.Query) (*respo
 		return nil, domain.NewError(domain.CodeOverviewInternal, domain.WithError(err))
 	}
 
-	activeQ := buildRecentActiveCredentialQuery(dateFrom, dateTo, 5, holderID)
+	activeQ := buildRecentActiveCredentialQuery(dateFrom, dateTo, limit, holderID)
 	activeCreds, _, err := s.credRepo.Get(ctx, activeQ)
 	if err != nil {
 		return nil, domain.NewError(domain.CodeOverviewInternal, domain.WithError(err))
 	}
 
-	revokedQ := buildRecentRevokedCredentialQuery(dateFrom, dateTo, 5, holderID)
+	revokedQ := buildRecentRevokedCredentialQuery(dateFrom, dateTo, limit, holderID)
 	revokedCreds, _, err := s.credRepo.Get(ctx, revokedQ)
 	if err != nil {
 		return nil, domain.NewError(domain.CodeOverviewInternal, domain.WithError(err))
@@ -90,7 +95,7 @@ func (s *overviewService) Get(ctx context.Context, q *domainQuery.Query) (*respo
 		dtoUserCounts := response.FromDomainOverviewUserCounts(*userCounts)
 		ov.UserCounts = &dtoUserCounts
 
-		recentQ := buildRecentUsersQuery(dateFrom, dateTo, 5)
+		recentQ := buildRecentUsersQuery(dateFrom, dateTo, limit)
 		recentUsers, _, err := s.userRepo.Get(ctx, recentQ)
 		if err != nil {
 			return nil, domain.NewError(domain.CodeOverviewInternal, domain.WithError(err))
@@ -116,7 +121,7 @@ func (s *overviewService) Get(ctx context.Context, q *domainQuery.Query) (*respo
 
 func buildRecentActiveCredentialQuery(dateFrom, dateTo time.Time, limit int, holderID *string) *domainQuery.Query {
 	q := &domainQuery.Query{
-		Filters:  []domainQuery.Filter{
+		Filters: []domainQuery.Filter{
 			{Column: "revoked_at", Operator: domainQuery.OperatorNull},
 		},
 		Includes: []string{"holder", "issuer"},
@@ -132,7 +137,7 @@ func buildRecentActiveCredentialQuery(dateFrom, dateTo time.Time, limit int, hol
 
 func buildRecentRevokedCredentialQuery(dateFrom, dateTo time.Time, limit int, holderID *string) *domainQuery.Query {
 	q := &domainQuery.Query{
-		Filters:  []domainQuery.Filter{
+		Filters: []domainQuery.Filter{
 			{Column: "revoked_at", Operator: domainQuery.OperatorNotNull},
 		},
 		Includes: []string{"holder", "revoker"},
