@@ -96,7 +96,7 @@ New credentials are created with `extract_status=pending`. On-chain issuance is 
 
 `uint256(keccak256(abi.encodePacked(issuer, nonce, holder, hash)))` — token ID derived from issuer address, Registry nonce, holder address, and file hash.
 
-This makes each token ID unique even when the same file is issued to multiple holders (same hash across different holders was previously impossible — now allowed by the per-holder duplicate rule below).
+A unique nonce ensures that even reissuing the same hash (after revocation) produces a different token ID.
 
 **Sources:** `chain/registry_service.go:247-250` (current impl), Solidity `CredentialRegistry.sol` token ID derivation.
 
@@ -127,7 +127,7 @@ RegistryService.IssueCredentials (planned):
 2. Packs: `issuer || pad32(nonce) || (holder || hash || uri)[]`
 3. Signs EIP-191 digest with signer's encrypted private key
 4. Calls `batchIssueCredentialsWithSignature(params)` via relayer
-5. Contract mints ERC-721 tokens and sets `holderToCredentialHashStatus[holder][hash] = Issued`
+5. Contract mints ERC-721 tokens and sets `credentialHashToStatus[hash] = Issued`
 6. Returns token IDs (derived from issuer+nonce+holder+hash)
 
 ### Revoke Flow (On-Chain)
@@ -137,7 +137,7 @@ RegistryService.RevokeCredentials:
 2. Packs: `revoker || pad32(nonce) || pad32(tokenId)[]`
 3. Signs EIP-191 digest
 4. Calls `batchRevokeCredentialsWithSignature(params)` via relayer
-5. Contract sets `holderToCredentialHashStatus[holder][hash] = Revoked`
+5. Contract sets `credentialHashToStatus[hash] = Revoked`
 6. Token remains soulbound (no transfer/burn allowed — `_update()` reverts)
 
 ### FindCredentialByHash (Exact-Hash Verify Path — Planned)
@@ -498,7 +498,7 @@ River jobs live in Postgres (`river_jobs` table) but use a separate `pgx` connec
 
 ## Cross-Repo Integration
 
-- **`../CredChain_Solidity/CredentialRegistry.sol`** — ERC-721 soulbound token, `holderToCredentialHashStatus` mapping, CredentialStatus enum. Used by `chain.RegistryService` via abigen bindings.
+- **`../CredChain_Solidity/CredentialRegistry.sol`** — ERC-721 soulbound token, `credentialHashToStatus` mapping, CredentialStatus enum. Used by `chain.RegistryService` via abigen bindings.
 - **`../CredChain_Python/`** — AI service called via HTTP for `/extract` and `/verify` endpoints. Response envelope matches Go's `{code, message, data, errors}`. Python owns error category `50`.
 - **`../CredChain_React/`** — sole HTTP consumer. Mirrors `domain.Code*` verdict constants in `@shared/api/codes.ts`. Locale keys mirrored in `src/shared/i18n/`.
 
