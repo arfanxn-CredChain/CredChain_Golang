@@ -29,6 +29,7 @@ type Config struct {
 	HardhatMnemonic                    *string
 	AuthorityContract                  *string
 	RegistryContract                   *string
+	IssuingOrganizationName            *string
 	JWTSecret                          *string
 	JWTAccessExpiryMinutes             *int
 	JWTRefreshExpiryHours              *int
@@ -151,6 +152,7 @@ func NewConfig(envPath string) (*Config, error) {
 		HardhatMnemonic:                    getEnv("HARDHAT_MNEMONIC", nil),
 		AuthorityContract:                  getEnv("AUTHORITY_CONTRACT", nil),
 		RegistryContract:                   getEnv("REGISTRY_CONTRACT", nil),
+		IssuingOrganizationName:            getEnv("ISSUING_ORGANIZATION_NAME", nil),
 		JWTSecret:                          getEnv("JWT_SECRET", nil),
 		JWTAccessExpiryMinutes:             getIntEnv("JWT_ACCESS_EXPIRY_MINUTES", &defaultJWTAccessExpiry),
 		JWTRefreshExpiryHours:              getIntEnv("JWT_REFRESH_EXPIRY_HOURS", &defaultJWTRefreshExpiry),
@@ -211,6 +213,10 @@ func NewConfig(envPath string) (*Config, error) {
 	}
 	if keyLen := len([]byte(*cfg.FileEncryptionKey)); keyLen != 32 {
 		return nil, fmt.Errorf("file_encryption_key must be exactly 32 bytes (AES-256), got %d", keyLen)
+	}
+
+	if cfg.IssuingOrganizationName == nil || *cfg.IssuingOrganizationName == "" {
+		return nil, fmt.Errorf("issuing_organization_name is required")
 	}
 
 	if cfg.CookieSameSite != nil {

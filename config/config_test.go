@@ -115,6 +115,7 @@ func TestNewConfig_MissingJWTSecret_ReturnsError(t *testing.T) {
 	t.Setenv("JWT_SECRET", "")
 	t.Setenv("WALLET_ENCRYPTION_KEY", "some-key")
 	t.Setenv("FILE_ENCRYPTION_KEY", "file-encryption-key-32chars-xxxx")
+	t.Setenv("ISSUING_ORGANIZATION_NAME", "Test Org")
 	_, err := NewConfig(".env.nonexistent")
 	assert.Error(t, err)
 }
@@ -123,6 +124,7 @@ func TestNewConfig_MissingWalletKey_ReturnsError(t *testing.T) {
 	t.Setenv("JWT_SECRET", "secret")
 	t.Setenv("WALLET_ENCRYPTION_KEY", "")
 	t.Setenv("FILE_ENCRYPTION_KEY", "file-encryption-key-32chars-xxxx")
+	t.Setenv("ISSUING_ORGANIZATION_NAME", "Test Org")
 	_, err := NewConfig(".env.nonexistent")
 	assert.Error(t, err)
 }
@@ -131,6 +133,7 @@ func TestNewConfig_BothSet_ReturnsConfig(t *testing.T) {
 	t.Setenv("JWT_SECRET", "my-secret")
 	t.Setenv("WALLET_ENCRYPTION_KEY", "my-wallet-key-exactly-32-chars-x")
 	t.Setenv("FILE_ENCRYPTION_KEY", "my-file-key-exactly-32-chars-xxx")
+	t.Setenv("ISSUING_ORGANIZATION_NAME", "Test Org")
 	cfg, err := NewConfig(".env.nonexistent")
 	assert.NoError(t, err)
 	assert.Equal(t, "my-secret", *cfg.JWTSecret)
@@ -142,6 +145,7 @@ func TestNewConfig_WalletKeyTooShort_ReturnsError(t *testing.T) {
 	t.Setenv("JWT_SECRET", "my-secret")
 	t.Setenv("WALLET_ENCRYPTION_KEY", "too-short")
 	t.Setenv("FILE_ENCRYPTION_KEY", "file-encryption-key-32chars-xxxx")
+	t.Setenv("ISSUING_ORGANIZATION_NAME", "Test Org")
 	_, err := NewConfig(".env.nonexistent")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "32 bytes")
@@ -151,6 +155,7 @@ func TestNewConfig_WalletKeyTooLong_ReturnsError(t *testing.T) {
 	t.Setenv("JWT_SECRET", "my-secret")
 	t.Setenv("WALLET_ENCRYPTION_KEY", "this-is-a-64-char-hex-encoded-key-that-should-fail-validation-x")
 	t.Setenv("FILE_ENCRYPTION_KEY", "file-encryption-key-32chars-xxxx")
+	t.Setenv("ISSUING_ORGANIZATION_NAME", "Test Org")
 	_, err := NewConfig(".env.nonexistent")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "32 bytes")
@@ -160,6 +165,7 @@ func TestNewConfig_MissingFileEncryptionKey_ReturnsError(t *testing.T) {
 	t.Setenv("JWT_SECRET", "my-secret")
 	t.Setenv("WALLET_ENCRYPTION_KEY", "my-wallet-key-exactly-32-chars-x")
 	t.Setenv("FILE_ENCRYPTION_KEY", "")
+	t.Setenv("ISSUING_ORGANIZATION_NAME", "Test Org")
 	_, err := NewConfig(".env.nonexistent")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "file_encryption_key is required")
@@ -169,7 +175,28 @@ func TestNewConfig_FileEncryptionKeyTooShort_ReturnsError(t *testing.T) {
 	t.Setenv("JWT_SECRET", "my-secret")
 	t.Setenv("WALLET_ENCRYPTION_KEY", "my-wallet-key-exactly-32-chars-x")
 	t.Setenv("FILE_ENCRYPTION_KEY", "too-short")
+	t.Setenv("ISSUING_ORGANIZATION_NAME", "Test Org")
 	_, err := NewConfig(".env.nonexistent")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "file_encryption_key must be exactly 32 bytes")
+}
+
+func TestNewConfig_MissingIssuingOrganizationName_ReturnsError(t *testing.T) {
+	t.Setenv("JWT_SECRET", "my-secret")
+	t.Setenv("WALLET_ENCRYPTION_KEY", "my-wallet-key-exactly-32-chars-x")
+	t.Setenv("FILE_ENCRYPTION_KEY", "my-file-key-exactly-32-chars-xxx")
+	t.Setenv("ISSUING_ORGANIZATION_NAME", "")
+	_, err := NewConfig(".env.nonexistent")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "issuing_organization_name is required")
+}
+
+func TestNewConfig_IssuingOrganizationName_Set(t *testing.T) {
+	t.Setenv("JWT_SECRET", "my-secret")
+	t.Setenv("WALLET_ENCRYPTION_KEY", "my-wallet-key-exactly-32-chars-x")
+	t.Setenv("FILE_ENCRYPTION_KEY", "my-file-key-exactly-32-chars-xxx")
+	t.Setenv("ISSUING_ORGANIZATION_NAME", "University of Indonesia")
+	cfg, err := NewConfig(".env.nonexistent")
+	assert.NoError(t, err)
+	assert.Equal(t, "University of Indonesia", *cfg.IssuingOrganizationName)
 }
