@@ -136,5 +136,7 @@
     "error_credential_file_download_decryption_failed": "Gagal mendekripsi file kredensial.",
     "error_credential_file_download_no_file": "Kredensial ini tidak memiliki file tersimpan.",
     "success_overview": "Overview fetched successfully.",
-    "error_overview_internal": "Failed to fetch overview data."
+    "error_overview_internal": "Failed to fetch overview data.",
+    "success_meta": "Data meta berhasil diambil.",
+    "error_meta_internal": "Gagal mengambil data meta."
 }

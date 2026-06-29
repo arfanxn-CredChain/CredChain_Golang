@@ -136,5 +136,7 @@
     "error_credential_file_download_decryption_failed": "Failed to decrypt credential file.",
     "error_credential_file_download_no_file": "This credential has no stored file.",
     "success_overview": "Overview fetched successfully.",
-    "error_overview_internal": "Failed to fetch overview data."
+    "error_overview_internal": "Failed to fetch overview data.",
+    "success_meta": "Meta fetched successfully.",
+    "error_meta_internal": "Failed to fetch meta data."
 }
