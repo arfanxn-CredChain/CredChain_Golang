@@ -16,6 +16,10 @@ const (
 	CodeOverviewSuccess  = 100100
 	CodeOverviewInternal = 100150
 
+	// ── Meta (10) ──────────────────────────────────────────────────────────────
+	CodeMetaSuccess  = 100200
+	CodeMetaInternal = 100250
+
 	// ── Auth (20) ────────────────────────────────────────────────────────────
 	CodeAuthUnauthorized      = 200140
 	CodeAuthInvalidToken      = 200141
