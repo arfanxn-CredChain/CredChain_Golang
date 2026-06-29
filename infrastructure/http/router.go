@@ -7,6 +7,7 @@ import (
 	"CredChain_Golang/domain"
 	"CredChain_Golang/feature/auth"
 	"CredChain_Golang/feature/credential"
+	"CredChain_Golang/feature/meta"
 	"CredChain_Golang/feature/overview"
 	"CredChain_Golang/feature/user"
 	"CredChain_Golang/infrastructure/http/middleware"
@@ -54,6 +55,7 @@ type RouteParams struct {
 	AuthHandler                auth.AuthHandler
 	UserHandler                user.UserHandler
 	CredentialHandler          credential.CredentialHandler
+	MetaHandler                meta.MetaHandler
 	OverviewHandler            overview.OverviewHandler
 	Logger                     *zap.Logger
 	AuthMiddleware             gin.HandlerFunc
@@ -76,6 +78,7 @@ func RegisterRoutes(p RouteParams) {
 		api.GET("/health", func(c *gin.Context) {
 			responder.Send(c, domain.CodeSystemSuccess, gin.H{"status": "ok"})
 		})
+		api.GET("/meta", p.MetaHandler.Get)
 		api.POST("/auth/google", gin.HandlerFunc(p.LoginRateLimitMiddleware), p.AuthHandler.GoogleLogin)
 		api.POST("/auth/refresh", gin.HandlerFunc(p.RefreshRateLimitMiddleware), p.AuthHandler.Refresh)
 		// Public credential verification — used by external verifiers (HR, employers).
