@@ -656,6 +656,8 @@ func (s *credentialService) verifyCountIntersection(ids []domain.CredentialExtra
 // verifyVerdictToCode maps the Python /verify verdict string to a domain code.
 func (s *credentialService) verifyVerdictToCode(verdict string) int {
 	switch verdict {
+	case "authentic":
+		return domain.CodeCredentialVerifyAuthentic
 	case "tampered":
 		return domain.CodeCredentialVerifyTampered
 	case "suspicious":
