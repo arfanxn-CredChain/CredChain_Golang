@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestUserSeeder_Seeds15Users(t *testing.T) {
+func TestUserSeeder_Seeds150Users(t *testing.T) {
 	gormDB := db.OpenInMemorySQLite(t)
 	userRepo := user.NewGormUserRepository(gormDB)
 	ctx := context.Background()
@@ -70,7 +70,7 @@ func TestUserSeeder_Seeds15Users(t *testing.T) {
 	}
 
 	total := len(superAdmins) + len(admins) + len(issuers) + len(holders)
-	assert.Equal(t, 15, total)
+	assert.Equal(t, 150, total)
 
 	deletedCount := 0
 	for _, groups := range [][]domain.User{superAdmins, admins, issuers, holders} {
@@ -80,7 +80,7 @@ func TestUserSeeder_Seeds15Users(t *testing.T) {
 			}
 		}
 	}
-	assert.Equal(t, 5, deletedCount)
+	assert.Equal(t, 10, deletedCount)
 
 	annaDeleted := false
 	for _, u := range holders {
