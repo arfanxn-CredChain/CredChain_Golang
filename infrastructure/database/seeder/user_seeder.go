@@ -27,7 +27,7 @@ func NewUserSeeder(repo domain.UserRepository, mnemonic string, encryptKey strin
 func (s *UserSeeder) Name() string { return "user" }
 
 func (s *UserSeeder) Seed(ctx context.Context) error {
-	seed := seedHashSeed("credchain-seed")
+	seed := hashToSeed("credchain-seed")
 	rng := rand.New(rand.NewSource(seed))
 	gofakeit.Seed(seed)
 
@@ -201,7 +201,7 @@ func seedMustParseDate(date string) *time.Time {
 
 func seedGenderPtr(g domain.Gender) *domain.Gender { return &g }
 
-func seedHashSeed(s string) int64 {
+func hashToSeed(s string) int64 {
 	h := fnv.New64a()
 	h.Write([]byte(s))
 	return int64(h.Sum64())
