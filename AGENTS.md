@@ -26,7 +26,7 @@ make migrate-up-mongo               # Run MongoDB index migrations
 make migrate-down-mongo             # Rollback MongoDB index migrations
 make init-super-admin               # Create super admin (CLI only, not via API)
 make get-google-id-token            # Obtain Google ID token via OAuth (for Postman)
-make seed                           # Run database seeders (populate 15 users)
+make seed                           # Run database seeders (populate 150 users)
 make seed-chain                     # Register seeded users on-chain
 make build                          # Build binary to bin/credchain
 make docker-up-build                # Start all services in Docker
@@ -431,7 +431,7 @@ All under `/api` prefix. Middleware order: `ErrorLoggerMiddleware` → `I18nMidd
 
 **Repository nil-safety (Get):** `Get` and the shared helpers `ApplySorts` / `ApplyPagination` accept a nil `*Query` — nil queries skip search, filters, and pagination, returning all rows. The default sort is still applied.
 
-**Database Seeder:** `infrastructure/database/seeder/` implements a `Seeder` interface with a `Registry` runner accepting variadic `--names` flags, executable via `make seed` and `make seed-chain`. The `UserSeeder` creates 15 users (5 defined + 10 randomised Indonesian names) with wallet keys derived from the standard Hardhat mnemonic via BIP44 (`DeriveKeyFromMnemonic`). All users receive an employee number (NIP, 18-digit `YYYYMMDDYYYYMMXNNN`) for Issuer+ roles or a student number (NIM, `2209XXXX`) for Holder roles. Half the users receive random `{"key":"...}` metadata. Five users are soft-deleted. Chain roles are registered via `make seed-chain`, which reads the database with a nil query and signs a single batch `UpdateUserRole` transaction with the SuperAdmin wallet (Hardhat node #1). SuperAdmin and users whose target role is `RoleNone` on a fresh deploy are skipped to avoid contract reverts (`SuperAdminRoleNotUpdatableError`, `SameRoleUpdateError`). The phone sanitizer (`SanitizePhone`) ensures E.164 compliance for all generated phone numbers.
+**Database Seeder:** `infrastructure/database/seeder/` implements a `Seeder` interface with a `Registry` runner accepting variadic `--names` flags, executable via `make seed` and `make seed-chain`. The `UserSeeder` creates 150 users (5 defined + 145 randomised Indonesian names, 80/20 Holder/Issuer tilt) with wallet keys derived from the standard Hardhat mnemonic via BIP44 (`DeriveKeyFromMnemonic`). All users receive an employee number (NIP, 18-digit `YYYYMMDDYYYYMMXNNN`) for Issuer+ roles or a student number (NIM, `2209XXXX`) for Holder roles. Half the users receive random `{"key":"...}` metadata. Ten users are soft-deleted (Anna Sorokin at index 4 + 9 random users). Chain roles are registered via `make seed-chain`, which reads the database with a nil query and signs batch `UpdateUserRole` transactions in chunks of ≤100 (respecting `MAX_BATCH_ROLE=100` limit in the CredentialAuthority contract) with the SuperAdmin wallet (Hardhat node #1). SuperAdmin and users whose target role is `RoleNone` on a fresh deploy are skipped to avoid contract reverts (`SuperAdminRoleNotUpdatableError`, `SameRoleUpdateError`). The phone sanitizer (`SanitizePhone`) ensures E.164 compliance for all generated phone numbers.
 
 ### Docker
 
