@@ -37,9 +37,9 @@ func (s *UserSeeder) Seed(ctx context.Context) error {
 		return fmt.Errorf("user seeder: store: %w", err)
 	}
 
-	deleteIDs := make([]string, 0, 5)
+	deleteIDs := make([]string, 0, 10)
 	deleteIDs = append(deleteIDs, users[4].Id)
-	for i := 10; i <= 13; i++ {
+	for i := 10; i <= 18; i++ {
 		deleteIDs = append(deleteIDs, users[i].Id)
 	}
 	if _, err := s.repo.Delete(ctx, deleteIDs...); err != nil {
@@ -51,7 +51,7 @@ func (s *UserSeeder) Seed(ctx context.Context) error {
 
 func (s *UserSeeder) seedBuildUsers(rng *rand.Rand) []domain.User {
 	var nipSeq, nimSeq int
-	users := make([]domain.User, 15)
+	users := make([]domain.User, 150)
 
 	users[0] = s.seedBuildUser(seedBuildUserParams{
 		index: 1, name: "Muhammad Arfan", email: "arfan2173@gmail.com",
@@ -94,12 +94,12 @@ func (s *UserSeeder) seedBuildUsers(rng *rand.Rand) []domain.User {
 		number: seedGenerateNIM(&nimSeq),
 	})
 
-	for i := range 10 {
+	for i := range 145 {
 		idx := i + 5
 		walletIdx := uint32(i + 6)
 		role := seedRandomUserRole(rng)
 		name := seedRandomIndonesianName(rng)
-		email := seedNameToEmail(name)
+		email := seedNameToEmail(name, idx)
 		phone := SanitizePhone(seedRandomIndonesianPhone(rng))
 		birthDate := seedRandomBirthDate(rng)
 		gender := seedRandomGender(rng)
@@ -220,7 +220,7 @@ func seedRandomIndonesianName(rng *rand.Rand) string {
 	return seedIndoFirstNames[rng.Intn(len(seedIndoFirstNames))] + " " + seedIndoLastNames[rng.Intn(len(seedIndoLastNames))]
 }
 
-func seedNameToEmail(name string) string {
+func seedNameToEmail(name string, idx int) string {
 	parts := seedSplitName(name)
 	email := ""
 	for i, p := range parts {
@@ -229,7 +229,7 @@ func seedNameToEmail(name string) string {
 		}
 		email += seedToLower(p)
 	}
-	return email + "@gmail.com"
+	return fmt.Sprintf("%s.%d@gmail.com", email, idx)
 }
 
 func seedSplitName(name string) []string {
@@ -288,8 +288,8 @@ func seedRandomGender(rng *rand.Rand) domain.Gender {
 }
 
 var seedUserRoles = []domain.Role{
-	domain.RoleHolder, domain.RoleHolder, domain.RoleHolder,
-	domain.RoleIssuer, domain.RoleIssuer,
+	domain.RoleHolder, domain.RoleHolder, domain.RoleHolder, domain.RoleHolder,
+	domain.RoleIssuer,
 }
 
 func seedRandomUserRole(rng *rand.Rand) domain.Role {
