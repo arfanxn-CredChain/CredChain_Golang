@@ -55,3 +55,11 @@ func (r *mongoCredentialVerificationRepository) Store(ctx context.Context, v dom
 	)
 	return err
 }
+
+func (r *mongoCredentialVerificationRepository) DeleteByUploadedFileHashes(ctx context.Context, hashes []string) error {
+	if len(hashes) == 0 {
+		return nil
+	}
+	_, err := r.coll.DeleteMany(ctx, bson.M{"uploaded_file_hash": bson.M{"$in": hashes}})
+	return err
+}

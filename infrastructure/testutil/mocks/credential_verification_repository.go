@@ -24,4 +24,8 @@ func (m *MockCredentialVerificationRepository) Store(ctx context.Context, verifi
 	return m.Called(ctx, verification).Error(0)
 }
 
+func (m *MockCredentialVerificationRepository) DeleteByUploadedFileHashes(ctx context.Context, hashes []string) error {
+	return m.Called(ctx, hashes).Error(0)
+}
+
 var _ domain.CredentialVerificationRepository = (*MockCredentialVerificationRepository)(nil)

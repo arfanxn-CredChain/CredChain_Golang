@@ -395,12 +395,17 @@ func (s *credentialService) Revoke(ctx context.Context, ids ...string) ([]domain
 	now := time.Now()
 	revokerID := authUser.Id
 
-	var revoked []domain.Credential
+	var (
+		revoked    []domain.Credential
+		fileHashes []string
+	)
 	err := s.uow.Execute(ctx, func(uow domain.UnitOfWork) error {
 		targets, err := uow.Credential().FindByIds(ctx, ids, nil)
 		if err != nil {
 			return err
 		}
+
+		fileHashes = lo.Map(targets, func(c domain.Credential, _ int) string { return c.FileHash })
 
 		targetIds := lo.Map(targets, func(c domain.Credential, _ int) string { return c.ID })
 		missing, _ := lo.Difference(ids, targetIds)
@@ -450,6 +455,11 @@ func (s *credentialService) Revoke(ctx context.Context, ids ...string) ([]domain
 		}
 		return nil
 	})
+	if err == nil && len(fileHashes) > 0 && s.verificationRepo != nil {
+		if delErr := s.verificationRepo.DeleteByUploadedFileHashes(ctx, fileHashes); delErr != nil {
+			s.logger.Warn("failed to delete verification cache entries after revoke", zap.Error(delErr), zap.Strings("file_hashes", fileHashes))
+		}
+	}
 	return revoked, err
 }
 
@@ -477,15 +487,21 @@ func (s *credentialService) Verify(ctx context.Context, file pyai.ExtractFile) (
 			cred, _ = s.repo.Find(ctx, *cached.MatchedCredentialID, verifyQuery)
 		}
 		code := cached.VerdictCode
-		if code == domain.CodeCredentialVerifyAuthentic && cred != nil {
-			holderGone := cred.Holder == nil || cred.Holder.DeletedAt != nil
-			issuerGone := cred.Issuer == nil || cred.Issuer.DeletedAt != nil
-			if holderGone && issuerGone {
-				code = domain.CodeCredentialVerifyPartyDisabled
-			} else if holderGone {
-				code = domain.CodeCredentialVerifyHolderDisabled
-			} else if issuerGone {
-				code = domain.CodeCredentialVerifyIssuerDisabled
+		if code == domain.CodeCredentialVerifyAuthentic {
+			if cred != nil && cred.RevokedAt != nil {
+				code = domain.CodeCredentialVerifyRevoked
+			} else if cred != nil {
+				holderGone := cred.Holder == nil || cred.Holder.DeletedAt != nil
+				issuerGone := cred.Issuer == nil || cred.Issuer.DeletedAt != nil
+				if holderGone && issuerGone {
+					code = domain.CodeCredentialVerifyPartyDisabled
+				} else if holderGone {
+					code = domain.CodeCredentialVerifyHolderDisabled
+				} else if issuerGone {
+					code = domain.CodeCredentialVerifyIssuerDisabled
+				}
+			} else {
+				code = domain.CodeCredentialVerifyIntegrityWarning
 			}
 		}
 		return code, cred, cached.SimilarityScore, cached.SimilarityPercent, nil
@@ -616,6 +632,10 @@ func (s *credentialService) verifyPickBestMatch(ctx context.Context, ranked []do
 	ids := lo.Map(tied, func(e domain.CredentialExtraction, _ int) string { return e.CredentialID })
 	creds, err := s.repo.FindByIds(ctx, ids, nil)
 	if err != nil {
+		s.logger.Warn("verifyPickBestMatch: FindByIds failed, falling back to first candidate",
+			zap.Error(err),
+			zap.Int("candidate_count", len(tied)),
+		)
 		return tied[0]
 	}
 	credByID := lo.SliceToMap(creds, func(c domain.Credential) (string, domain.Credential) { return c.ID, c })

@@ -25,4 +25,7 @@ type CredentialVerificationRepository interface {
 	FindByUploadedFileHash(ctx context.Context, hash string) (*CredentialVerification, error)
 	// Store upserts the cache entry by uploaded_file_hash.
 	Store(ctx context.Context, verification CredentialVerification) error
+	// DeleteByUploadedFileHashes deletes cache entries whose uploaded_file_hash
+	// is in the given list. No-op on empty input. Fails fast if any error.
+	DeleteByUploadedFileHashes(ctx context.Context, hashes []string) error
 }
