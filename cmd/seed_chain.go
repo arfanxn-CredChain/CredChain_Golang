@@ -136,17 +136,30 @@ func seedChainRun(cfg *config.Config, userRepo domain.UserRepository, authorityS
 		EncryptedPrivateKey: encryptedKey,
 	}
 
-	logger.Info("registering users on-chain",
-		zap.Int("count", len(usersToRegister)),
-		zap.String("signer", superAdminWallet.Address),
-	)
+	const maxBatchRole = 100
+	registeredCount := 0
+	for start := 0; start < len(usersToRegister); start += maxBatchRole {
+		end := start + maxBatchRole
+		if end > len(usersToRegister) {
+			end = len(usersToRegister)
+		}
+		chunk := usersToRegister[start:end]
 
-	if err := authorityService.UpdateUserRole(ctx, superAdminWallet, usersToRegister...); err != nil {
-		return fmt.Errorf("seed-chain: on-chain registration: %w", err)
+		logger.Info("registering users on-chain",
+			zap.Int("chunk_size", len(chunk)),
+			zap.Int("chunk_start", start),
+			zap.Int("total", len(usersToRegister)),
+			zap.String("signer", superAdminWallet.Address),
+		)
+
+		if err := authorityService.UpdateUserRole(ctx, superAdminWallet, chunk...); err != nil {
+			return fmt.Errorf("seed-chain: on-chain registration chunk [%d:%d]: %w", start, end, err)
+		}
+		registeredCount += len(chunk)
 	}
 
 	logger.Info("seed-chain completed successfully",
-		zap.Int("users_registered", len(usersToRegister)),
+		zap.Int("users_registered", registeredCount),
 	)
 
 	return nil
