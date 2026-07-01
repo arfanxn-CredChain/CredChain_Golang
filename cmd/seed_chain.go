@@ -205,7 +205,7 @@ func seedChainRun(cfg *config.Config, userRepo domain.UserRepository, credential
 			if c.Holder != nil {
 				holderAddr = c.Holder.WalletAddress
 			}
-			uri := fmt.Sprintf("https://credchain.example.com/metadata/%s", c.ID)
+			uri := c.ID
 			issuances[i] = chain.CredentialIssuance{
 				HolderAddress: holderAddr,
 				Hash:          c.FileHash,

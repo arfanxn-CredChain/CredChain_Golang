@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"CredChain_Golang/config"
 	infraJobs "CredChain_Golang/infrastructure/jobs"
@@ -32,11 +33,24 @@ var migrateUpCmd = &cobra.Command{
 	Use:   "up",
 	Short: "Executes the upward migrations",
 	Run: func(cmd *cobra.Command, args []string) {
-		fx.New(
+		app := fx.New(
 			infraLogger.Module,
 			fx.Provide(NewConfigFromCmd(cmd)),
-			fx.Invoke(migrateUp),
-		).Run()
+			fx.Invoke(func(shutdowner fx.Shutdowner, cfg *config.Config, logger *zap.Logger) {
+				go func() {
+					if err := migrateUp(cfg, logger); err != nil {
+						logger.Error("migrate up failed", zap.Error(err))
+					}
+					shutdowner.Shutdown()
+				}()
+			}),
+		)
+
+		if err := app.Start(context.Background()); err != nil {
+			log.Fatal(err)
+		}
+
+		<-app.Done()
 	},
 }
 
@@ -67,11 +81,24 @@ var migrateDownCmd = &cobra.Command{
 	Use:   "down",
 	Short: "Reverts the schema downwards",
 	Run: func(cmd *cobra.Command, args []string) {
-		fx.New(
+		app := fx.New(
 			infraLogger.Module,
 			fx.Provide(NewConfigFromCmd(cmd)),
-			fx.Invoke(migrateDown),
-		).Run()
+			fx.Invoke(func(shutdowner fx.Shutdowner, cfg *config.Config, logger *zap.Logger) {
+				go func() {
+					if err := migrateDown(cfg, logger); err != nil {
+						logger.Error("migrate down failed", zap.Error(err))
+					}
+					shutdowner.Shutdown()
+				}()
+			}),
+		)
+
+		if err := app.Start(context.Background()); err != nil {
+			log.Fatal(err)
+		}
+
+		<-app.Done()
 	},
 }
 

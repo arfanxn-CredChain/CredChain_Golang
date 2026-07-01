@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"CredChain_Golang/config"
 	infraLogger "CredChain_Golang/infrastructure/logger"
@@ -30,11 +31,24 @@ var migrateMongoUpCmd = &cobra.Command{
 	Use:   "up",
 	Short: "Creates Mongo collections and indexes (idempotent for unchanged options; re-run after changing AI_VERIFICATION_CACHE_TTL_HOURS requires dropping and recreating the TTL index)",
 	Run: func(cmd *cobra.Command, args []string) {
-		fx.New(
+		app := fx.New(
 			infraLogger.Module,
 			fx.Provide(NewConfigFromCmd(cmd)),
-			fx.Invoke(migrateMongoUp),
-		).Run()
+			fx.Invoke(func(shutdowner fx.Shutdowner, cfg *config.Config, logger *zap.Logger) {
+				go func() {
+					if err := migrateMongoUp(cfg, logger); err != nil {
+						logger.Error("migrate-mongo up failed", zap.Error(err))
+					}
+					shutdowner.Shutdown()
+				}()
+			}),
+		)
+
+		if err := app.Start(context.Background()); err != nil {
+			log.Fatal(err)
+		}
+
+		<-app.Done()
 	},
 }
 
@@ -77,11 +91,24 @@ var migrateMongoDownCmd = &cobra.Command{
 	Use:   "down",
 	Short: "Drops Mongo collections (destructive)",
 	Run: func(cmd *cobra.Command, args []string) {
-		fx.New(
+		app := fx.New(
 			infraLogger.Module,
 			fx.Provide(NewConfigFromCmd(cmd)),
-			fx.Invoke(migrateMongoDown),
-		).Run()
+			fx.Invoke(func(shutdowner fx.Shutdowner, cfg *config.Config, logger *zap.Logger) {
+				go func() {
+					if err := migrateMongoDown(cfg, logger); err != nil {
+						logger.Error("migrate-mongo down failed", zap.Error(err))
+					}
+					shutdowner.Shutdown()
+				}()
+			}),
+		)
+
+		if err := app.Start(context.Background()); err != nil {
+			log.Fatal(err)
+		}
+
+		<-app.Done()
 	},
 }
 

@@ -60,7 +60,7 @@ Examples:
 					mnemonic := seedGetHardhatMnemonic(cfg)
 					return seeder.NewRegistry(
 						seeder.NewUserSeeder(userRepo, mnemonic, *cfg.WalletEncryptionKey),
-						seeder.NewCredentialSeeder(credentialRepo, userRepo, fs, 1),
+						seeder.NewCredentialSeeder(credentialRepo, userRepo, fs, cfg, 1),
 						seeder.NewCredentialExtractionSeeder(extractionRepo, credentialRepo),
 					)
 				},

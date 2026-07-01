@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os/exec"
@@ -135,11 +136,24 @@ Workflow:
   5. Server receives the code and exchanges it for tokens
   6. ID token is printed to stdout`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fx.New(
+		app := fx.New(
 			infraLogger.Module,
 			fx.Provide(NewConfigFromCmd(cmd)),
-			fx.Invoke(getGoogleIdToken),
-		).Run()
+			fx.Invoke(func(shutdowner fx.Shutdowner, cfg *config.Config, logger *zap.Logger) {
+				go func() {
+					if err := getGoogleIdToken(cfg, logger); err != nil {
+						logger.Error("get-google-id-token failed", zap.Error(err))
+					}
+					shutdowner.Shutdown()
+				}()
+			}),
+		)
+
+		if err := app.Start(context.Background()); err != nil {
+			log.Fatal(err)
+		}
+
+		<-app.Done()
 	},
 }
 
