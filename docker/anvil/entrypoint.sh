@@ -9,6 +9,7 @@ if [ -f "${STATE_FILE}" ]; then
         --host 0.0.0.0 \
         --port 8545 \
         --mnemonic "test test test test test test test test test test test junk" \
+        --gas-limit 100000000 \
         --dump-state "${STATE_FILE}" \
         --load-state "${STATE_FILE}"
 else
@@ -17,5 +18,6 @@ else
         --host 0.0.0.0 \
         --port 8545 \
         --mnemonic "test test test test test test test test test test test junk" \
+        --gas-limit 100000000 \
         --dump-state "${STATE_FILE}"
 fi
