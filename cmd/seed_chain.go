@@ -7,6 +7,8 @@ import (
 
 	"CredChain_Golang/config"
 	"CredChain_Golang/domain"
+	domainQuery "CredChain_Golang/domain/query"
+	"CredChain_Golang/feature/credential"
 	"CredChain_Golang/feature/user"
 	"CredChain_Golang/infrastructure/chain"
 	cryptoInfra "CredChain_Golang/infrastructure/crypto"
@@ -50,12 +52,14 @@ Examples:
 				NewConfigFromCmd(cmd),
 				gormInfra.NewGorm,
 				user.NewGormUserRepository,
+				credential.NewGormCredentialRepository,
 				chain.NewClient,
 				chain.NewAuthorityService,
+				chain.NewRegistryService,
 			),
-			fx.Invoke(func(shutdowner fx.Shutdowner, cfg *config.Config, userRepo domain.UserRepository, authorityService chain.AuthorityService, logger *zap.Logger) {
+			fx.Invoke(func(shutdowner fx.Shutdowner, cfg *config.Config, userRepo domain.UserRepository, credentialRepo domain.CredentialRepository, authorityService chain.AuthorityService, registryService chain.RegistryService, logger *zap.Logger) {
 				go func() {
-					if err := seedChainRun(cfg, userRepo, authorityService, seedChainNames, logger); err != nil {
+					if err := seedChainRun(cfg, userRepo, credentialRepo, authorityService, registryService, seedChainNames, logger); err != nil {
 						logger.Error("seed-chain failed", zap.Error(err))
 					}
 					shutdowner.Shutdown()
@@ -74,7 +78,10 @@ Examples:
 // seedChainRun reads all users from PostgreSQL via a single Get query,
 // derives the SuperAdmin wallet (mnemonic index 1), and registers every
 // non-None-role user on-chain in one batch transaction.
-func seedChainRun(cfg *config.Config, userRepo domain.UserRepository, authorityService chain.AuthorityService, names []string, logger *zap.Logger) error {
+//
+// After role registration, it also mints credentials on-chain for any
+// credentials whose TokenID is nil (not yet minted).
+func seedChainRun(cfg *config.Config, userRepo domain.UserRepository, credentialRepo domain.CredentialRepository, authorityService chain.AuthorityService, registryService chain.RegistryService, names []string, logger *zap.Logger) error {
 	ctx := context.Background()
 	mnemonic := seedGetHardhatMnemonic(cfg)
 
@@ -158,8 +165,80 @@ func seedChainRun(cfg *config.Config, userRepo domain.UserRepository, authorityS
 		registeredCount += len(chunk)
 	}
 
+	// ── Credential minting ──────────────────────────────────────────────
+
+	logger.Info("reading credentials for on-chain minting")
+
+	credQuery := &domainQuery.Query{
+		Includes: []string{"holder"},
+	}
+	allCredentials, credTotal, err := credentialRepo.Get(ctx, credQuery)
+	if err != nil {
+		return fmt.Errorf("seed-chain: read credentials: %w", err)
+	}
+
+	var credentialsToMint []domain.Credential
+	for _, c := range allCredentials {
+		if c.TokenID != nil {
+			continue
+		}
+		credentialsToMint = append(credentialsToMint, c)
+	}
+
+	logger.Info("credentials loaded for minting",
+		zap.Int("total_in_db", credTotal),
+		zap.Int("to_mint", len(credentialsToMint)),
+	)
+
+	const maxBatchCredential = 100
+	mintedCount := 0
+	for start := 0; start < len(credentialsToMint); start += maxBatchCredential {
+		end := start + maxBatchCredential
+		if end > len(credentialsToMint) {
+			end = len(credentialsToMint)
+		}
+		chunk := credentialsToMint[start:end]
+
+		issuances := make([]chain.CredentialIssuance, len(chunk))
+		for i, c := range chunk {
+			holderAddr := ""
+			if c.Holder != nil {
+				holderAddr = c.Holder.WalletAddress
+			}
+			uri := fmt.Sprintf("https://credchain.example.com/metadata/%s", c.ID)
+			issuances[i] = chain.CredentialIssuance{
+				HolderAddress: holderAddr,
+				Hash:          c.FileHash,
+				URI:           uri,
+			}
+		}
+
+		logger.Info("minting credentials on-chain",
+			zap.Int("chunk_size", len(chunk)),
+			zap.Int("chunk_start", start),
+			zap.Int("total", len(credentialsToMint)),
+			zap.String("signer", superAdminWallet.Address),
+		)
+
+		tokenIds, err := registryService.IssueCredentials(ctx, superAdminWallet, issuances...)
+		if err != nil {
+			return fmt.Errorf("seed-chain: on-chain minting chunk [%d:%d]: %w", start, end, err)
+		}
+
+		for i := range chunk {
+			tid := tokenIds[i].String()
+			chunk[i].TokenID = &tid
+		}
+		if _, err := credentialRepo.Update(ctx, chunk...); err != nil {
+			return fmt.Errorf("seed-chain: update token IDs chunk [%d:%d]: %w", start, end, err)
+		}
+
+		mintedCount += len(chunk)
+	}
+
 	logger.Info("seed-chain completed successfully",
 		zap.Int("users_registered", registeredCount),
+		zap.Int("credentials_minted", mintedCount),
 	)
 
 	return nil
