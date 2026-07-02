@@ -10,7 +10,6 @@ import (
 	"CredChain_Golang/domain"
 	cryptoInfra "CredChain_Golang/infrastructure/crypto"
 
-	"github.com/brianvoe/gofakeit/v7"
 	"github.com/samber/lo"
 )
 
@@ -29,72 +28,80 @@ func (s *UserSeeder) Name() string { return "user" }
 func (s *UserSeeder) Seed(ctx context.Context) error {
 	seed := hashToSeed("credchain-seed")
 	rng := rand.New(rand.NewSource(seed))
-	gofakeit.Seed(seed)
 
 	users := s.seedBuildUsers(rng)
+
 	_, err := s.repo.Store(ctx, users...)
 	if err != nil {
 		return fmt.Errorf("user seeder: store: %w", err)
-	}
-
-	deleteIDs := make([]string, 0, 10)
-	deleteIDs = append(deleteIDs, users[4].Id)
-	for i := 10; i <= 18; i++ {
-		deleteIDs = append(deleteIDs, users[i].Id)
-	}
-	if _, err := s.repo.Delete(ctx, deleteIDs...); err != nil {
-		return fmt.Errorf("user seeder: delete: %w", err)
 	}
 
 	return nil
 }
 
 func (s *UserSeeder) seedBuildUsers(rng *rand.Rand) []domain.User {
+	baseTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	var nipSeq, nimSeq int
-	users := make([]domain.User, 150)
+	users := make([]domain.User, 15)
 
+	createdAt0 := baseTime.Add(time.Duration(rng.Int63n(365)) * 24 * time.Hour)
 	users[0] = s.seedBuildUser(seedBuildUserParams{
 		index: 1, name: "Muhammad Arfan", email: "arfan2173@gmail.com",
 		phoneNumber: lo.ToPtr("+6289506089254"), birthDate: seedMustParseDate("2003-07-21"),
-		gender: seedGenderPtr(domain.GenderOther),
-		meta:   map[string]any{"key": "A1B2C3D4"},
-		role:   domain.RoleSuperAdmin,
-		number: seedGenerateNIP(time.Date(2003, 7, 21, 0, 0, 0, 0, time.UTC), seedGenderPtr(domain.GenderOther), &nipSeq),
+		gender:    seedGenderPtr(domain.GenderOther),
+		meta:      map[string]any{"key": "A1B2C3D4"},
+		role:      domain.RoleSuperAdmin,
+		number:    seedGenerateNIP(time.Date(2003, 7, 21, 0, 0, 0, 0, time.UTC), seedGenderPtr(domain.GenderOther), &nipSeq),
+		createdAt: createdAt0,
+		updatedAt: lo.ToPtr(createdAt0.Add(time.Duration(1+rng.Int63n(30)) * 24 * time.Hour)),
 	})
 
+	createdAt1 := baseTime.Add(time.Duration(rng.Int63n(365)) * 24 * time.Hour)
 	users[1] = s.seedBuildUser(seedBuildUserParams{
 		index: 2, name: "Project", email: "arfanforproject@gmail.com",
 		birthDate: seedMustParseDate("1992-05-15"),
 		role:      domain.RoleAdmin,
 		number:    seedGenerateNIP(time.Date(1992, 5, 15, 0, 0, 0, 0, time.UTC), nil, &nipSeq),
+		createdAt: createdAt1,
+		updatedAt: lo.ToPtr(createdAt1.Add(time.Duration(1+rng.Int63n(30)) * 24 * time.Hour)),
 	})
 
+	createdAt2 := baseTime.Add(time.Duration(rng.Int63n(365)) * 24 * time.Hour)
 	users[2] = s.seedBuildUser(seedBuildUserParams{
 		index: 3, name: "Edy Susilo", email: "edysusilo17580@gmail.com",
 		phoneNumber: lo.ToPtr("+6285228296172"), birthDate: seedMustParseDate("1980-05-17"),
-		gender: seedGenderPtr(domain.GenderMale),
-		meta:   map[string]any{"key": "E5F6G7H8"},
-		role:   domain.RoleIssuer,
-		number: seedGenerateNIP(time.Date(1980, 5, 17, 0, 0, 0, 0, time.UTC), seedGenderPtr(domain.GenderMale), &nipSeq),
+		gender:    seedGenderPtr(domain.GenderMale),
+		meta:      map[string]any{"key": "E5F6G7H8"},
+		role:      domain.RoleIssuer,
+		number:    seedGenerateNIP(time.Date(1980, 5, 17, 0, 0, 0, 0, time.UTC), seedGenderPtr(domain.GenderMale), &nipSeq),
+		createdAt: createdAt2,
+		updatedAt: lo.ToPtr(createdAt2.Add(time.Duration(1+rng.Int63n(30)) * 24 * time.Hour)),
 	})
 
+	createdAt3 := baseTime.Add(time.Duration(rng.Int63n(365)) * 24 * time.Hour)
 	users[3] = s.seedBuildUser(seedBuildUserParams{
 		index: 4, name: "Liesbeth Stifanny", email: "liesbethsh19@gmail.com",
 		phoneNumber: lo.ToPtr("+6289676624902"), birthDate: seedMustParseDate("2003-09-19"),
-		gender: seedGenderPtr(domain.GenderFemale),
-		role:   domain.RoleHolder,
-		number: seedGenerateNIM(&nimSeq),
+		gender:    seedGenderPtr(domain.GenderFemale),
+		role:      domain.RoleHolder,
+		number:    seedGenerateNIM(&nimSeq),
+		createdAt: createdAt3,
+		updatedAt: &createdAt3,
 	})
 
+	createdAt4 := baseTime.Add(time.Duration(rng.Int63n(365)) * 24 * time.Hour)
 	users[4] = s.seedBuildUser(seedBuildUserParams{
 		index: 5, name: "Anna Sorokin", email: "annasorokin2173@gmail.com",
-		gender: seedGenderPtr(domain.GenderFemale),
-		meta:   map[string]any{"key": "I9J0K1L2"},
-		role:   domain.RoleHolder,
-		number: seedGenerateNIM(&nimSeq),
+		gender:    seedGenderPtr(domain.GenderFemale),
+		meta:      map[string]any{"key": "I9J0K1L2"},
+		role:      domain.RoleHolder,
+		number:    seedGenerateNIM(&nimSeq),
+		createdAt: createdAt4,
+		updatedAt: &createdAt4,
+		deletedAt: lo.ToPtr(createdAt4.Add(time.Duration(1+rng.Int63n(180)) * 24 * time.Hour)),
 	})
 
-	for i := range 145 {
+	for i := range 10 {
 		idx := i + 5
 		walletIdx := uint32(i + 6)
 		role := seedRandomUserRole(rng)
@@ -116,6 +123,23 @@ func (s *UserSeeder) seedBuildUsers(rng *rand.Rand) []domain.User {
 			number = seedGenerateNIM(&nimSeq)
 		}
 
+		createdAt := baseTime.Add(time.Duration(rng.Int63n(365)) * 24 * time.Hour)
+		var updatedAt *time.Time
+		if role == domain.RoleIssuer {
+			updatedAt = lo.ToPtr(createdAt.Add(time.Duration(1+rng.Int63n(30)) * 24 * time.Hour))
+		} else {
+			updatedAt = &createdAt
+		}
+
+		var deletedAt *time.Time
+		if i >= 5 && i <= 8 {
+			t := updatedAt
+			if t == nil {
+				t = &createdAt
+			}
+			deletedAt = lo.ToPtr((*t).Add(time.Duration(1+rng.Int63n(180)) * 24 * time.Hour))
+		}
+
 		users[idx] = s.seedBuildUser(seedBuildUserParams{
 			index:       walletIdx,
 			name:        name,
@@ -126,6 +150,9 @@ func (s *UserSeeder) seedBuildUsers(rng *rand.Rand) []domain.User {
 			meta:        meta,
 			role:        role,
 			number:      number,
+			createdAt:   createdAt,
+			updatedAt:   updatedAt,
+			deletedAt:   deletedAt,
 		})
 	}
 
@@ -142,6 +169,9 @@ type seedBuildUserParams struct {
 	meta        map[string]any
 	role        domain.Role
 	number      string
+	createdAt   time.Time
+	updatedAt   *time.Time
+	deletedAt   *time.Time
 }
 
 func (s *UserSeeder) seedBuildUser(p seedBuildUserParams) domain.User {
@@ -153,12 +183,17 @@ func (s *UserSeeder) seedBuildUser(p seedBuildUserParams) domain.User {
 	if err != nil {
 		panic(fmt.Sprintf("failed to encrypt key for index %d: %v", p.index, err))
 	}
+	updatedAt := p.updatedAt
+	if updatedAt == nil {
+		updatedAt = &p.createdAt
+	}
 	return domain.User{
 		Name: lo.ToPtr(p.name), Number: lo.ToPtr(p.number),
 		PhoneNumber: p.phoneNumber, Email: p.email,
 		Gender: p.gender, BirthDate: p.birthDate,
 		Meta: p.meta, Role: p.role,
 		WalletAddress: address, EncryptedWalletPrivateKey: encryptedKey,
+		CreatedAt: p.createdAt, UpdatedAt: updatedAt, DeletedAt: p.deletedAt,
 	}
 }
 
@@ -288,8 +323,8 @@ func seedRandomGender(rng *rand.Rand) domain.Gender {
 }
 
 var seedUserRoles = []domain.Role{
-	domain.RoleHolder, domain.RoleHolder, domain.RoleHolder, domain.RoleHolder,
-	domain.RoleIssuer,
+	domain.RoleHolder, domain.RoleHolder, domain.RoleHolder,
+	domain.RoleIssuer, domain.RoleIssuer,
 }
 
 func seedRandomUserRole(rng *rand.Rand) domain.Role {

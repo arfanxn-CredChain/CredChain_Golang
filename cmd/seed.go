@@ -7,13 +7,10 @@ import (
 
 	"CredChain_Golang/config"
 	"CredChain_Golang/domain"
-	"CredChain_Golang/feature/credential"
 	"CredChain_Golang/feature/user"
 	gormInfra "CredChain_Golang/infrastructure/database/gorm"
-	infraMongo "CredChain_Golang/infrastructure/database/mongo"
 	"CredChain_Golang/infrastructure/database/seeder"
 	infraLogger "CredChain_Golang/infrastructure/logger"
-	"CredChain_Golang/infrastructure/storage"
 
 	"github.com/spf13/cobra"
 	"go.uber.org/fx"
@@ -50,18 +47,11 @@ Examples:
 			fx.Provide(
 				NewConfigFromCmd(cmd),
 				gormInfra.NewGorm,
-				infraMongo.NewClient,
-				infraMongo.NewDatabase,
 				user.NewGormUserRepository,
-				credential.NewGormCredentialRepository,
-				credential.NewMongoCredentialExtractionRepository,
-				storage.NewStorage,
-				func(userRepo domain.UserRepository, credentialRepo domain.CredentialRepository, extractionRepo domain.CredentialExtractionRepository, fs *storage.Storage, cfg *config.Config) *seeder.Registry {
+				func(userRepo domain.UserRepository, cfg *config.Config) *seeder.Registry {
 					mnemonic := seedGetHardhatMnemonic(cfg)
 					return seeder.NewRegistry(
 						seeder.NewUserSeeder(userRepo, mnemonic, *cfg.WalletEncryptionKey),
-						seeder.NewCredentialSeeder(credentialRepo, userRepo, fs, cfg, 1),
-						seeder.NewCredentialExtractionSeeder(extractionRepo, credentialRepo),
 					)
 				},
 			),
