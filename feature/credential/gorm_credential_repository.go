@@ -185,7 +185,7 @@ func (r *gormCredentialRepository) Get(ctx context.Context, query *domainQuery.Q
 		return nil, 0, err
 	}
 
-	db = gormhelpers.ApplySorts(db, query, allowedSortColumns, "credentials.issued_at DESC", mapSortColumn)
+	db = gormhelpers.ApplySorts(db, query, allowedSortColumns, "credentials.issued_at DESC", mapSortColumn, "credentials.id ASC")
 	db = preloadByIncludes(db, query)
 	db = gormhelpers.ApplyPagination(db, query)
 

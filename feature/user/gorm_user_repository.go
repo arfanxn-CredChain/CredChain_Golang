@@ -81,7 +81,7 @@ func (r *gormUserRepository) Get(ctx context.Context, query *domainQuery.Query) 
 		return nil, 0, err
 	}
 
-	db = gormhelpers.ApplySorts(db, query, allowedSortColumns, "updated_at DESC", nil)
+	db = gormhelpers.ApplySorts(db, query, allowedSortColumns, "updated_at DESC", nil, "id ASC")
 	db = gormhelpers.ApplyPagination(db, query)
 
 	var users []model.User

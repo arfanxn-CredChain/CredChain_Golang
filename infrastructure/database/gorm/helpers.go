@@ -56,9 +56,13 @@ func ApplyFilters(db *gorm.DB, filters []domainQuery.Filter, allowedColumns map[
 	return db
 }
 
-func ApplySorts(db *gorm.DB, q *domainQuery.Query, allowedColumns map[string]bool, defaultSort string, mapper func(string) string) *gorm.DB {
+func ApplySorts(db *gorm.DB, q *domainQuery.Query, allowedColumns map[string]bool, defaultSort string, mapper func(string) string, tiebreaker string) *gorm.DB {
 	if q == nil {
-		return db.Order(defaultSort)
+		db = db.Order(defaultSort)
+		if tiebreaker != "" {
+			db = db.Order(tiebreaker)
+		}
+		return db
 	}
 	appliedAny := false
 	if q.HasSorts() {
@@ -76,6 +80,9 @@ func ApplySorts(db *gorm.DB, q *domainQuery.Query, allowedColumns map[string]boo
 	}
 	if !appliedAny {
 		db = db.Order(defaultSort)
+	}
+	if tiebreaker != "" {
+		db = db.Order(tiebreaker)
 	}
 	return db
 }

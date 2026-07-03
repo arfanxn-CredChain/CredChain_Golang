@@ -218,7 +218,7 @@ Each domain folder under `feature/` follows the same five-file pattern:
 | Helper | Purpose |
 |--------|---------|
 | `ApplyFilters(db, filters, allowedColumns, columnPrefix)` | Maps all 14 `domainQuery.Filter` operators to GORM Where clauses, gated by a column allowlist with optional table prefix |
-| `ApplySorts(db, query, allowedColumns, defaultSort, mapper)` | Applies sort clauses with column allowlist, falls back to `defaultSort` when no sorts or all filtered out; supports column name translation via `mapper` |
+| `ApplySorts(db, query, allowedColumns, defaultSort, mapper, tiebreaker)` | Applies sort clauses with column allowlist, falls back to `defaultSort` when no sorts or all filtered out; supports column name translation via `mapper`; appends `tiebreaker` (e.g., `"id ASC"`) for deterministic pagination |
 | `ApplyPagination(db, query)` | Applies `LIMIT`/`OFFSET` when query has pagination |
 | `BuildCaseColumnSQL(idColumn, col, pairs)` | Generates `col = CASE idColumn WHEN ? THEN ? ELSE col END` for batch partial UPDATEs |
 | `BuildBatchUpdateSQL(table, idColumn, clauses, args, ids, extra...)` | Assembles complete `UPDATE table SET ... WHERE idColumn IN (?)` batch statement with optional extra set clauses (e.g., `updated_at = CURRENT_TIMESTAMP`) |

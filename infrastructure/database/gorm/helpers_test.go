@@ -83,11 +83,12 @@ func TestApplySorts_WithSorts(t *testing.T) {
 			Sorts: []domainQuery.Sort{
 				{Column: "name", Order: domainQuery.SortAsc},
 			},
-		}, allowed, "created_at DESC", nil)
+		}, allowed, "created_at DESC", nil, "")
 		var out []model.User
 		return tx.Find(&out)
 	})
-	assert.Contains(t, sql, "ORDER BY name ASC")
+	assert.Contains(t, sql, "ORDER BY")
+	assert.Contains(t, sql, "name ASC")
 }
 
 func TestApplySorts_DefaultSort(t *testing.T) {
@@ -98,11 +99,12 @@ func TestApplySorts_DefaultSort(t *testing.T) {
 		tx = tx.Model(&model.User{})
 		tx = ApplySorts(tx, &domainQuery.Query{
 			Sorts: []domainQuery.Sort{},
-		}, allowed, "updated_at DESC", nil)
+		}, allowed, "updated_at DESC", nil, "")
 		var out []model.User
 		return tx.Find(&out)
 	})
-	assert.Contains(t, sql, "ORDER BY updated_at DESC")
+	assert.Contains(t, sql, "ORDER BY")
+	assert.Contains(t, sql, "updated_at DESC")
 }
 
 func TestApplySorts_WithColumnMapper(t *testing.T) {
@@ -122,11 +124,12 @@ func TestApplySorts_WithColumnMapper(t *testing.T) {
 			Sorts: []domainQuery.Sort{
 				{Column: "holder_name", Order: domainQuery.SortDesc},
 			},
-		}, allowed, "issued_at DESC", mapper)
+		}, allowed, "issued_at DESC", mapper, "")
 		var out []model.User
 		return tx.Find(&out)
 	})
-	assert.Contains(t, sql, "ORDER BY holder.name DESC")
+	assert.Contains(t, sql, "ORDER BY")
+	assert.Contains(t, sql, "holder.name DESC")
 }
 
 func TestApplySorts_NotInAllowlist(t *testing.T) {
@@ -139,12 +142,60 @@ func TestApplySorts_NotInAllowlist(t *testing.T) {
 			Sorts: []domainQuery.Sort{
 				{Column: "secret", Order: domainQuery.SortDesc},
 			},
-		}, allowed, "updated_at DESC", nil)
+		}, allowed, "updated_at DESC", nil, "")
 		var out []model.User
 		return tx.Find(&out)
 	})
 	assert.NotContains(t, sql, "secret")
 	assert.Contains(t, sql, "updated_at DESC")
+}
+
+func TestApplySorts_WithTiebreaker(t *testing.T) {
+	gdb := db.OpenInMemorySQLite(t)
+	allowed := map[string]bool{"id": true, "name": true}
+
+	sql := gdb.ToSQL(func(tx *gorm.DB) *gorm.DB {
+		tx = tx.Model(&model.User{})
+		tx = ApplySorts(tx, &domainQuery.Query{
+			Sorts: []domainQuery.Sort{
+				{Column: "name", Order: domainQuery.SortAsc},
+			},
+		}, allowed, "created_at DESC", nil, "id ASC")
+		var out []model.User
+		return tx.Find(&out)
+	})
+	assert.Contains(t, sql, "name ASC")
+	assert.Contains(t, sql, "id ASC")
+}
+
+func TestApplySorts_DefaultTiebreaker(t *testing.T) {
+	gdb := db.OpenInMemorySQLite(t)
+	allowed := map[string]bool{"id": true}
+
+	sql := gdb.ToSQL(func(tx *gorm.DB) *gorm.DB {
+		tx = tx.Model(&model.User{})
+		tx = ApplySorts(tx, &domainQuery.Query{
+			Sorts: []domainQuery.Sort{},
+		}, allowed, "updated_at DESC", nil, "id ASC")
+		var out []model.User
+		return tx.Find(&out)
+	})
+	assert.Contains(t, sql, "updated_at DESC")
+	assert.Contains(t, sql, "id ASC")
+}
+
+func TestApplySorts_NilQueryTiebreaker(t *testing.T) {
+	gdb := db.OpenInMemorySQLite(t)
+	allowed := map[string]bool{"id": true}
+
+	sql := gdb.ToSQL(func(tx *gorm.DB) *gorm.DB {
+		tx = tx.Model(&model.User{})
+		tx = ApplySorts(tx, nil, allowed, "created_at DESC", nil, "id ASC")
+		var out []model.User
+		return tx.Find(&out)
+	})
+	assert.Contains(t, sql, "created_at DESC")
+	assert.Contains(t, sql, "id ASC")
 }
 
 func TestApplyFilters_LikeCaseInsensitive(t *testing.T) {
