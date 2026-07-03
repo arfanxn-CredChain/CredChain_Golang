@@ -67,6 +67,7 @@
     "error_invalid_token": "Unauthorized: invalid token.",
     "error_forbidden": "Forbidden: insufficient permissions.",
     "error_google_token_invalid": "Invalid Google id_token.",
+    "error_account_deleted": "Your account has been deactivated. Please contact an Administrator to restore access.",
     "error_google_email_missing": "Email not found in Google id_token.",
     "error_unauthorized_email": "Unauthorized email. Please contact an Administrator to create your account first.",
     "error_token_issue_failed": "Failed to issue access token.",

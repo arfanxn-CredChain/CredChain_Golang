@@ -67,6 +67,7 @@
     "error_invalid_token": "Akses ditolak: token tidak valid.",
     "error_forbidden": "Akses ditolak: izin tidak mencukupi.",
     "error_google_token_invalid": "id_token Google tidak valid.",
+    "error_account_deleted": "Akun Anda telah dinonaktifkan. Silakan hubungi Administrator untuk memulihkan akses.",
     "error_google_email_missing": "Email tidak ditemukan di id_token Google.",
     "error_unauthorized_email": "Email belum diizinkan. Silakan hubungi Administrator untuk membuat akun Anda terlebih dahulu.",
     "error_token_issue_failed": "Gagal menerbitkan token akses.",

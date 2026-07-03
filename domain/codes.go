@@ -27,8 +27,8 @@ const (
 	CodeAuthRateLimitExceeded = 200143
 
 	// ── Auth Google Login (20) ───────────────────────────────────────────────
-	CodeAuthGoogleLoginSuccess      = 200200
-	CodeAuthGoogleLoginInvalidToken = 200241
+	CodeAuthGoogleLoginSuccess        = 200200
+	CodeAuthGoogleLoginInvalidToken   = 200241
 	CodeAuthGoogleLoginUserNotFound   = 200242
 	CodeAuthGoogleLoginAccountDeleted = 200243
 	CodeAuthGoogleLoginJWTFailed      = 200250
