@@ -31,6 +31,7 @@ var allDomainCodes = []int{
 	domain.CodeAuthGoogleLoginSuccess,
 	domain.CodeAuthGoogleLoginInvalidToken,
 	domain.CodeAuthGoogleLoginUserNotFound,
+	domain.CodeAuthGoogleLoginAccountDeleted,
 	domain.CodeAuthGoogleLoginJWTFailed,
 	// Auth Refresh
 	domain.CodeAuthRefreshSuccess,
