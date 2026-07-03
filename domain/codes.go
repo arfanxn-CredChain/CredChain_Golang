@@ -29,8 +29,9 @@ const (
 	// ── Auth Google Login (20) ───────────────────────────────────────────────
 	CodeAuthGoogleLoginSuccess      = 200200
 	CodeAuthGoogleLoginInvalidToken = 200241
-	CodeAuthGoogleLoginUserNotFound = 200242
-	CodeAuthGoogleLoginJWTFailed    = 200250
+	CodeAuthGoogleLoginUserNotFound   = 200242
+	CodeAuthGoogleLoginAccountDeleted = 200243
+	CodeAuthGoogleLoginJWTFailed      = 200250
 
 	// ── Auth Refresh (20) ──────────────────────────────────────────────
 	CodeAuthRefreshSuccess      = 200300

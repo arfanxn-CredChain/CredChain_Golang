@@ -66,6 +66,10 @@ func (s *authService) GoogleLogin(ctx context.Context, idToken string) (domain.U
 	}
 	user := users[0]
 
+	if user.DeletedAt != nil {
+		return domain.User{}, domain.UserToken{}, "", domain.NewError(domain.CodeAuthGoogleLoginAccountDeleted)
+	}
+
 	_, err = s.userTokenRepo.RevokeByUserIdAndType(ctx, user.Id, domain.UserTokenTypeRefresh)
 	if err != nil {
 		return domain.User{}, domain.UserToken{}, "", domain.NewError(domain.CodeSystemInternal, domain.WithError(err))
