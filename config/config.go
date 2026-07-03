@@ -40,6 +40,7 @@ type Config struct {
 	DBMaxOpenConns                     *int
 	DBMaxIdleConns                     *int
 	DBConnMaxLifetime                  *int
+	DBConnMaxIdleTime                  *int
 	MongoInitDBUsername                *string
 	MongoInitPassword                  *string
 	MongoURI                           *string
@@ -113,6 +114,7 @@ func NewConfig(envPath string) (*Config, error) {
 	defaultDBMaxOpenConns := 25
 	defaultDBMaxIdleConns := 25
 	defaultDBConnMaxLifetime := 5
+	defaultDBConnMaxIdleTime := 1
 	defaultGinCorsMaxAge := 43200
 	defaultGinCorsAllowCredentials := true
 	defaultCORSOrigins := []string{"*"}
@@ -163,6 +165,7 @@ func NewConfig(envPath string) (*Config, error) {
 		DBMaxOpenConns:                     getIntEnv("DB_MAX_OPEN_CONNS", &defaultDBMaxOpenConns),
 		DBMaxIdleConns:                     getIntEnv("DB_MAX_IDLE_CONNS", &defaultDBMaxIdleConns),
 		DBConnMaxLifetime:                  getIntEnv("DB_CONN_MAX_LIFETIME", &defaultDBConnMaxLifetime),
+		DBConnMaxIdleTime:                  getIntEnv("DB_CONN_MAX_IDLE_TIME", &defaultDBConnMaxIdleTime),
 		MongoInitDBUsername:                getEnv("MONGO_INIT_DB_USERNAME", nil),
 		MongoInitPassword:                  getEnv("MONGO_INITDB_ROOT_PASSWORD", nil),
 		MongoURI:                           getEnv("MONGO_URI", nil),
