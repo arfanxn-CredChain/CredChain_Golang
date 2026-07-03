@@ -29,8 +29,9 @@ var CodeToMessageKey = map[int]string{
 	// Auth Google Login codes
 	domain.CodeAuthGoogleLoginSuccess:      "success_login",
 	domain.CodeAuthGoogleLoginInvalidToken: "error_google_token_invalid",
-	domain.CodeAuthGoogleLoginUserNotFound: "error_unauthorized_email",
-	domain.CodeAuthGoogleLoginJWTFailed:    "error_token_issue_failed",
+	domain.CodeAuthGoogleLoginUserNotFound:    "error_unauthorized_email",
+	domain.CodeAuthGoogleLoginAccountDeleted: "error_account_deleted",
+	domain.CodeAuthGoogleLoginJWTFailed:      "error_token_issue_failed",
 
 	// Auth Refresh codes
 	domain.CodeAuthRefreshSuccess:      "success_login",
@@ -159,8 +160,9 @@ var HttpCodes = map[int]int{
 
 	domain.CodeAuthGoogleLoginSuccess:      http.StatusOK,
 	domain.CodeAuthGoogleLoginInvalidToken: http.StatusUnauthorized,
-	domain.CodeAuthGoogleLoginUserNotFound: http.StatusForbidden,
-	domain.CodeAuthGoogleLoginJWTFailed:    http.StatusInternalServerError,
+	domain.CodeAuthGoogleLoginUserNotFound:    http.StatusForbidden,
+	domain.CodeAuthGoogleLoginAccountDeleted: http.StatusForbidden,
+	domain.CodeAuthGoogleLoginJWTFailed:      http.StatusInternalServerError,
 
 	domain.CodeAuthRefreshSuccess:      http.StatusOK,
 	domain.CodeAuthRefreshInvalidToken: http.StatusUnauthorized,
