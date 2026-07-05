@@ -50,3 +50,6 @@ docker/anvil/data/
 
 # User uploads
 uploads/
+
+# Benchmark output directory
+benchmarks/
