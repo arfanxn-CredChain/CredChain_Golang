@@ -12,6 +12,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
+	"net/url"
 	"os"
 	"runtime"
 	"runtime/pprof"
@@ -64,7 +65,7 @@ Examples:
 func init() {
 	rootCmd.AddCommand(credentialExtractionBenchmarkCmd)
 
-	credentialExtractionBenchmarkCmd.Flags().StringVar(&credentialExtractionBenchmarkTimeout, "timeout", "30,60,120,240", "Comma-separated timeout values in seconds")
+	credentialExtractionBenchmarkCmd.Flags().StringVar(&credentialExtractionBenchmarkTimeout, "timeout", "10,20,30,60", "Comma-separated timeout values in seconds")
 	credentialExtractionBenchmarkCmd.Flags().StringVar(&credentialExtractionBenchmarkSizes, "sizes", "500,1000,2000,5000", "Comma-separated file sizes in KB")
 	credentialExtractionBenchmarkCmd.Flags().IntVar(&credentialExtractionBenchmarkCount, "count", 3, "Number of concurrent goroutine runs per combination (minimum 3)")
 	credentialExtractionBenchmarkCmd.Flags().StringVar(&credentialExtractionBenchmarkOutput, "output", "", "CSV output file path (empty = terminal only)")
@@ -719,6 +720,12 @@ func credentialExtractionBenchmarkRunConcurrent(ctx context.Context, pdfData []b
 			var timedOut bool
 			if err != nil {
 				timedOut = errors.Is(err, context.DeadlineExceeded)
+				if !timedOut {
+					var urlErr *url.Error
+					if errors.As(err, &urlErr) && urlErr.Timeout() {
+						timedOut = true
+					}
+				}
 			}
 
 			runs[idx] = credentialExtractionBenchmarkRun{

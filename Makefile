@@ -33,15 +33,11 @@ help:
 	@echo "  make credential-extraction-benchmark        - Run credential extraction benchmark"
 	@echo "  Pipeline: generate PDF -> encrypt -> decrypt -> POST to Python AI -> parse."
 	@echo "  Env vars:"
-	@echo "    CREDENTIAL_EXTRACTION_BENCH_TIMEOUT (default: 30,60,120,240)"
-	@echo "    CREDENTIAL_EXTRACTION_BENCH_SIZES   (default: 500,1000,2000,5000)"
+	@echo "    CREDENTIAL_EXTRACTION_BENCH_COUNT    (default: 3)"
 	@echo "    CREDENTIAL_EXTRACTION_BENCH_COUNT    (default: 3)"
 	@echo "    CREDENTIAL_EXTRACTION_BENCH_CSV   (set to 1 to enable CSV output)"
 	@echo "    CREDENTIAL_EXTRACTION_BENCH_PROFILE  (set to 1 to enable CPU+mem+trace profiling)"
-	@echo "  Example: make credential-extraction-benchmark \\"
-	@echo "    CREDENTIAL_EXTRACTION_BENCH_TIMEOUT=60,120 \\"
-	@echo "    CREDENTIAL_EXTRACTION_BENCH_CSV=1 \\"
-	@echo "    CREDENTIAL_EXTRACTION_BENCH_PROFILE=1"
+	@echo "  Example: make credential-extraction-benchmark CREDENTIAL_EXTRACTION_BENCH_CSV=1"
 	@echo ""
 	@echo "Docker:"
 	@echo "  make docker-up         - Start all services with Docker"
@@ -110,8 +106,6 @@ seed:
 seed-chain:
 	go run main.go seed-chain --env $(ENV_FILE)
 
-CREDENTIAL_EXTRACTION_BENCH_TIMEOUT ?= 30,60,120,240
-CREDENTIAL_EXTRACTION_BENCH_SIZES ?= 500,1000,2000,5000
 CREDENTIAL_EXTRACTION_BENCH_COUNT ?= 3
 CREDENTIAL_EXTRACTION_BENCH_DIRECTORY ?= benchmarks/credential-extraction
 CREDENTIAL_EXTRACTION_BENCH_CSV ?=
@@ -123,8 +117,6 @@ credential-extraction-benchmark: check-env
 	if [ -n "$(CREDENTIAL_EXTRACTION_BENCH_CSV)" ]; then FLAGS="$$FLAGS --output $(CREDENTIAL_EXTRACTION_BENCH_DIRECTORY)/results.csv"; fi && \
 	if [ -n "$(CREDENTIAL_EXTRACTION_BENCH_PROFILE)" ]; then FLAGS="$$FLAGS --cpuprofile $(CREDENTIAL_EXTRACTION_BENCH_DIRECTORY)/cpu.prof --memprofile $(CREDENTIAL_EXTRACTION_BENCH_DIRECTORY)/mem.prof --trace $(CREDENTIAL_EXTRACTION_BENCH_DIRECTORY)/trace.out"; fi && \
 	go run main.go credential-extraction-benchmark \
-		--timeout $(CREDENTIAL_EXTRACTION_BENCH_TIMEOUT) \
-		--sizes $(CREDENTIAL_EXTRACTION_BENCH_SIZES) \
 		--count $(CREDENTIAL_EXTRACTION_BENCH_COUNT) \
 		$$FLAGS \
 		--env $(ENV_FILE)
