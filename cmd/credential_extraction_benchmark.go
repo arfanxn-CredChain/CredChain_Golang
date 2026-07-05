@@ -294,3 +294,148 @@ func credentialExtractionBenchmarkPercentile(sorted []float64, p float64) float6
 	idx := int(float64(len(sorted)-1) * p)
 	return sorted[idx]
 }
+
+func credentialExtractionBenchmarkWriteTerminal(results []credentialExtractionBenchmarkResult) {
+	fmt.Println()
+	fmt.Println("┌───────────┬─────────┬────────┬────────┬────────┬────────┬────────┬────────┬───────────┬───────────────┬───────────────┬──────────────┬───────────────┐")
+	fmt.Println("│ Timeout(s)│ Size(KB)│ Avg(ms)│ P50(ms)│ P95(ms)│ P99(ms)│ Min(ms)│ Max(ms)│ Ops/sec   │ AllocMB/op    │ Gorout. peak  │ MutexWait(ms)│ Timeout %     │")
+	fmt.Println("├───────────┼─────────┼────────┼────────┼────────┼────────┼────────┼────────┼───────────┼───────────────┼───────────────┼──────────────┼───────────────┤")
+
+	for _, r := range results {
+		row := credentialExtractionBenchmarkFormatRow(r)
+		fmt.Println(row)
+	}
+	fmt.Println("└───────────┴─────────┴────────┴────────┴────────┴────────┴────────┴────────┴───────────┴───────────────┴───────────────┴──────────────┴───────────────┘")
+	fmt.Println()
+}
+
+func credentialExtractionBenchmarkFormatRow(r credentialExtractionBenchmarkResult) string {
+	formatFloat := func(v float64, width int, prec int) string {
+		s := fmt.Sprintf("%*.*f", width, prec, v)
+		return s[:width]
+	}
+
+	formatStr := func(s string, width int) string {
+		if len(s) > width {
+			return s[:width]
+		}
+		return fmt.Sprintf("%*s", width, s)
+	}
+
+	timeoutStr := fmt.Sprintf("%d", r.TimeoutSec)
+	sizeStr := fmt.Sprintf("%d", r.SizeKB)
+
+	if r.TimeoutPct == 100.0 {
+		timeoutLabel := "ETIMEOUT"
+		return fmt.Sprintf("│ %-9s │ %-7s │ %-6s │ %-6s │ %-6s │ %-6s │ %-6s │ %-6s │ %-9s │ %-13s │ %-13s │ %-12s │ %-13s │",
+			formatStr(timeoutStr, 9),
+			formatStr(sizeStr, 7),
+			formatStr(timeoutLabel, 6), formatStr(timeoutLabel, 6), formatStr(timeoutLabel, 6), formatStr(timeoutLabel, 6),
+			formatStr(timeoutLabel, 6), formatStr(timeoutLabel, 6),
+			formatStr("0.00", 9),
+			formatStr("0.0", 13),
+			formatStr(fmt.Sprintf("%d", r.GoroutinesPeak), 13),
+			formatStr("0", 12),
+			formatStr("100.0", 13),
+		)
+	}
+
+	return fmt.Sprintf("│ %-9s │ %-7s │ %-6s │ %-6s │ %-6s │ %-6s │ %-6s │ %-6s │ %-9s │ %-13s │ %-13s │ %-12s │ %-13s │",
+		formatStr(timeoutStr, 9),
+		formatStr(sizeStr, 7),
+		formatFloat(r.AvgMs, 6, 2), formatFloat(r.P50Ms, 6, 2), formatFloat(r.P95Ms, 6, 2), formatFloat(r.P99Ms, 6, 2),
+		formatFloat(r.MinMs, 6, 2), formatFloat(r.MaxMs, 6, 2),
+		formatFloat(r.OpsPerSec, 9, 2),
+		formatFloat(r.AllocMBPerOp, 13, 1),
+		formatStr(fmt.Sprintf("%d", r.GoroutinesPeak), 13),
+		formatFloat(r.MutexWaitMs, 12, 2),
+		formatFloat(r.TimeoutPct, 13, 1),
+	)
+}
+
+func credentialExtractionBenchmarkWriteCSV(w *csv.Writer, results []credentialExtractionBenchmarkResult) error {
+	header := []string{"timeout_sec", "size_kb", "avg_ms", "p50_ms", "p95_ms", "p99_ms", "min_ms", "max_ms", "ops_per_sec", "alloc_mb_per_op", "goroutines_peak", "mutex_wait_ms", "timeout_hit_pct"}
+	if err := w.Write(header); err != nil {
+		return err
+	}
+
+	for _, r := range results {
+		row := credentialExtractionBenchmarkCSVRow(r)
+		if err := w.Write(row); err != nil {
+			return err
+		}
+	}
+	w.Flush()
+	return w.Error()
+}
+
+func credentialExtractionBenchmarkCSVRow(r credentialExtractionBenchmarkResult) []string {
+	formatFloat := func(v float64) string {
+		return strconv.FormatFloat(v, 'f', 2, 64)
+	}
+
+	timeout := fmt.Sprintf("%d", r.TimeoutSec)
+	size := fmt.Sprintf("%d", r.SizeKB)
+
+	if r.TimeoutPct == 100.0 {
+		return []string{timeout, size, "ETIMEOUT", "ETIMEOUT", "ETIMEOUT", "ETIMEOUT", "ETIMEOUT", "ETIMEOUT", "0.00", "0.0", fmt.Sprintf("%d", r.GoroutinesPeak), "0", "100.0"}
+	}
+
+	return []string{
+		timeout, size,
+		formatFloat(r.AvgMs), formatFloat(r.P50Ms), formatFloat(r.P95Ms), formatFloat(r.P99Ms),
+		formatFloat(r.MinMs), formatFloat(r.MaxMs),
+		formatFloat(r.OpsPerSec), formatFloat(r.AllocMBPerOp),
+		fmt.Sprintf("%d", r.GoroutinesPeak),
+		formatFloat(r.MutexWaitMs), formatFloat(r.TimeoutPct),
+	}
+}
+
+func credentialExtractionBenchmarkPrintColumnDescriptions() {
+	fmt.Println()
+	fmt.Println("Column descriptions")
+	fmt.Println("===================")
+	fmt.Println()
+	fmt.Println("Timeout(s)    HTTP client timeout for this combination in seconds.")
+	fmt.Println()
+	fmt.Println("Size(KB)      In memory PDF file size sent through the pipeline in")
+	fmt.Println("              kilobytes.")
+	fmt.Println()
+	fmt.Println("Avg(ms)       Mean latency across successful runs only. Timed out")
+	fmt.Println("              runs are excluded from the average.")
+	fmt.Println()
+	fmt.Println("P50(ms)       Median latency. 50% of runs complete faster than this")
+	fmt.Println("              and 50% complete slower.")
+	fmt.Println()
+	fmt.Println("P95(ms)       95th percentile latency. Only 5% of runs are slower.")
+	fmt.Println("              Shows tail performance near the worst case.")
+	fmt.Println()
+	fmt.Println("P99(ms)       99th percentile latency. The worst remaining 1% after")
+	fmt.Println("              trimming the single worst outlier.")
+	fmt.Println()
+	fmt.Println("Min(ms)       Fastest successful pipeline run in this batch.")
+	fmt.Println()
+	fmt.Println("Max(ms)       Slowest successful pipeline run in this batch. Timeouts")
+	fmt.Println("              are excluded from this column.")
+	fmt.Println()
+	fmt.Println("Ops/sec       Throughput measured as successful pipelines completed")
+	fmt.Println("              per wall clock second.")
+	fmt.Println()
+	fmt.Println("AllocMB/op    Heap bytes allocated per operation averaged across all")
+	fmt.Println("              goroutines.")
+	fmt.Println()
+	fmt.Println("Gorout. peak  Highest observed goroutine count during this batch")
+	fmt.Println("              sampled every 10 milliseconds.")
+	fmt.Println()
+	fmt.Println("MutexWait(ms) Latency spread computed as the difference between the")
+	fmt.Println("              slowest and fastest run. Since goroutines serialize on")
+	fmt.Println("              a mutex in the AI client, earlier goroutines grab the")
+	fmt.Println("              lock first with low latency while later ones queue with")
+	fmt.Println("              higher latency. The spread measures how long the last")
+	fmt.Println("              goroutine waited compared to the first.")
+	fmt.Println()
+	fmt.Println("Timeout %     Fraction of runs that hit the timeout deadline. When")
+	fmt.Println("              this is 100 percent, every run in the batch timed out")
+	fmt.Println("              and the latency columns show ETIMEOUT.")
+	fmt.Println()
+}
