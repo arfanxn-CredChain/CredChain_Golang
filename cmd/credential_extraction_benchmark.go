@@ -4,8 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
+	"mime/multipart"
+	"net/http"
+	"net/textproto"
 	"os"
 	"runtime"
 	"runtime/pprof"
@@ -438,4 +443,303 @@ func credentialExtractionBenchmarkPrintColumnDescriptions() {
 	fmt.Println("              this is 100 percent, every run in the batch timed out")
 	fmt.Println("              and the latency columns show ETIMEOUT.")
 	fmt.Println()
+}
+
+type benchmarkPythonAIClient struct {
+	baseURL string
+	apiKey  string
+	timeout time.Duration
+	mu      sync.Mutex
+}
+
+func (c *benchmarkPythonAIClient) Extract(ctx context.Context, files ...pyai.ExtractFile) ([]pyai.PythonExtractResult, error) {
+	if len(files) == 0 {
+		return nil, nil
+	}
+
+	body, contentType, err := benchmarkBuildMultipart(files)
+	if err != nil {
+		return nil, fmt.Errorf("python extract: build multipart: %w", err)
+	}
+
+	httpClient := &http.Client{Timeout: c.timeout}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/extract", body)
+	if err != nil {
+		return nil, fmt.Errorf("python extract: build request: %w", err)
+	}
+	req.Header.Set("Content-Type", contentType)
+	if c.apiKey != "" {
+		req.Header.Set("X-Api-Key", c.apiKey)
+	}
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("python extract: http: %w", err)
+	}
+	defer resp.Body.Close()
+
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("python extract: read body: %w", err)
+	}
+
+	type extractData struct {
+		Text      string             `json:"text"`
+		IDs       []pyai.ExtractedID `json:"ids"`
+		Embedding []float64          `json:"embedding"`
+	}
+	type pythonResponse struct {
+		Code    int                 `json:"code"`
+		Message string              `json:"message"`
+		Data    []*extractData      `json:"data"`
+		Errors  map[string][]string `json:"errors"`
+	}
+
+	var parsed pythonResponse
+	if err := json.Unmarshal(raw, &parsed); err != nil {
+		return nil, fmt.Errorf("python extract: decode: %w", err)
+	}
+
+	if parsed.Code == 500150 {
+		return nil, fmt.Errorf("python extract: all files failed (code %d)", parsed.Code)
+	}
+
+	results := make([]pyai.PythonExtractResult, len(parsed.Data))
+	for i, d := range parsed.Data {
+		if d != nil {
+			results[i] = pyai.PythonExtractResult{Text: d.Text, IDs: d.IDs, Embedding: d.Embedding}
+		}
+	}
+	return results, nil
+}
+
+func (c *benchmarkPythonAIClient) Verify(ctx context.Context, file pyai.ExtractFile, storedEmbedding []float64) (*pyai.VerifyResult, error) {
+	return nil, fmt.Errorf("verify not available in benchmark client")
+}
+
+func (c *benchmarkPythonAIClient) ExtractIDs(ctx context.Context, file pyai.ExtractFile) ([]pyai.ExtractedID, error) {
+	return nil, fmt.Errorf("extract-ids not available in benchmark client")
+}
+
+func benchmarkBuildMultipart(files []pyai.ExtractFile) (*bytes.Buffer, string, error) {
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	for _, f := range files {
+		mimeType := f.MIMEType
+		if mimeType == "" {
+			mimeType = "application/octet-stream"
+		}
+		h := make(textproto.MIMEHeader)
+		h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="files"; filename="%s"`, f.Filename))
+		h.Set("Content-Type", mimeType)
+		part, err := writer.CreatePart(h)
+		if err != nil {
+			return nil, "", err
+		}
+		if _, err := part.Write(f.Data); err != nil {
+			return nil, "", err
+		}
+	}
+
+	writer.Close()
+	return body, writer.FormDataContentType(), nil
+}
+
+func credentialExtractionBenchmark(cmd *cobra.Command, args []string) error {
+	timeouts, err := credentialExtractionBenchmarkParseInts(credentialExtractionBenchmarkTimeout)
+	if err != nil {
+		return fmt.Errorf("invalid --timeout: %w", err)
+	}
+
+	sizes, err := credentialExtractionBenchmarkParseInts(credentialExtractionBenchmarkSizes)
+	if err != nil {
+		return fmt.Errorf("invalid --sizes: %w", err)
+	}
+
+	count := credentialExtractionBenchmarkCount
+	if count < 1 {
+		return fmt.Errorf("--count must be >= 1, got %d", count)
+	}
+
+	cfg := ConfigFromCmd(cmd)
+	if cfg.FileEncryptionKey == nil {
+		return fmt.Errorf("FILE_ENCRYPTION_KEY is not set")
+	}
+
+	log.Printf("Benchmark: %d timeouts × %d sizes × %d reps = %d pipeline calls",
+		len(timeouts), len(sizes), count, len(timeouts)*len(sizes)*count)
+	log.Printf("Timeouts (s): %v", timeouts)
+	log.Printf("Sizes (KB):   %v", sizes)
+	log.Printf("Runs/comb:    %d (concurrent goroutines)", count)
+	log.Println()
+
+	credentialExtractionBenchmarkPrintColumnDescriptions()
+
+	if credentialExtractionBenchmarkCPUProf != "" {
+		f, err := os.Create(credentialExtractionBenchmarkCPUProf)
+		if err != nil {
+			return fmt.Errorf("create cpu profile: %w", err)
+		}
+		defer f.Close()
+		if err := pprof.StartCPUProfile(f); err != nil {
+			return fmt.Errorf("start cpu profile: %w", err)
+		}
+		defer pprof.StopCPUProfile()
+		log.Printf("CPU profiling enabled → %s", credentialExtractionBenchmarkCPUProf)
+	}
+
+	if credentialExtractionBenchmarkTrace != "" {
+		f, err := os.Create(credentialExtractionBenchmarkTrace)
+		if err != nil {
+			return fmt.Errorf("create trace: %w", err)
+		}
+		defer f.Close()
+		if err := trace.Start(f); err != nil {
+			return fmt.Errorf("start trace: %w", err)
+		}
+		defer trace.Stop()
+		log.Printf("Execution tracing enabled → %s", credentialExtractionBenchmarkTrace)
+	}
+
+	var allResults []credentialExtractionBenchmarkResult
+
+	for _, timeoutSec := range timeouts {
+		for _, sizeKB := range sizes {
+			log.Printf("Running: timeout=%ds size=%dKB reps=%d", timeoutSec, sizeKB, count)
+
+			pdfData := credentialExtractionBenchmarkGeneratePDF(sizeKB)
+
+			timeoutDuration := time.Duration(timeoutSec) * time.Second
+			client := &benchmarkPythonAIClient{
+				baseURL: *cfg.PythonAIBaseURL,
+				apiKey:  derefBenchmark(cfg.PythonAIAPIKey),
+				timeout: timeoutDuration,
+			}
+
+			runs, goroutinesPeak, wallClock := credentialExtractionBenchmarkRunConcurrent(context.Background(), pdfData, cfg, client, count)
+
+			result := credentialExtractionBenchmarkComputeResult(timeoutSec, sizeKB, runs, wallClock, goroutinesPeak)
+			allResults = append(allResults, result)
+
+			credentialExtractionBenchmarkWriteTerminal([]credentialExtractionBenchmarkResult{result})
+		}
+	}
+
+	credentialExtractionBenchmarkWriteTerminal(allResults)
+
+	if credentialExtractionBenchmarkMemProf != "" {
+		f, err := os.Create(credentialExtractionBenchmarkMemProf)
+		if err != nil {
+			return fmt.Errorf("create mem profile: %w", err)
+		}
+		defer f.Close()
+		runtime.GC()
+		if err := pprof.WriteHeapProfile(f); err != nil {
+			return fmt.Errorf("write mem profile: %w", err)
+		}
+		log.Printf("Memory profile written → %s", credentialExtractionBenchmarkMemProf)
+	}
+
+	if credentialExtractionBenchmarkOutput != "" {
+		f, err := os.Create(credentialExtractionBenchmarkOutput)
+		if err != nil {
+			return fmt.Errorf("create csv output: %w", err)
+		}
+		defer f.Close()
+		w := csv.NewWriter(f)
+		defer w.Flush()
+		if err := credentialExtractionBenchmarkWriteCSV(w, allResults); err != nil {
+			return fmt.Errorf("write csv: %w", err)
+		}
+		log.Printf("CSV written → %s", credentialExtractionBenchmarkOutput)
+	}
+
+	log.Println("Benchmark complete.")
+	return nil
+}
+
+func derefBenchmark(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
+func credentialExtractionBenchmarkRunConcurrent(ctx context.Context, pdfData []byte, cfg *config.Config, client pyai.PythonAIClient, count int) ([]credentialExtractionBenchmarkRun, int, time.Duration) {
+	runs := make([]credentialExtractionBenchmarkRun, count)
+
+	peakGoroutines := 0
+	var peakMu sync.Mutex
+
+	done := make(chan struct{})
+	go func() {
+		ticker := time.NewTicker(10 * time.Millisecond)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				n := runtime.NumGoroutine()
+				peakMu.Lock()
+				if n > peakGoroutines {
+					peakGoroutines = n
+				}
+				peakMu.Unlock()
+			case <-done:
+				return
+			}
+		}
+	}()
+
+	var memBefore, memAfter runtime.MemStats
+	runtime.ReadMemStats(&memBefore)
+
+	wallStart := time.Now()
+
+	var wg sync.WaitGroup
+	for i := 0; i < count; i++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+
+			start := time.Now()
+			err := credentialExtractionBenchmarkRunPipeline(ctx, pdfData, cfg, client)
+			elapsed := time.Since(start)
+
+			var timedOut bool
+			if err != nil {
+				errStr := err.Error()
+				timedOut = strings.Contains(errStr, "timeout") ||
+					strings.Contains(errStr, "deadline exceeded") ||
+					strings.Contains(errStr, "context deadline exceeded") ||
+					strings.Contains(errStr, "Client.Timeout exceeded")
+			}
+
+			runs[idx] = credentialExtractionBenchmarkRun{
+				LatencyMs:  float64(elapsed.Microseconds()) / 1000.0,
+				AllocMB:    0,
+				Goroutines: runtime.NumGoroutine(),
+				TimedOut:   timedOut,
+			}
+		}(i)
+	}
+
+	wg.Wait()
+	wallClock := time.Since(wallStart)
+
+	runtime.ReadMemStats(&memAfter)
+	close(done)
+
+	allocDelta := float64(memAfter.TotalAlloc-memBefore.TotalAlloc) / (1024 * 1024)
+	perRunAlloc := allocDelta / float64(count)
+
+	for i := range runs {
+		runs[i].AllocMB = perRunAlloc
+	}
+
+	return runs, peakGoroutines, wallClock
 }
