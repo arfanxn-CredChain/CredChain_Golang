@@ -66,3 +66,43 @@ func init() {
 	credentialExtractionBenchmarkCmd.Flags().StringVar(&credentialExtractionBenchmarkMemProf, "memprofile", "", "Write memory profile to file")
 	credentialExtractionBenchmarkCmd.Flags().StringVar(&credentialExtractionBenchmarkTrace, "trace", "", "Write execution trace to file")
 }
+
+type credentialExtractionBenchmarkRun struct {
+	LatencyMs  float64
+	AllocMB    float64
+	Goroutines int
+	TimedOut   bool
+}
+
+type credentialExtractionBenchmarkResult struct {
+	TimeoutSec     int
+	SizeKB         int
+	AvgMs          float64
+	P50Ms          float64
+	P95Ms          float64
+	P99Ms          float64
+	MinMs          float64
+	MaxMs          float64
+	OpsPerSec      float64
+	AllocMBPerOp   float64
+	GoroutinesPeak int
+	MutexWaitMs    float64
+	TimeoutPct     float64
+}
+
+func credentialExtractionBenchmarkParseInts(raw string) ([]int, error) {
+	parts := strings.Split(raw, ",")
+	result := make([]int, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		v, err := strconv.Atoi(p)
+		if err != nil {
+			return nil, fmt.Errorf("invalid integer %q: %w", p, err)
+		}
+		result = append(result, v)
+	}
+	return result, nil
+}
