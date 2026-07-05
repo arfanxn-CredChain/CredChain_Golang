@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -319,7 +320,10 @@ func credentialExtractionBenchmarkWriteTerminal(results []credentialExtractionBe
 func credentialExtractionBenchmarkFormatRow(r credentialExtractionBenchmarkResult) string {
 	formatFloat := func(v float64, width int, prec int) string {
 		s := fmt.Sprintf("%*.*f", width, prec, v)
-		return s[:width]
+		if len(s) > width {
+			s = s[:width-1] + ">"
+		}
+		return s
 	}
 
 	formatStr := func(s string, width int) string {
@@ -714,11 +718,7 @@ func credentialExtractionBenchmarkRunConcurrent(ctx context.Context, pdfData []b
 
 			var timedOut bool
 			if err != nil {
-				errStr := err.Error()
-				timedOut = strings.Contains(errStr, "timeout") ||
-					strings.Contains(errStr, "deadline exceeded") ||
-					strings.Contains(errStr, "context deadline exceeded") ||
-					strings.Contains(errStr, "Client.Timeout exceeded")
+				timedOut = errors.Is(err, context.DeadlineExceeded)
 			}
 
 			runs[idx] = credentialExtractionBenchmarkRun{
@@ -740,6 +740,9 @@ func credentialExtractionBenchmarkRunConcurrent(ctx context.Context, pdfData []b
 	perRunAlloc := allocDelta / float64(count)
 
 	for i := range runs {
+		// All goroutines process the same PDF pipeline; per-run alloc is averaged
+		// across all runs since individual heap tracking is not possible with
+		// shared http.Transport buffers.
 		runs[i].AllocMB = perRunAlloc
 	}
 
