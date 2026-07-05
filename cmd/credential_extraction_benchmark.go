@@ -146,6 +146,38 @@ func credentialExtractionBenchmarkGeneratePDF(sizeKB int) []byte {
 	return pdf.Bytes()
 }
 
+func credentialExtractionBenchmarkRunPipeline(ctx context.Context, pdfData []byte, cfg *config.Config, client pyai.PythonAIClient) error {
+	encryptedHex, err := cryptoInfra.Encrypt(pdfData, []byte(*cfg.FileEncryptionKey))
+	if err != nil {
+		return fmt.Errorf("encrypt: %w", err)
+	}
+
+	data, err := cryptoInfra.Decrypt(encryptedHex, []byte(*cfg.FileEncryptionKey))
+	if err != nil {
+		return fmt.Errorf("decrypt: %w", err)
+	}
+
+	results, err := client.Extract(ctx, pyai.ExtractFile{
+		Filename: "benchmark.pdf",
+		MIMEType: "application/pdf",
+		Data:     data,
+	})
+	if err != nil {
+		return fmt.Errorf("ai extract: %w", err)
+	}
+
+	if len(results) == 0 {
+		return fmt.Errorf("ai extract: no results returned")
+	}
+
+	r := results[0]
+	if r.Text == "" && r.Embedding == nil {
+		return fmt.Errorf("ai extract: extraction returned empty result")
+	}
+
+	return nil
+}
+
 // credentialExtractionBenchmarkRun holds per-goroutine metrics from one pipeline execution.
 type credentialExtractionBenchmarkRun struct {
 	LatencyMs  float64 // wall-clock time from goroutine start to pipeline return (includes mutex wait)
