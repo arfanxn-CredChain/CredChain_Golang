@@ -219,3 +219,78 @@ func credentialExtractionBenchmarkParseInts(raw string) ([]int, error) {
 	}
 	return result, nil
 }
+
+func credentialExtractionBenchmarkComputeResult(timeoutSec, sizeKB int, runs []credentialExtractionBenchmarkRun, wallClock time.Duration, goroutinesPeak int) credentialExtractionBenchmarkResult {
+	n := len(runs)
+
+	latencies := make([]float64, n)
+	var sumMs, sumAlloc float64
+	var timedOutCount int
+	var minMs, maxMs float64
+
+	for i, r := range runs {
+		latencies[i] = r.LatencyMs
+		if r.TimedOut {
+			timedOutCount++
+		} else {
+			sumMs += r.LatencyMs
+			sumAlloc += r.AllocMB
+		}
+		if i == 0 || r.LatencyMs < minMs {
+			minMs = r.LatencyMs
+		}
+		if i == 0 || r.LatencyMs > maxMs {
+			maxMs = r.LatencyMs
+		}
+	}
+
+	sort.Float64s(latencies)
+
+	successCount := n - timedOutCount
+	var avgMs, p50Ms, p95Ms, p99Ms, allocMBPerOp, opsPerSec, mutexWaitMs, timeoutPct float64
+
+	if successCount > 0 {
+		avgMs = sumMs / float64(successCount)
+		allocMBPerOp = sumAlloc / float64(successCount)
+		opsPerSec = float64(successCount) / wallClock.Seconds()
+	}
+
+	if n > 0 {
+		timeoutPct = float64(timedOutCount) / float64(n) * 100.0
+	}
+
+	p50Ms = credentialExtractionBenchmarkPercentile(latencies, 0.50)
+	p95Ms = credentialExtractionBenchmarkPercentile(latencies, 0.95)
+	p99Ms = credentialExtractionBenchmarkPercentile(latencies, 0.99)
+
+	if n > 1 {
+		mutexWaitMs = maxMs - minMs
+		if mutexWaitMs < 0 {
+			mutexWaitMs = 0
+		}
+	}
+
+	return credentialExtractionBenchmarkResult{
+		TimeoutSec:     timeoutSec,
+		SizeKB:         sizeKB,
+		AvgMs:          avgMs,
+		P50Ms:          p50Ms,
+		P95Ms:          p95Ms,
+		P99Ms:          p99Ms,
+		MinMs:          minMs,
+		MaxMs:          maxMs,
+		OpsPerSec:      opsPerSec,
+		AllocMBPerOp:   allocMBPerOp,
+		GoroutinesPeak: goroutinesPeak,
+		MutexWaitMs:    mutexWaitMs,
+		TimeoutPct:     timeoutPct,
+	}
+}
+
+func credentialExtractionBenchmarkPercentile(sorted []float64, p float64) float64 {
+	if len(sorted) == 0 {
+		return 0
+	}
+	idx := int(float64(len(sorted)-1) * p)
+	return sorted[idx]
+}
