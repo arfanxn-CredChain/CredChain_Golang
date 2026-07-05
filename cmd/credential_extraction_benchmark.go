@@ -232,6 +232,7 @@ func credentialExtractionBenchmarkComputeResult(timeoutSec, sizeKB int, runs []c
 	var sumMs, sumAlloc float64
 	var timedOutCount int
 	var minMs, maxMs float64
+	var firstSuccess bool
 
 	for i, r := range runs {
 		latencies[i] = r.LatencyMs
@@ -240,12 +241,13 @@ func credentialExtractionBenchmarkComputeResult(timeoutSec, sizeKB int, runs []c
 		} else {
 			sumMs += r.LatencyMs
 			sumAlloc += r.AllocMB
-		}
-		if i == 0 || r.LatencyMs < minMs {
-			minMs = r.LatencyMs
-		}
-		if i == 0 || r.LatencyMs > maxMs {
-			maxMs = r.LatencyMs
+			if !firstSuccess || r.LatencyMs < minMs {
+				minMs = r.LatencyMs
+			}
+			if !firstSuccess || r.LatencyMs > maxMs {
+				maxMs = r.LatencyMs
+			}
+			firstSuccess = true
 		}
 	}
 
