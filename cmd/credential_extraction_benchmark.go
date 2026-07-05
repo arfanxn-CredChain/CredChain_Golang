@@ -67,6 +67,85 @@ func init() {
 	credentialExtractionBenchmarkCmd.Flags().StringVar(&credentialExtractionBenchmarkTrace, "trace", "", "Write execution trace to file")
 }
 
+func credentialExtractionBenchmarkGeneratePDF(sizeKB int) []byte {
+	lorem := []byte("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. ")
+
+	targetBytes := sizeKB * 1024
+
+	var textBuf bytes.Buffer
+	for textBuf.Len() < targetBytes {
+		textBuf.Write(lorem)
+	}
+	textBytes := textBuf.Bytes()[:targetBytes]
+
+	escapePDFString := func(b []byte) []byte {
+		result := make([]byte, 0, len(b)+16)
+		for _, ch := range b {
+			switch ch {
+			case '\\':
+				result = append(result, '\\', '\\')
+			case '(':
+				result = append(result, '\\', '(')
+			case ')':
+				result = append(result, '\\', ')')
+			default:
+				result = append(result, ch)
+			}
+		}
+		return result
+	}
+
+	maxStrLen := 60000
+	var contentBuf bytes.Buffer
+	contentBuf.WriteString("BT\n/F1 12 Tf\n50 750 Td\n")
+
+	offset := 0
+	for offset < len(textBytes) {
+		chunkLen := len(textBytes) - offset
+		if chunkLen > maxStrLen {
+			chunkLen = maxStrLen
+		}
+		chunk := textBytes[offset : offset+chunkLen]
+		escaped := escapePDFString(chunk)
+		fmt.Fprintf(&contentBuf, "(%s) Tj\n0 -14 Td\n", string(escaped))
+		offset += chunkLen
+	}
+	contentBuf.WriteString("ET\n")
+
+	streamData := contentBuf.Bytes()
+
+	var pdf bytes.Buffer
+	pdf.WriteString("%PDF-1.4\n")
+
+	var offsets [5]int
+
+	offsets[0] = pdf.Len()
+	pdf.WriteString("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n")
+
+	offsets[1] = pdf.Len()
+	pdf.WriteString("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n")
+
+	offsets[2] = pdf.Len()
+	pdf.WriteString("3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n")
+
+	offsets[3] = pdf.Len()
+	fmt.Fprintf(&pdf, "4 0 obj\n<< /Length %d >>\nstream\n%s\nendstream\nendobj\n", len(streamData), string(streamData))
+
+	offsets[4] = pdf.Len()
+	pdf.WriteString("5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n")
+
+	xrefOffset := pdf.Len()
+	pdf.WriteString("xref\n")
+	fmt.Fprintf(&pdf, "0 6\n0000000000 65535 f \n")
+	for i := 0; i < 5; i++ {
+		fmt.Fprintf(&pdf, "%010d 00000 n \n", offsets[i])
+	}
+
+	fmt.Fprintf(&pdf, "trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n", xrefOffset)
+
+	return pdf.Bytes()
+}
+
 // credentialExtractionBenchmarkRun holds per-goroutine metrics from one pipeline execution.
 type credentialExtractionBenchmarkRun struct {
 	LatencyMs  float64 // wall-clock time from goroutine start to pipeline return (includes mutex wait)
