@@ -67,27 +67,29 @@ func init() {
 	credentialExtractionBenchmarkCmd.Flags().StringVar(&credentialExtractionBenchmarkTrace, "trace", "", "Write execution trace to file")
 }
 
+// credentialExtractionBenchmarkRun holds per-goroutine metrics from one pipeline execution.
 type credentialExtractionBenchmarkRun struct {
-	LatencyMs  float64
-	AllocMB    float64
-	Goroutines int
-	TimedOut   bool
+	LatencyMs  float64 // wall-clock time from goroutine start to pipeline return (includes mutex wait)
+	AllocMB    float64 // heap bytes allocated per operation (per-run share of batch total)
+	Goroutines int     // snapshot of runtime.NumGoroutine() after this run completed
+	TimedOut   bool    // true if the pipeline hit the HTTP client timeout or context deadline
 }
 
+// credentialExtractionBenchmarkResult holds aggregated metrics for one (timeout, size) combination.
 type credentialExtractionBenchmarkResult struct {
-	TimeoutSec     int
-	SizeKB         int
-	AvgMs          float64
-	P50Ms          float64
-	P95Ms          float64
-	P99Ms          float64
-	MinMs          float64
-	MaxMs          float64
-	OpsPerSec      float64
-	AllocMBPerOp   float64
-	GoroutinesPeak int
-	MutexWaitMs    float64
-	TimeoutPct     float64
+	TimeoutSec     int     // HTTP client timeout in seconds for this combination
+	SizeKB         int     // in-memory PDF file size in KB
+	AvgMs          float64 // mean latency across successful runs (timeouts excluded)
+	P50Ms          float64 // 50th percentile latency (median)
+	P95Ms          float64 // 95th percentile latency (tail performance)
+	P99Ms          float64 // 99th percentile latency (worst-case tail)
+	MinMs          float64 // fastest successful run
+	MaxMs          float64 // slowest successful run
+	OpsPerSec      float64 // throughput: successful_runs / wall_clock_seconds
+	AllocMBPerOp   float64 // heap bytes allocated per operation (TotalAlloc delta / count)
+	GoroutinesPeak int     // peak runtime.NumGoroutine() sampled during concurrent batch execution
+	MutexWaitMs    float64 // latency spread (max - min), approximates mutex queue delay from AI client serialization
+	TimeoutPct     float64 // (timed_out_runs / total_runs) × 100; 100.0 → all runs timed out → ETIMEOUT sentinel
 }
 
 func credentialExtractionBenchmarkParseInts(raw string) ([]int, error) {
