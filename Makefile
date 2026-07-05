@@ -10,7 +10,7 @@ endif
 	docker-migrate-up docker-migrate-down docker-up-build docker-up \
 	docker-down docker-restart docker-logs docker-ps docker-fresh \
 	docker-clean-data docker-check-backend-healthy \
-	benchmark benchmark-csv benchmark-profile
+	credential-extraction-benchmark credential-extraction-benchmark-csv credential-extraction-benchmark-profile
 
 help:
 	@echo "CredChain - Available Commands:"
@@ -30,13 +30,12 @@ help:
 	@echo "  make seed-chain        - Register seeded user roles on-chain"
 	@echo ""
 	@echo "Benchmark:"
-	@echo "  make benchmark         - Run credential extraction benchmark (terminal output)"
-	@echo "  make benchmark-csv     - Run benchmark with CSV output (results.csv)"
-	@echo "  make benchmark-profile - Run benchmark with CPU+mem profiling (prof/ directory)"
-	@echo "  Credential extraction benchmark runs the full pipeline: generate PDF"
-	@echo "  -> encrypt -> decrypt -> POST to Python AI -> parse response."
-	@echo "  Override flags: BENCH_TIMEOUT, BENCH_SIZES, BENCH_COUNT env vars."
-	@echo "  Example: make benchmark BENCH_TIMEOUT=60,120 BENCH_SIZES=1000"
+	@echo "  make credential-extraction-benchmark        - Run credential extraction benchmark (terminal output)"
+	@echo "  make credential-extraction-benchmark-csv    - Run benchmark with CSV output (results.csv)"
+	@echo "  make credential-extraction-benchmark-profile - Run benchmark with CPU+mem profiling"
+	@echo "  Pipeline: generate PDF -> encrypt -> decrypt -> POST to Python AI -> parse."
+	@echo "  Override: CREDENTIAL_EXTRACTION_BENCH_TIMEOUT, _SIZES, _COUNT env vars."
+	@echo "  Example: make credential-extraction-benchmark CREDENTIAL_EXTRACTION_BENCH_TIMEOUT=60,120"
 	@echo ""
 	@echo "Docker:"
 	@echo "  make docker-up         - Start all services with Docker"
@@ -105,35 +104,35 @@ seed:
 seed-chain:
 	go run main.go seed-chain --env $(ENV_FILE)
 
-BENCH_TIMEOUT ?= 30,60,120,240
-BENCH_SIZES ?= 500,1000,2000,5000
-BENCH_COUNT ?= 3
+CREDENTIAL_EXTRACTION_BENCH_TIMEOUT ?= 30,60,120,240
+CREDENTIAL_EXTRACTION_BENCH_SIZES ?= 500,1000,2000,5000
+CREDENTIAL_EXTRACTION_BENCH_COUNT ?= 3
 
-benchmark: check-env
+credential-extraction-benchmark: check-env
 	go run main.go credential-extraction-benchmark \
-		--timeout $(BENCH_TIMEOUT) \
-		--sizes $(BENCH_SIZES) \
-		--count $(BENCH_COUNT) \
+		--timeout $(CREDENTIAL_EXTRACTION_BENCH_TIMEOUT) \
+		--sizes $(CREDENTIAL_EXTRACTION_BENCH_SIZES) \
+		--count $(CREDENTIAL_EXTRACTION_BENCH_COUNT) \
 		--env $(ENV_FILE)
 
-benchmark-csv: check-env
-	mkdir -p benchmark
+credential-extraction-benchmark-csv: check-env
+	mkdir -p benchmark-results
 	go run main.go credential-extraction-benchmark \
-		--timeout $(BENCH_TIMEOUT) \
-		--sizes $(BENCH_SIZES) \
-		--count $(BENCH_COUNT) \
-		--output benchmark/results.csv \
+		--timeout $(CREDENTIAL_EXTRACTION_BENCH_TIMEOUT) \
+		--sizes $(CREDENTIAL_EXTRACTION_BENCH_SIZES) \
+		--count $(CREDENTIAL_EXTRACTION_BENCH_COUNT) \
+		--output benchmark-results/$(shell date +%Y%m%d_%H%M%S).csv \
 		--env $(ENV_FILE)
 
-benchmark-profile: check-env
-	mkdir -p benchmark
+credential-extraction-benchmark-profile: check-env
+	mkdir -p benchmark-results
 	go run main.go credential-extraction-benchmark \
-		--timeout $(BENCH_TIMEOUT) \
-		--sizes $(BENCH_SIZES) \
-		--count $(BENCH_COUNT) \
-		--cpuprofile benchmark/cpu.prof \
-		--memprofile benchmark/mem.prof \
-		--trace benchmark/trace.out \
+		--timeout $(CREDENTIAL_EXTRACTION_BENCH_TIMEOUT) \
+		--sizes $(CREDENTIAL_EXTRACTION_BENCH_SIZES) \
+		--count $(CREDENTIAL_EXTRACTION_BENCH_COUNT) \
+		--cpuprofile benchmark-results/cpu.prof \
+		--memprofile benchmark-results/mem.prof \
+		--trace benchmark-results/trace.out \
 		--env $(ENV_FILE)
 
 docker-up-build: check-env-docker
