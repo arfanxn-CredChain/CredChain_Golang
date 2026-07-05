@@ -9,7 +9,8 @@ endif
 .PHONY: help check-env check-env-docker clean build serve dev migrate-up migrate-down migrate-up-mongo migrate-down-mongo init-super-admin get-google-id-token seed seed-chain \
 	docker-migrate-up docker-migrate-down docker-up-build docker-up \
 	docker-down docker-restart docker-logs docker-ps docker-fresh \
-	docker-clean-data docker-check-backend-healthy
+	docker-clean-data docker-check-backend-healthy \
+	benchmark benchmark-csv benchmark-profile
 
 help:
 	@echo "CredChain - Available Commands:"
@@ -27,6 +28,15 @@ help:
 	@echo "  make get-google-id-token - Obtain Google ID token via OAuth (for Postman)"
 	@echo "  make seed              - Run database seeders (populate 15 users)"
 	@echo "  make seed-chain        - Register seeded user roles on-chain"
+	@echo ""
+	@echo "Benchmark:"
+	@echo "  make benchmark         - Run credential extraction benchmark (terminal output)"
+	@echo "  make benchmark-csv     - Run benchmark with CSV output (results.csv)"
+	@echo "  make benchmark-profile - Run benchmark with CPU+mem profiling (prof/ directory)"
+	@echo "  Credential extraction benchmark runs the full pipeline: generate PDF"
+	@echo "  -> encrypt -> decrypt -> POST to Python AI -> parse response."
+	@echo "  Override flags: BENCH_TIMEOUT, BENCH_SIZES, BENCH_COUNT env vars."
+	@echo "  Example: make benchmark BENCH_TIMEOUT=60,120 BENCH_SIZES=1000"
 	@echo ""
 	@echo "Docker:"
 	@echo "  make docker-up         - Start all services with Docker"
@@ -94,6 +104,37 @@ seed:
 
 seed-chain:
 	go run main.go seed-chain --env $(ENV_FILE)
+
+BENCH_TIMEOUT ?= 30,60,120,240
+BENCH_SIZES ?= 500,1000,2000,5000
+BENCH_COUNT ?= 3
+
+benchmark: check-env
+	go run main.go credential-extraction-benchmark \
+		--timeout $(BENCH_TIMEOUT) \
+		--sizes $(BENCH_SIZES) \
+		--count $(BENCH_COUNT) \
+		--env $(ENV_FILE)
+
+benchmark-csv: check-env
+	mkdir -p benchmark
+	go run main.go credential-extraction-benchmark \
+		--timeout $(BENCH_TIMEOUT) \
+		--sizes $(BENCH_SIZES) \
+		--count $(BENCH_COUNT) \
+		--output benchmark/results.csv \
+		--env $(ENV_FILE)
+
+benchmark-profile: check-env
+	mkdir -p benchmark
+	go run main.go credential-extraction-benchmark \
+		--timeout $(BENCH_TIMEOUT) \
+		--sizes $(BENCH_SIZES) \
+		--count $(BENCH_COUNT) \
+		--cpuprofile benchmark/cpu.prof \
+		--memprofile benchmark/mem.prof \
+		--trace benchmark/trace.out \
+		--env $(ENV_FILE)
 
 docker-up-build: check-env-docker
 	docker compose up -d --build
