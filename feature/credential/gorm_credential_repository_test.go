@@ -935,3 +935,50 @@ func TestGormCredentialGet_SearchEmptyString(t *testing.T) {
 	assert.Equal(t, 2, total, "empty search should return all rows")
 	assert.Len(t, results, 2)
 }
+
+func TestGormCredentialGet_FilterByIssuerUserId(t *testing.T) {
+	repo := openCredRepo(t)
+	ctx := context.Background()
+
+	_, err := repo.Store(ctx,
+		domain.Credential{ID: "c1", HolderUserID: "h1", IssuerUserID: "i1", Name: "A", FileHash: "0xa"},
+		domain.Credential{ID: "c2", HolderUserID: "h2", IssuerUserID: "i2", Name: "B", FileHash: "0xb"},
+		domain.Credential{ID: "c3", HolderUserID: "h3", IssuerUserID: "i3", Name: "C", FileHash: "0xc"},
+	)
+	require.NoError(t, err)
+
+	t.Run("equal", func(t *testing.T) {
+		q := &domainQuery.Query{
+			Filters: []domainQuery.Filter{
+				{Column: "issuer_user_id", Operator: domainQuery.OperatorEqual, Values: []string{"i2"}},
+			},
+		}
+		results, total, err := repo.Get(ctx, q)
+		require.NoError(t, err)
+		assert.Equal(t, 1, total)
+		assert.Equal(t, "B", results[0].Name)
+	})
+
+	t.Run("in", func(t *testing.T) {
+		q := &domainQuery.Query{
+			Filters: []domainQuery.Filter{
+				{Column: "issuer_user_id", Operator: domainQuery.OperatorIn, Values: []string{"i1", "i3"}},
+			},
+		}
+		_, total, err := repo.Get(ctx, q)
+		require.NoError(t, err)
+		assert.Equal(t, 2, total)
+	})
+
+	t.Run("not_in", func(t *testing.T) {
+		q := &domainQuery.Query{
+			Filters: []domainQuery.Filter{
+				{Column: "issuer_user_id", Operator: domainQuery.OperatorNotIn, Values: []string{"i1", "i3"}},
+			},
+		}
+		results, total, err := repo.Get(ctx, q)
+		require.NoError(t, err)
+		assert.Equal(t, 1, total)
+		assert.Equal(t, "B", results[0].Name)
+	})
+}
