@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"fmt"
 
 	"CredChain_Golang/config"
 	"CredChain_Golang/domain"
@@ -18,6 +19,8 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
+
+	validation "github.com/go-ozzo/ozzo-validation/v4"
 )
 
 type UserService interface {
@@ -71,49 +74,54 @@ func (s *userService) Store(ctx context.Context, users ...domain.User) ([]domain
 	if err := s.policy.Store(ctx, users...); err != nil {
 		return nil, err
 	}
-	if err := s.storeValidateEmails(ctx, users); err != nil {
-		return nil, err
+
+	if verrs := s.storeValidateEmails(ctx, users); len(verrs) > 0 {
+		return nil, verrs
 	}
+
 	if err := s.storeGenerateWallets(users); err != nil {
 		return nil, err
 	}
+
 	return s.storeUsersAndSyncBlockchainRoles(ctx, users)
 }
 
-func (s *userService) storeValidateEmails(ctx context.Context, users []domain.User) error {
-	batchDuplicates := []string{}
-	dbDuplicates := []string{}
-	emailIndex := lo.GroupBy(users, func(u domain.User) string { return u.Email })
-	for email, indices := range emailIndex {
-		if len(indices) > 1 {
-			batchDuplicates = append(batchDuplicates, email)
+func (s *userService) storeValidateEmails(ctx context.Context, users []domain.User) validation.Errors {
+	verrs := validation.Errors{}
+
+	seen := map[string]int{}
+	for i, u := range users {
+		if prev, ok := seen[u.Email]; ok {
+			verrs[fmt.Sprintf("users.%d.email", i)] = validation.NewError(
+				"validation_store_email_duplicate_batch",
+				"",
+			).SetParams(map[string]interface{}{"field": u.Email})
+			verrs[fmt.Sprintf("users.%d.email", prev)] = validation.NewError(
+				"validation_store_email_duplicate_batch",
+				"",
+			).SetParams(map[string]interface{}{"field": u.Email})
 		}
+		seen[u.Email] = i
 	}
-	if len(batchDuplicates) == 0 {
+
+	if len(verrs) == 0 {
 		emails := make([]string, len(users))
 		for i, u := range users {
 			emails[i] = u.Email
 		}
 		existing, _ := s.userRepo.FindByEmails(ctx, emails...)
-		if len(existing) > 0 {
-			existingEmails := make(map[string]bool)
-			for _, u := range existing {
-				existingEmails[u.Email] = true
-			}
-			for _, u := range users {
-				if existingEmails[u.Email] {
-					dbDuplicates = append(dbDuplicates, u.Email)
-				}
+		existingSet := lo.SliceToMap(existing, func(e domain.User) (string, bool) { return e.Email, true })
+		for i, u := range users {
+			if existingSet[u.Email] {
+				verrs[fmt.Sprintf("users.%d.email", i)] = validation.NewError(
+					"validation_store_email_duplicate_db",
+					"",
+				).SetParams(map[string]interface{}{"field": u.Email})
 			}
 		}
 	}
-	if len(batchDuplicates) > 0 {
-		return domain.NewError(domain.CodeUserStoreEmailDuplicateInBatch, domain.WithMetadata("emails", batchDuplicates))
-	}
-	if len(dbDuplicates) > 0 {
-		return domain.NewError(domain.CodeUserStoreEmailDuplicateInDatabase, domain.WithMetadata("emails", dbDuplicates))
-	}
-	return nil
+
+	return verrs
 }
 
 func (s *userService) storeGenerateWallets(users []domain.User) error {

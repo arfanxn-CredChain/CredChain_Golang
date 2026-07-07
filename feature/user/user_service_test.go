@@ -14,6 +14,7 @@ import (
 	"CredChain_Golang/infrastructure/testutil/fixtures"
 	"CredChain_Golang/infrastructure/testutil/mocks"
 
+	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
@@ -67,9 +68,15 @@ func TestUserService_Store_BatchDuplicateEmails(t *testing.T) {
 	authUser := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleAdmin))
 	_, err := svc.Store(ctxWithAuth(&authUser), u1, u2)
 	assert.Error(t, err)
-	var de *domain.Error
-	assert.ErrorAs(t, err, &de)
-	assert.Equal(t, domain.CodeUserStoreEmailDuplicateInBatch, de.Code)
+	verrs, ok := err.(validation.Errors)
+	assert.True(t, ok)
+	assert.Contains(t, verrs, "users.0.email")
+	assert.Contains(t, verrs, "users.1.email")
+	for _, ve := range verrs {
+		vErr, ok := ve.(validation.Error)
+		assert.True(t, ok)
+		assert.Equal(t, "validation_store_email_duplicate_batch", vErr.Code())
+	}
 }
 
 func TestUserService_Store_DBDuplicateEmails(t *testing.T) {
@@ -91,9 +98,14 @@ func TestUserService_Store_DBDuplicateEmails(t *testing.T) {
 	authUser := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleAdmin))
 	_, err := svc.Store(ctxWithAuth(&authUser), u1, u2)
 	assert.Error(t, err)
-	var de *domain.Error
-	assert.ErrorAs(t, err, &de)
-	assert.Equal(t, domain.CodeUserStoreEmailDuplicateInDatabase, de.Code)
+	verrs, ok := err.(validation.Errors)
+	assert.True(t, ok)
+	assert.Contains(t, verrs, "users.1.email")
+	for _, ve := range verrs {
+		vErr, ok := ve.(validation.Error)
+		assert.True(t, ok)
+		assert.Equal(t, "validation_store_email_duplicate_db", vErr.Code())
+	}
 }
 
 func TestUserService_Paginate(t *testing.T) {
