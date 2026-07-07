@@ -242,27 +242,18 @@ func (h *credentialHandler) Issue(c *gin.Context) {
 		}
 	}
 
-	created, fieldErrs, err := h.credSvc.Issue(c.Request.Context(), serviceItems)
+	created, err := h.credSvc.Issue(c.Request.Context(), serviceItems)
 	if err != nil {
 		c.Error(err)
+		if verrs, ok := err.(validation.Errors); ok {
+			responder.SendValidationError(c, verrs)
+			return
+		}
 		responder.SendError(c, err)
 		return
 	}
-	out := make([]*response.Credential, len(created))
-	successCount := 0
-	for i, cred := range created {
-		if cred.ID == "" {
-			continue
-		}
-		dto := response.FromDomainCredential(cred)
-		out[i] = &dto
-		successCount++
-	}
-	code := domain.CodeCredentialIssueSuccess
-	if successCount == 0 || len(fieldErrs) > 0 {
-		code = domain.CodeCredentialIssueFailed
-	}
-	responder.SendPartial(c, code, out, fieldErrs)
+	out := mapCredentialsToResponse(created)
+	responder.Send(c, domain.CodeCredentialIssueSuccess, out)
 }
 
 // ── Revoke ────────────────────────────────────────────────────────────────
