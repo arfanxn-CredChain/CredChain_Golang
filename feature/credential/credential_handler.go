@@ -184,11 +184,11 @@ func (h *credentialHandler) SelfFind(c *gin.Context) {
 //
 // Expected form structure (one set per item, zero-indexed):
 //
-//	items[0][holder_user_id]
-//	items[0][name]
-//	items[0][meta]            (JSON string, optional)
-//	items[0][file]            (binary upload)
-//	items[1][...]
+//	credentials[0][holder_user_id]
+//	credentials[0][name]
+//	credentials[0][meta]            (JSON string, optional)
+//	credentials[0][file]            (binary upload)
+//	credentials[1][...]
 func (h *credentialHandler) Issue(c *gin.Context) {
 	form, err := c.MultipartForm()
 	if err != nil {
@@ -419,10 +419,10 @@ func readUploadedFile(fh *multipart.FileHeader) ([]byte, string, string, error) 
 // buildIssueItems extracts CredentialIssueInput slices from a parsed multipart
 // form. Keys follow the pattern:
 //
-//	items[N][holder_user_id] = "ulid"
-//	items[N][name] = "Bachelor's Degree"
-//	items[N][meta] = `{"institution":"UI"}`
-//	items[N][file] = <binary>
+//	credentials[N][holder_user_id] = "ulid"
+//	credentials[N][name] = "Bachelor's Degree"
+//	credentials[N][meta] = `{"institution":"UI"}`
+//	credentials[N][file] = <binary>
 func buildIssueItems(form *multipart.Form) ([]CredentialIssueInput, error) {
 	values := form.Value
 	files := form.File
@@ -446,22 +446,22 @@ func buildIssueItems(form *multipart.Form) ([]CredentialIssueInput, error) {
 
 	items := make([]CredentialIssueInput, maxIdx+1)
 	for i := 0; i <= maxIdx; i++ {
-		key := "items[" + strconv.Itoa(i) + "][holder_user_id]"
+		key := "credentials[" + strconv.Itoa(i) + "][holder_user_id]"
 		if v, ok := values[key]; ok && len(v) > 0 {
 			items[i].HolderUserID = v[0]
 		}
-		key = "items[" + strconv.Itoa(i) + "][name]"
+		key = "credentials[" + strconv.Itoa(i) + "][name]"
 		if v, ok := values[key]; ok && len(v) > 0 {
 			items[i].Name = v[0]
 		}
-		key = "items[" + strconv.Itoa(i) + "][meta]"
+		key = "credentials[" + strconv.Itoa(i) + "][meta]"
 		if v, ok := values[key]; ok && len(v) > 0 && v[0] != "" {
 			var m map[string]any
 			if err := json.Unmarshal([]byte(v[0]), &m); err == nil {
 				items[i].Meta = m
 			}
 		}
-		key = "items[" + strconv.Itoa(i) + "][file]"
+		key = "credentials[" + strconv.Itoa(i) + "][file]"
 		if fh, ok := files[key]; ok && len(fh) > 0 {
 			items[i].File = fh[0]
 		}
@@ -474,14 +474,14 @@ func buildIssueItems(form *multipart.Form) ([]CredentialIssueInput, error) {
 }
 
 func parseItemIndex(key string) (int, bool) {
-	if !strings.HasPrefix(key, "items[") {
+	if !strings.HasPrefix(key, "credentials[") {
 		return 0, false
 	}
 	closeBracket := strings.Index(key, "]")
 	if closeBracket == -1 {
 		return 0, false
 	}
-	idxStr := key[6:closeBracket]
+	idxStr := key[12:closeBracket]
 	idx, err := strconv.Atoi(idxStr)
 	if err != nil {
 		return 0, false

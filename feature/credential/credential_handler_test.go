@@ -24,10 +24,10 @@ func TestParseItemIndex(t *testing.T) {
 		wantIdx int
 		wantOK  bool
 	}{
-		{"items[0][holder_user_id]", 0, true},
-		{"items[99][name]", 99, true},
-		{"items[abc][x]", 0, false},
-		{"not_items[0][x]", 0, false},
+		{"credentials[0][holder_user_id]", 0, true},
+		{"credentials[99][name]", 99, true},
+		{"credentials[abc][x]", 0, false},
+		{"not_credentials[0][x]", 0, false},
 	}
 	for _, tt := range tests {
 		got, ok := parseItemIndex(tt.key)
@@ -57,10 +57,10 @@ func TestMapCredentialsToResponse_Empty(t *testing.T) {
 func TestBuildIssueItems(t *testing.T) {
 	form := &multipart.Form{
 		Value: map[string][]string{
-			"items[0][holder_user_id]": {"holder-1"},
-			"items[0][name]":           {"Degree"},
-			"items[1][holder_user_id]": {"holder-2"},
-			"items[1][name]":           {"Diploma"},
+			"credentials[0][holder_user_id]": {"holder-1"},
+			"credentials[0][name]":           {"Degree"},
+			"credentials[1][holder_user_id]": {"holder-2"},
+			"credentials[1][name]":           {"Diploma"},
 		},
 		File: map[string][]*multipart.FileHeader{},
 	}
