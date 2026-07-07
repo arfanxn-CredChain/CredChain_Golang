@@ -41,9 +41,6 @@ func (p *userPolicy) Store(ctx context.Context, users ...domain.User) error {
 
 func (p *userPolicy) UpdatePreFetch(ctx context.Context, users ...domain.User) error {
 	authUser := httpContext.MustGetUser(ctx)
-	if authUser.Role.Rank() < domain.RoleAdmin.Rank() {
-		return domain.NewError(domain.CodeUserRoleSignerAdminRequiredForbidden)
-	}
 	for _, u := range users {
 		if u.Id == authUser.Id && authUser.Role != domain.RoleSuperAdmin {
 			return domain.NewError(domain.CodeUserUpdateSelfForbidden, domain.WithMetadata("user_id", authUser.Id))

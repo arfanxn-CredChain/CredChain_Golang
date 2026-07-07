@@ -189,15 +189,6 @@ func TestUserPolicy_UpdateRolePostFetch_TargetNotFound(t *testing.T) {
 	assert.Equal(t, domain.CodeUserFetchNotFound, de.Code)
 }
 
-func TestUserPolicy_UpdatePreFetch_BelowAdmin(t *testing.T) {
-	p := NewUserPolicy()
-	auth := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleHolder))
-	err := p.UpdatePreFetch(ctxWithUser(&auth), domain.User{Id: "u1"})
-	var de *domain.Error
-	assert.ErrorAs(t, err, &de)
-	assert.Equal(t, domain.CodeUserRoleSignerAdminRequiredForbidden, de.Code)
-}
-
 func TestUserPolicy_UpdatePreFetch_Self(t *testing.T) {
 	p := NewUserPolicy()
 	auth := fixtures.NewDomainUser(fixtures.WithID("self"), fixtures.WithRole(domain.RoleAdmin))
