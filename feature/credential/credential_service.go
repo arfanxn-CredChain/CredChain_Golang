@@ -23,11 +23,11 @@ import (
 	"CredChain_Golang/infrastructure/storage"
 
 	ethCrypto "github.com/ethereum/go-ethereum/crypto"
+	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/oklog/ulid/v2"
 	"github.com/samber/lo"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
-	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"gorm.io/gorm"
 )
 
@@ -351,6 +351,7 @@ func (s *credentialService) issueCommit(
 //  2. issueValidate — input-driven checks (holders, duplicate hashes)
 //  3. issuePrepareCredentials — encrypt, store, build entities
 //  4. issueCommit — UoW: Store → chain mint → update token IDs → enqueue
+//
 // All-or-nothing: any validation failure returns validation.Errors;
 // any server-side failure rolls back the entire batch.
 func (s *credentialService) Issue(ctx context.Context, items []CredentialIssuance) ([]domain.Credential, error) {

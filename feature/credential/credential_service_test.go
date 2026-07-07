@@ -18,8 +18,8 @@ import (
 	"CredChain_Golang/infrastructure/testutil/mocks"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/samber/lo"
 	"github.com/go-ozzo/ozzo-validation/v4"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
@@ -783,8 +783,6 @@ func TestIssue_DuplicateFileHash(t *testing.T) {
 	assert.Contains(t, verrs, "credentials.0.file")
 	assert.NotContains(t, verrs, "credentials.1.file")
 }
-
-
 
 func TestReExtract_HappyPath(t *testing.T) {
 	user := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleIssuer))
