@@ -247,6 +247,7 @@ Every HTTP response uses `{code, message, data?}` envelope. Helpers:
 - `responder.SendPagination(c, code, items, total, page, perPage)` — paginated success
 - `responder.SendError(c, err)` — error (auto-resolves code → message via i18n)
 - `responder.SendValidationError(c, errors)` — Ozzo validation errors
+- **Service-level validation.Errors dispatch:** Services can return `validation.Errors` directly for business-logic validation beyond request-DTO validation (e.g., `userService.storeValidateEmails` checks for duplicate emails across a batch, `credentialService.validateIssueCredential` checks for duplicate file hashes). Handlers catch these via `if verrs, ok := err.(validation.Errors); ok { responder.SendValidationError(c, verrs) }`. This produces the `{code, message, errors: {...}}` response envelope with per-field error messages, HTTP 400. See `feature/user/user_handler.go` and `feature/credential/credential_handler.go` for handler dispatch patterns.
 
 Response codes follow a 6-digit `AABBCC` format defined in `domain/codes.go`. Categories: `10` (system), `20` (auth), `30` (user), `40` (credential — sub-categories 01=fetch, 02=issue, 03=revoke, 04=verify, 05=reextract, 06=file download). The `50` category is owned by `CredChain_Python` (AI service) and propagates through this backend untouched.
 
