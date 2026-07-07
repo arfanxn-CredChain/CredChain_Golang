@@ -100,7 +100,6 @@ const (
 	CodeCredentialFetchValidation = 400141
 
 	CodeCredentialIssueSuccess              = 400200
-	CodeCredentialIssueFailed               = 400240
 	CodeCredentialIssueValidation           = 400241
 	CodeCredentialIssueDuplicateFileHash    = 400242
 	CodeCredentialIssueHolderNotFound       = 400243

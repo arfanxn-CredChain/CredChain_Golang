@@ -99,7 +99,6 @@
     "error_users_update_self_email_forbidden": "You cannot change your own email via batch update. Use the self email endpoint instead.",
     "error_credential_not_found": "Credential not found.",
     "error_credential_fetch_validation": "Invalid credential fetch parameters.",
-    "error_credential_issue_failed": "Failed to issue credential.",
     "error_credential_issue_validation": "Invalid credential issue payload.",
     "error_credential_issue_duplicate_file_hash": "One or more files match credentials that are already issued.",
     "error_credential_issue_holder_not_found": "One or more holders were not found.",

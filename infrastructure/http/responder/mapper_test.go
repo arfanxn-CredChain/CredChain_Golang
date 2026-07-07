@@ -93,7 +93,6 @@ var allDomainCodes = []int{
 	domain.CodeCredentialFetchNotFound,
 	domain.CodeCredentialFetchValidation,
 	domain.CodeCredentialIssueSuccess,
-	domain.CodeCredentialIssueFailed,
 	domain.CodeCredentialIssueValidation,
 	domain.CodeCredentialIssueDuplicateFileHash,
 	domain.CodeCredentialIssueHolderNotFound,

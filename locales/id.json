@@ -99,7 +99,6 @@
     "error_users_update_self_email_forbidden": "Anda tidak dapat mengubah email sendiri melalui pembaruan batch. Gunakan endpoint email mandiri.",
     "error_credential_not_found": "Kredensial tidak ditemukan.",
     "error_credential_fetch_validation": "Parameter pengambilan kredensial tidak valid.",
-    "error_credential_issue_failed": "Gagal menerbitkan kredensial.",
     "error_credential_issue_validation": "Data penerbitan kredensial tidak valid.",
     "error_credential_issue_duplicate_file_hash": "Satu atau lebih file cocok dengan kredensial yang sudah diterbitkan.",
     "error_credential_issue_holder_not_found": "Satu atau lebih pemegang tidak ditemukan.",
