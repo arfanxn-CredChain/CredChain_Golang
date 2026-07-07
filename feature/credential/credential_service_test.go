@@ -19,6 +19,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/samber/lo"
+	"github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
@@ -683,45 +684,33 @@ func TestVerify_TieBreakNewestIssuedAt(t *testing.T) {
 	assert.Equal(t, []float64{3.0, 0.0}, actualEmbedding)
 }
 
-func TestIssue_AllFailed(t *testing.T) {
+func TestIssue_ValidationErrors(t *testing.T) {
 	user := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleIssuer))
 	ctx := ctxWithAuth(&user)
-	enq := &localMockEnqueuer{}
 	userRepo := &mocks.MockUserRepository{}
-	stor := &storage.Storage{Config: &config.Config{StoragePath: lo.ToPtr(t.TempDir())}}
-
-	userRepo.On("FindByIds", mock.Anything, mock.Anything, mock.Anything).Return([]domain.User{}, nil)
-
-	credRepo := &mocks.MockCredentialRepository{}
-	credRepo.On("FindByFileHashes", mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
-
+	userRepo.On("FindByIds", mock.Anything, mock.Anything).Return([]domain.User{}, nil)
 	regSvc := &mocks.MockRegistryService{}
 	regSvc.On("GetCredentialHashStatuses", mock.Anything, mock.Anything).Return(
 		[]contracts.CredentialRegistryCredentialHashStatus{}, nil,
 	)
-
 	svc := &credentialService{
-		repo:            credRepo,
 		cfg:             testConfig(),
 		registryService: regSvc,
-		storage:         stor,
 		policy:          &credentialPolicy{},
 		userRepo:        userRepo,
 		logger:          zap.NewNop(),
-		enqueuer:        enq,
 	}
 	items := []CredentialIssuance{
 		{HolderUserID: "holder-1", Name: "a", Filename: "x.pdf", FileBytes: []byte("x")},
 		{HolderUserID: "holder-2", Name: "b", Filename: "x.pdf", FileBytes: []byte("y")},
 	}
-	results, errs, err := svc.Issue(ctx, items)
-	assert.NoError(t, err)
-	assert.Len(t, results, 2)
-	assert.Equal(t, "", results[0].ID)
-	assert.Equal(t, "", results[1].ID)
-	assert.Contains(t, errs, "credentials.0.holder_user_id")
-	assert.Contains(t, errs, "credentials.1.holder_user_id")
-	enq.AssertNotCalled(t, "EnqueueExtract", mock.Anything, mock.Anything)
+	results, err := svc.Issue(ctx, items)
+	assert.Nil(t, results)
+	assert.Error(t, err)
+	verrs, ok := err.(validation.Errors)
+	assert.True(t, ok, "expected validation.Errors, got %T", err)
+	assert.Contains(t, verrs, "credentials.0.holder_user_id")
+	assert.Contains(t, verrs, "credentials.1.holder_user_id")
 }
 
 func TestIssue_ChainRollback(t *testing.T) {
@@ -730,28 +719,20 @@ func TestIssue_ChainRollback(t *testing.T) {
 	enq := &localMockEnqueuer{}
 	userRepo := &mocks.MockUserRepository{}
 	stor := &storage.Storage{Config: &config.Config{StoragePath: lo.ToPtr(t.TempDir())}}
-
-	userRepo.On("FindByIds", mock.Anything, mock.Anything, mock.Anything).Return(
+	userRepo.On("FindByIds", mock.Anything, mock.Anything).Return(
 		[]domain.User{{Id: "holder-valid"}}, nil)
-
 	regSvc := &mocks.MockRegistryService{}
 	regSvc.On("GetCredentialHashStatuses", mock.Anything, mock.Anything).Return(
 		[]contracts.CredentialRegistryCredentialHashStatus{}, nil,
 	)
 	regSvc.On("IssueCredentials", mock.Anything, mock.Anything, mock.Anything).
 		Return(nil, assert.AnError)
-
 	uow := mocks.NewPropagatingUnitOfWork()
 	innerCredRepo := &mocks.MockCredentialRepository{}
-	innerCredRepo.On("Store", mock.Anything, mock.Anything, mock.Anything).Return(
+	innerCredRepo.On("Store", mock.Anything, mock.Anything).Return(
 		[]domain.Credential{{ID: "stored-1", FileURI: lo.ToPtr("up/test.pdf")}}, nil)
 	uow.On("Credential").Return(innerCredRepo)
-
-	credRepo := &mocks.MockCredentialRepository{}
-	credRepo.On("FindByFileHashes", mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
-
 	svc := &credentialService{
-		repo:            credRepo,
 		uow:             uow,
 		cfg:             testConfig(),
 		registryService: regSvc,
@@ -764,69 +745,46 @@ func TestIssue_ChainRollback(t *testing.T) {
 	items := []CredentialIssuance{
 		{HolderUserID: "holder-valid", Name: "doc", Filename: "x.pdf", FileBytes: []byte("test")},
 	}
-	_, _, err := svc.Issue(ctx, items)
-	_ = enq
+	_, err := svc.Issue(ctx, items)
 	assert.Error(t, err)
+	_, ok := err.(validation.Errors)
+	assert.False(t, ok, "expected *domain.Error for chain rollback, not validation.Errors")
 }
 
-func TestIssue_PartialSuccess(t *testing.T) {
+func TestIssue_DuplicateFileHash(t *testing.T) {
 	user := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleIssuer))
 	ctx := ctxWithAuth(&user)
-	m := &testCredentialMocks{
-		credRepo: &mocks.MockCredentialRepository{},
-		verRepo:  &mocks.MockCredentialVerificationRepository{},
-		extRepo:  &mocks.MockCredentialExtractionRepository{},
-		aiClient: &mocks.MockPythonAIClient{},
-		regSvc:   &mocks.MockRegistryService{},
-	}
-	enq := &localMockEnqueuer{}
-
-	stor := &storage.Storage{Config: &config.Config{StoragePath: lo.ToPtr(t.TempDir())}}
-
 	userRepo := &mocks.MockUserRepository{}
-	userRepo.On("FindByIds", mock.Anything, mock.Anything, mock.Anything).
-		Return([]domain.User{{Id: "holder-2"}}, nil)
-	m.credRepo.On("FindByFileHashes", mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
-
-	uow := mocks.NewPropagatingUnitOfWork()
-	innerCredRepo := &mocks.MockCredentialRepository{}
-	innerCredRepo.On("Store", mock.Anything, mock.Anything, mock.Anything).Return(
-		[]domain.Credential{{ID: "stored-2", FileURI: lo.ToPtr("up/test.pdf")}}, nil)
-	innerCredRepo.On("Update", mock.Anything, mock.Anything, mock.Anything).Return(
-		[]domain.Credential{{ID: "stored-2", TokenID: lo.ToPtr("1")}}, nil)
-	uow.On("Credential").Return(innerCredRepo)
-	m.regSvc.On("GetCredentialHashStatuses", mock.Anything, mock.Anything).Return(
-		[]contracts.CredentialRegistryCredentialHashStatus{}, nil,
+	userRepo.On("FindByIds", mock.Anything, mock.Anything).Return(
+		[]domain.User{{Id: "holder-1"}, {Id: "holder-2"}}, nil)
+	regSvc := &mocks.MockRegistryService{}
+	regSvc.On("GetCredentialHashStatuses", mock.Anything, mock.Anything).Return(
+		[]contracts.CredentialRegistryCredentialHashStatus{
+			{Status: 1},
+			{Status: 0},
+		}, nil,
 	)
-	m.regSvc.On("IssueCredentials", mock.Anything, mock.Anything, mock.Anything).
-		Return([]*big.Int{big.NewInt(1)}, nil)
-	enq.On("EnqueueExtract", mock.Anything, mock.Anything).Return(nil)
-
 	svc := &credentialService{
-		repo:            m.credRepo,
-		uow:             uow,
 		cfg:             testConfig(),
-		registryService: m.regSvc,
-		aiClient:        m.aiClient,
-		storage:         stor,
+		registryService: regSvc,
 		policy:          &credentialPolicy{},
 		userRepo:        userRepo,
 		logger:          zap.NewNop(),
-		enqueuer:        enq,
 	}
-
 	items := []CredentialIssuance{
-		{HolderUserID: "holder-1", Name: "bad", Filename: "x.pdf", FileBytes: []byte("x")},
-		{HolderUserID: "holder-2", Name: "valid", Filename: "x.pdf", FileBytes: []byte("b")},
+		{HolderUserID: "holder-1", Name: "a", Filename: "x.pdf", FileBytes: []byte("dup")},
+		{HolderUserID: "holder-2", Name: "b", Filename: "x.pdf", FileBytes: []byte("unique")},
 	}
-	results, errs, err := svc.Issue(ctx, items)
-	assert.NoError(t, err)
-	assert.Len(t, results, 2)
-	assert.Contains(t, errs, "credentials.0.holder_user_id")
-	assert.Equal(t, "", results[0].ID)
-	assert.Equal(t, "stored-2", results[1].ID)
-	enq.AssertNumberOfCalls(t, "EnqueueExtract", 1)
+	results, err := svc.Issue(ctx, items)
+	assert.Nil(t, results)
+	assert.Error(t, err)
+	verrs, ok := err.(validation.Errors)
+	assert.True(t, ok, "expected validation.Errors for duplicate hash, got %T", err)
+	assert.Contains(t, verrs, "credentials.0.file")
+	assert.NotContains(t, verrs, "credentials.1.file")
 }
+
+
 
 func TestReExtract_HappyPath(t *testing.T) {
 	user := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleIssuer))
@@ -1579,11 +1537,11 @@ func TestIssue_GlobalDuplicateHash_Batch(t *testing.T) {
 		{HolderUserID: "hB", Name: "C2", Filename: "a.pdf", MIMEType: "application/pdf", FileBytes: data},
 	}
 
-	_, fieldErrs, err := svc.Issue(ctx, items)
-	assert.NoError(t, err)
-	assert.NotNil(t, fieldErrs)
-	assert.Contains(t, fieldErrs, "credentials.0.file")
-	assert.Contains(t, fieldErrs["credentials.0.file"][0], "duplicate_file_hash")
+	_, err := svc.Issue(ctx, items)
+	assert.Error(t, err)
+	verrs, ok := err.(validation.Errors)
+	assert.True(t, ok)
+	assert.Contains(t, verrs, "credentials.1.file")
 }
 
 func TestIssue_GlobalDuplicateHash_OnChain(t *testing.T) {
@@ -1613,9 +1571,11 @@ func TestIssue_GlobalDuplicateHash_OnChain(t *testing.T) {
 		{HolderUserID: "h", Name: "C", Filename: "a.pdf", MIMEType: "application/pdf", FileBytes: []byte("x")},
 	}
 
-	_, fieldErrs, _ := svc.Issue(ctx, items)
-	assert.NotNil(t, fieldErrs)
-	assert.Contains(t, fieldErrs["credentials.0.file"][0], "duplicate_file_hash")
+	_, err := svc.Issue(ctx, items)
+	assert.Error(t, err)
+	verrs, ok := err.(validation.Errors)
+	assert.True(t, ok)
+	assert.Contains(t, verrs, "credentials.0.file")
 }
 
 func TestIssue_RevokedHash_Allowed(t *testing.T) {
@@ -1660,8 +1620,8 @@ func TestIssue_RevokedHash_Allowed(t *testing.T) {
 		{HolderUserID: "h", Name: "C", Filename: "a.pdf", MIMEType: "application/pdf", FileBytes: []byte("y")},
 	}
 
-	_, fieldErrs, _ := svc.Issue(ctx, items)
-	assert.Nil(t, fieldErrs)
+	_, err := svc.Issue(ctx, items)
+	assert.NoError(t, err)
 }
 
 func TestIssue_HolderNotFound(t *testing.T) {
@@ -1685,8 +1645,9 @@ func TestIssue_HolderNotFound(t *testing.T) {
 		{HolderUserID: "ghost", Name: "C", Filename: "a.pdf", MIMEType: "application/pdf", FileBytes: []byte("z")},
 	}
 
-	_, fieldErrs, err := svc.Issue(ctx, items)
-	assert.NoError(t, err)
-	assert.Contains(t, fieldErrs, "credentials.0.holder_user_id")
-	assert.Contains(t, fieldErrs["credentials.0.holder_user_id"][0], "holder_not_found")
+	_, err := svc.Issue(ctx, items)
+	assert.Error(t, err)
+	verrs, ok := err.(validation.Errors)
+	assert.True(t, ok)
+	assert.Contains(t, verrs, "credentials.0.holder_user_id")
 }

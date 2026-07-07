@@ -38,15 +38,12 @@ func (m *mockCredentialService) SelfFind(ctx context.Context, id string, query *
 	return args.Get(0).(*domain.Credential), args.Error(1)
 }
 
-func (m *mockCredentialService) Issue(ctx context.Context, items []CredentialIssuance) ([]domain.Credential, map[string][]string, error) {
+func (m *mockCredentialService) Issue(ctx context.Context, items []CredentialIssuance) ([]domain.Credential, error) {
 	args := m.Called(ctx, items)
 	if args.Get(0) == nil {
-		return nil, nil, args.Error(2)
+		return nil, args.Error(1)
 	}
-	if args.Get(1) == nil {
-		return args.Get(0).([]domain.Credential), nil, args.Error(2)
-	}
-	return args.Get(0).([]domain.Credential), args.Get(1).(map[string][]string), args.Error(2)
+	return args.Get(0).([]domain.Credential), args.Error(1)
 }
 
 func (m *mockCredentialService) Revoke(ctx context.Context, ids ...string) ([]domain.Credential, error) {
