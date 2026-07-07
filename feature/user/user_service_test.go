@@ -198,36 +198,6 @@ func TestUserService_UpdateEmail(t *testing.T) {
 	assert.Equal(t, "new@x.com", got)
 }
 
-func TestUserService_UpdateRole_SignerBelowAdmin(t *testing.T) {
-	svc := NewUserService(UserServiceParams{
-		UserRepo: &mocks.MockUserRepository{}, UoW: &mocks.MockUnitOfWork{}, Config: mkSvcCfg(),
-		AuthorityService: &mocks.MockAuthorityService{}, Logger: zap.NewNop(), Policy: NewUserPolicy(),
-	})
-
-	authUser := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleHolder))
-	_, _, err := svc.UpdateRole(ctxWithAuth(&authUser),
-		domain.UserRoleUpdate{UserID: "u1", Role: domain.RoleIssuer})
-	assert.Error(t, err)
-	var de *domain.Error
-	assert.ErrorAs(t, err, &de)
-	assert.Equal(t, domain.CodeUserRoleSignerAdminRequiredForbidden, de.Code)
-}
-
-func TestUserService_Delete_SignerBelowAdmin(t *testing.T) {
-	svc := NewUserService(UserServiceParams{
-		UserRepo: &mocks.MockUserRepository{}, UoW: &mocks.MockUnitOfWork{}, Config: mkSvcCfg(),
-		AuthorityService: &mocks.MockAuthorityService{}, Logger: zap.NewNop(), Policy: NewUserPolicy(),
-		OAuthClient: &mocks.MockGoogleOAuthClient{},
-	})
-
-	authUser := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleHolder))
-	_, err := svc.Delete(ctxWithAuth(&authUser), "u1")
-	assert.Error(t, err)
-	var de *domain.Error
-	assert.ErrorAs(t, err, &de)
-	assert.Equal(t, domain.CodeUserRoleSignerAdminRequiredForbidden, de.Code)
-}
-
 func TestUserService_Delete_SelfDeleteForbidden(t *testing.T) {
 	svc := NewUserService(UserServiceParams{
 		UserRepo: &mocks.MockUserRepository{}, UoW: &mocks.MockUnitOfWork{}, Config: mkSvcCfg(),
@@ -1204,29 +1174,6 @@ func TestUserService_Restore_SelfTargetForbidden(t *testing.T) {
 	var de *domain.Error
 	assert.ErrorAs(t, err, &de)
 	assert.Equal(t, domain.CodeUserRestoreSelfTargetForbidden, de.Code)
-	auth.AssertNotCalled(t, "UpdateUserRole", mock.Anything, mock.Anything, mock.Anything)
-}
-
-func TestUserService_Restore_BelowAdminForbidden(t *testing.T) {
-	repo := &mocks.MockUserRepository{}
-	uow := &mocks.MockUnitOfWork{}
-	auth := &mocks.MockAuthorityService{}
-	policy := &mocks.MockUserPolicy{}
-
-	authUser := fixtures.NewDomainUser(fixtures.WithID("holder1"), fixtures.WithRole(domain.RoleHolder))
-
-	policy.On("RestorePreFetch", mock.Anything, mock.Anything).Return(
-		domain.NewError(domain.CodeUserRestoreSignerAdminRequiredForbidden))
-
-	svc := NewUserService(UserServiceParams{
-		UserRepo: repo, UoW: uow, Config: mkSvcCfg(),
-		AuthorityService: auth, Logger: zap.NewNop(), Policy: policy,
-	})
-	_, _, err := svc.Restore(ctxWithAuth(&authUser), []string{"u1"})
-	assert.Error(t, err)
-	var de *domain.Error
-	assert.ErrorAs(t, err, &de)
-	assert.Equal(t, domain.CodeUserRestoreSignerAdminRequiredForbidden, de.Code)
 	auth.AssertNotCalled(t, "UpdateUserRole", mock.Anything, mock.Anything, mock.Anything)
 }
 

@@ -352,12 +352,6 @@ func (s *credentialService) issueCommit(
 func (s *credentialService) Issue(ctx context.Context, items []CredentialIssuance) ([]domain.Credential, error) {
 	authUser := httpContext.MustGetUser(ctx)
 
-	if err := s.policy.IssuePreFetch(ctx, lo.Map(items, func(it CredentialIssuance, _ int) domain.Credential {
-		return domain.Credential{HolderUserID: it.HolderUserID}
-	})); err != nil {
-		return nil, err
-	}
-
 	holderIDs := lo.Map(items, func(it CredentialIssuance, _ int) string { return it.HolderUserID })
 	holders, err := s.userRepo.FindByIds(ctx, holderIDs...)
 	if err != nil {
@@ -413,10 +407,6 @@ func (s *credentialService) issueEnqueueExtractJob(ctx context.Context, credenti
 // in the database and syncs the revocation on-chain via the CredentialRegistry.
 // Uses Update (CASE-based) — there is no separate Revoke method on the repository.
 func (s *credentialService) Revoke(ctx context.Context, ids ...string) ([]domain.Credential, error) {
-	if err := s.policy.RevokePreFetch(ctx, ids); err != nil {
-		return nil, err
-	}
-
 	authUser := httpContext.MustGetUser(ctx)
 	now := time.Now()
 	revokerID := authUser.Id
@@ -494,10 +484,6 @@ func (s *credentialService) Revoke(ctx context.Context, ids ...string) ([]domain
 // Verify runs the cache → exact hash → fuzzy pipeline against the uploaded
 // file. Returns (verdictCode, matchedCredential, score, percent, error).
 func (s *credentialService) Verify(ctx context.Context, file pyai.ExtractFile) (int, *domain.Credential, *float64, *string, error) {
-	if err := s.policy.VerifyPreFetch(ctx); err != nil {
-		return 0, nil, nil, nil, err
-	}
-
 	uploadedHash := "0x" + hex.EncodeToString(ethCrypto.Keccak256(file.Data))
 
 	verifyQuery := &domainQuery.Query{Includes: []string{"holder", "issuer"}}
@@ -735,9 +721,6 @@ func (s *credentialService) verifyCacheVerdict(ctx context.Context, hash string,
 // jobs. All-or-nothing within one UoW: validates all exist + are failed with
 // file_uri, resets to pending, then enqueues River jobs after commit.
 func (s *credentialService) ReExtract(ctx context.Context, ids ...string) ([]domain.Credential, error) {
-	if err := s.policy.ReExtractPreFetch(ctx); err != nil {
-		return nil, err
-	}
 	var updated []domain.Credential
 	var toEnqueue []domain.Credential
 	err := s.uow.Execute(ctx, func(uow domain.UnitOfWork) error {

@@ -89,9 +89,6 @@ func (p *userPolicy) UpdatePostFetch(ctx context.Context, targets []domain.User,
 
 func (p *userPolicy) UpdateRolePreFetch(ctx context.Context, updates ...domain.UserRoleUpdate) error {
 	authUser := httpContext.MustGetUser(ctx)
-	if authUser.Role.Rank() < domain.RoleAdmin.Rank() {
-		return domain.NewError(domain.CodeUserRoleSignerAdminRequiredForbidden)
-	}
 	for _, u := range updates {
 		if u.Role == domain.RoleSuperAdmin {
 			return domain.NewError(domain.CodeUserRoleSuperAdminBatchForbidden,
@@ -141,9 +138,6 @@ func (p *userPolicy) UpdateRolePostFetch(ctx context.Context, targets []domain.U
 
 func (p *userPolicy) DeletePreFetch(ctx context.Context, ids ...string) error {
 	authUser := httpContext.MustGetUser(ctx)
-	if authUser.Role.Rank() < domain.RoleAdmin.Rank() {
-		return domain.NewError(domain.CodeUserRoleSignerAdminRequiredForbidden)
-	}
 	for _, id := range ids {
 		if id == authUser.Id {
 			return domain.NewError(domain.CodeUserDeleteSelfTargetForbidden, domain.WithMetadata("user_id", authUser.Id))
@@ -170,9 +164,6 @@ func (p *userPolicy) DeletePostFetch(ctx context.Context, targets []domain.User)
 
 func (p *userPolicy) RestorePreFetch(ctx context.Context, ids ...string) error {
 	authUser := httpContext.MustGetUser(ctx)
-	if authUser.Role.Rank() < domain.RoleAdmin.Rank() {
-		return domain.NewError(domain.CodeUserRestoreSignerAdminRequiredForbidden)
-	}
 	for _, id := range ids {
 		if id == authUser.Id {
 			return domain.NewError(domain.CodeUserRestoreSelfTargetForbidden,

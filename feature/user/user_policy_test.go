@@ -85,15 +85,6 @@ func TestUserPolicy_DeletePreFetch_AllowsOthers(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestUserPolicy_DeletePreFetch_BelowAdmin(t *testing.T) {
-	p := NewUserPolicy()
-	auth := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleHolder))
-	err := p.DeletePreFetch(ctxWithUser(&auth), "u1")
-	var de *domain.Error
-	assert.ErrorAs(t, err, &de)
-	assert.Equal(t, domain.CodeUserRoleSignerAdminRequiredForbidden, de.Code)
-}
-
 func TestUserPolicy_DeletePostFetch_AdminDeletingAdmin(t *testing.T) {
 	p := NewUserPolicy()
 	auth := fixtures.NewDomainUser(fixtures.WithID("a1"), fixtures.WithRole(domain.RoleAdmin))
@@ -128,15 +119,6 @@ func TestUserPolicy_DeletePostFetch_SuperAdminCanDeleteAdmin(t *testing.T) {
 	target := fixtures.NewDomainUser(fixtures.WithID("u1"), fixtures.WithRole(domain.RoleAdmin))
 	err := p.DeletePostFetch(ctxWithUser(&auth), []domain.User{target})
 	assert.NoError(t, err)
-}
-
-func TestUserPolicy_UpdateRolePreFetch_BelowAdmin(t *testing.T) {
-	p := NewUserPolicy()
-	auth := fixtures.NewDomainUser(fixtures.WithRole(domain.RoleHolder))
-	err := p.UpdateRolePreFetch(ctxWithUser(&auth), domain.UserRoleUpdate{UserID: "u1", Role: domain.RoleIssuer})
-	var de *domain.Error
-	assert.ErrorAs(t, err, &de)
-	assert.Equal(t, domain.CodeUserRoleSignerAdminRequiredForbidden, de.Code)
 }
 
 func TestUserPolicy_UpdateRolePreFetch_RejectsSuperAdmin(t *testing.T) {
