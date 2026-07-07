@@ -182,22 +182,17 @@ func (s *credentialService) SelfFind(ctx context.Context, id string, query *doma
 func (s *credentialService) issueValidate(
 	ctx context.Context,
 	items []CredentialIssuance,
+	holderSet map[string]bool,
+	statuses []contracts.CredentialRegistryCredentialHashStatus,
 ) validation.Errors {
 	verrs := validation.Errors{}
 
-	holderIDs := lo.Map(items, func(it CredentialIssuance, _ int) string { return it.HolderUserID })
-	holders, _ := s.userRepo.FindByIds(ctx, holderIDs...)
-	holderSet := lo.SliceToMap(holders, func(h domain.User) (string, bool) { return h.Id, true })
-
 	hashes := make([]string, len(items))
-	hashBytes := make([][32]byte, len(items))
 	for i, it := range items {
 		hash := ethCrypto.Keccak256(it.FileBytes)
 		hashes[i] = "0x" + hex.EncodeToString(hash)
-		copy(hashBytes[i][:], hash)
 	}
 
-	statuses, _ := s.registryService.GetCredentialHashStatuses(ctx, hashBytes)
 	onChainActive := map[string]bool{}
 	for i, st := range statuses {
 		if st.Status == 1 {
@@ -363,7 +358,23 @@ func (s *credentialService) Issue(ctx context.Context, items []CredentialIssuanc
 		return nil, err
 	}
 
-	if verrs := s.issueValidate(ctx, items); len(verrs) > 0 {
+	holderIDs := lo.Map(items, func(it CredentialIssuance, _ int) string { return it.HolderUserID })
+	holders, err := s.userRepo.FindByIds(ctx, holderIDs...)
+	if err != nil {
+		return nil, err
+	}
+	holderSet := lo.SliceToMap(holders, func(h domain.User) (string, bool) { return h.Id, true })
+
+	hashBytes := make([][32]byte, len(items))
+	for i, it := range items {
+		copy(hashBytes[i][:], ethCrypto.Keccak256(it.FileBytes))
+	}
+	statuses, err := s.registryService.GetCredentialHashStatuses(ctx, hashBytes)
+	if err != nil {
+		return nil, domain.NewError(domain.CodeCredentialIssueBlockchainSyncFailed, domain.WithError(err))
+	}
+
+	if verrs := s.issueValidate(ctx, items, holderSet, statuses); len(verrs) > 0 {
 		return nil, verrs
 	}
 

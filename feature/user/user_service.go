@@ -95,11 +95,11 @@ func (s *userService) storeValidateEmails(ctx context.Context, users []domain.Us
 			verrs[fmt.Sprintf("users.%d.email", i)] = validation.NewError(
 				"validation_store_email_duplicate_batch",
 				"",
-			).SetParams(map[string]interface{}{"field": u.Email})
+			)
 			verrs[fmt.Sprintf("users.%d.email", prev)] = validation.NewError(
 				"validation_store_email_duplicate_batch",
 				"",
-			).SetParams(map[string]interface{}{"field": u.Email})
+			)
 		}
 		seen[u.Email] = i
 	}
@@ -116,7 +116,7 @@ func (s *userService) storeValidateEmails(ctx context.Context, users []domain.Us
 				verrs[fmt.Sprintf("users.%d.email", i)] = validation.NewError(
 					"validation_store_email_duplicate_db",
 					"",
-				).SetParams(map[string]interface{}{"field": u.Email})
+				)
 			}
 		}
 	}

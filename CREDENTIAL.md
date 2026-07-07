@@ -231,15 +231,10 @@ All check `user.Role.Rank() >= RoleIssuer.Rank()` from `httpContext.MustGetUser(
 Architecture: sync chain, async embeddings.
 
 1. `IssuePreFetch` policy (signer is Issuer+)
-2. Compute keccak256 → file_hash for each item (single pass)
-3. Persist files to local storage → file_uri
-4. Single IN-query for all holders (`userRepo.FindByIds`)
-5. **Planned:** On-chain pre-issue check via `getCredentialHashPerHolderStatuses` (replaces current `FindByFileHashes` dup check)
-6. Current: `FindByFileHashes` to detect active duplicates
-7. Service builds `Credential` entities with `extract_status=pending`
-8. `IssuePostFetch` policy
-9. UoW: `Store` credentials → check `file_uri` invariant → `syncBlockchainIssue` → `Update` token IDs → enqueue River extraction jobs
-10. Chain failure rolls back DB transaction; orphan files cleaned up
+2. `issueValidate` — pre-computed holder lookup + on-chain `GetCredentialHashStatuses` batch → holder existence + duplicate file hash checks
+3. `issuePrepareCredentials` — encrypt files, persist to storage, build domain entities with `extract_status=pending`
+4. `issueCommit` (within UoW): `Store` → check `file_uri` invariant → `syncBlockchainIssue` → `Update` token IDs → enqueue River extraction jobs
+5. Chain failure rolls back DB transaction; orphan files cleaned up via `issueCleanupOrphanFiles`
 
 **All-or-nothing:** Any per-item failure (validation, chain sync, storage, hash computation) aborts the entire batch inside the UoW — no partial results are returned. The handler returns a single error code via `responder.SendError`.
 
