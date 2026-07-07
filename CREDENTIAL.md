@@ -241,7 +241,7 @@ Architecture: sync chain, async embeddings.
 9. UoW: `Store` credentials → check `file_uri` invariant → `syncBlockchainIssue` → `Update` token IDs → enqueue River extraction jobs
 10. Chain failure rolls back DB transaction; orphan files cleaned up
 
-**Partial success:** Returns both `results` (committed credentials) and `fieldErrs` (per-item errors keyed `"credentials.N"`). Handler maps to `responder.SendPartial(c, code, out, fieldErrs)`.
+**All-or-nothing:** Any per-item failure (validation, chain sync, storage, hash computation) aborts the entire batch inside the UoW — no partial results are returned. The handler returns a single error code via `responder.SendError`.
 
 **File cleanup:** `cleanupOrphanFiles` deletes stored files on validation/chain failure — best-effort (log-and-continue).
 
@@ -387,7 +387,6 @@ Extendable to IPFS via `storage.Storage` interface.
 | Code | Constant | HTTP | Meaning |
 |------|----------|------|---------|
 | 400200 | `CodeCredentialIssueSuccess` | 200 | All credentials issued |
-| 400240 | `CodeCredentialIssueFailed` | 200 | All credentials failed (partial success returns 200 with field errors) |
 | 400241 | `CodeCredentialIssueValidation` | 400 | Validation error (invalid MIME, file too large) |
 | 400242 | `CodeCredentialIssueDuplicateFileHash` | 409 | Duplicate file hash (holder already has active credential) |
 | 400243 | `CodeCredentialIssueHolderNotFound` | 400 | Target holder user not found |
