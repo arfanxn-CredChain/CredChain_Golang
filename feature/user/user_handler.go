@@ -8,6 +8,7 @@ import (
 	"CredChain_Golang/infrastructure/http/response"
 
 	"github.com/gin-gonic/gin"
+	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"go.uber.org/fx"
 )
 
@@ -105,6 +106,10 @@ func (h *userHandler) Store(c *gin.Context) {
 	created, err := h.userSvc.Store(c.Request.Context(), domainUsers...)
 	if err != nil {
 		c.Error(err)
+		if verrs, ok := err.(validation.Errors); ok {
+			responder.SendValidationError(c, verrs)
+			return
+		}
 		responder.SendError(c, err)
 		return
 	}
