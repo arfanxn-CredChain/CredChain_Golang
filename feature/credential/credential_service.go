@@ -27,6 +27,7 @@ import (
 	"github.com/samber/lo"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
+	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"gorm.io/gorm"
 )
 
@@ -41,7 +42,7 @@ type CredentialService interface {
 	Find(ctx context.Context, id string, query *domainQuery.Query) (*domain.Credential, error)
 	SelfPaginate(ctx context.Context, query *domainQuery.Query) ([]domain.Credential, int, error)
 	SelfFind(ctx context.Context, id string, query *domainQuery.Query) (*domain.Credential, error)
-	Issue(ctx context.Context, items []CredentialIssuance) ([]domain.Credential, map[string][]string, error)
+	Issue(ctx context.Context, items []CredentialIssuance) ([]domain.Credential, error)
 	Revoke(ctx context.Context, ids ...string) ([]domain.Credential, error)
 	Verify(ctx context.Context, file pyai.ExtractFile) (int, *domain.Credential, *float64, *string, error)
 	ReExtract(ctx context.Context, ids ...string) ([]domain.Credential, error)
@@ -173,149 +174,137 @@ func (s *credentialService) SelfFind(ctx context.Context, id string, query *doma
 
 // ── Issue ─────────────────────────────────────────────────────────────────
 
-// Issue performs the synchronous batch credential issuance flow.
-//
-// Architecture (Option A — sync chain, async embeddings):
-//  1. IssuePreFetch policy (signer is Issuer+)
-//  2. Compute keccak256(file_bytes) → file_hash for each item
-//  3. Persist files to local storage → file_uri
-//  4. Validate holders exist
-//  5. Validate no duplicate file_hash among active credentials
-//  6. IssuePostFetch policy
-//  7. INSERT credential rows (extract_status=pending) inside UoW
-//  8. Sync to chain via RegistryService.IssueCredentials → token IDs
-//  9. UPDATE credentials SET token_id = ...
-//
-// 10. Enqueue one River extraction job per credential
-func (s *credentialService) Issue(ctx context.Context, items []CredentialIssuance) ([]domain.Credential, map[string][]string, error) {
-	if len(items) == 0 {
-		return []domain.Credential{}, nil, nil
+// issueValidate performs batch input-driven validation that belongs at the
+// service layer: holder existence, on-chain duplicate file hash, and in-batch
+// duplicate hash. Returns validation.Errors keyed by "credentials.N.field".
+// Server-side failures (encryption, storage, chain mint) are NOT collected
+// here — those remain *domain.Error from the Issue orchestrator.
+func (s *credentialService) issueValidate(
+	ctx context.Context,
+	items []CredentialIssuance,
+) validation.Errors {
+	verrs := validation.Errors{}
+
+	holderIDs := lo.Map(items, func(it CredentialIssuance, _ int) string { return it.HolderUserID })
+	holders, _ := s.userRepo.FindByIds(ctx, holderIDs...)
+	holderSet := lo.SliceToMap(holders, func(h domain.User) (string, bool) { return h.Id, true })
+
+	hashes := make([]string, len(items))
+	hashBytes := make([][32]byte, len(items))
+	for i, it := range items {
+		hash := ethCrypto.Keccak256(it.FileBytes)
+		hashes[i] = "0x" + hex.EncodeToString(hash)
+		copy(hashBytes[i][:], hash)
 	}
+
+	statuses, _ := s.registryService.GetCredentialHashStatuses(ctx, hashBytes)
+	onChainActive := map[string]bool{}
+	for i, st := range statuses {
+		if st.Status == 1 {
+			onChainActive[hashes[i]] = true
+		}
+	}
+
+	seenHash := map[string]bool{}
+	for i, it := range items {
+		prefix := fmt.Sprintf("credentials.%d", i)
+
+		if !holderSet[it.HolderUserID] {
+			verrs[prefix+".holder_user_id"] = validation.NewError(
+				"validation_issue_holder_not_found",
+				"holder not found",
+			)
+			continue
+		}
+
+		if onChainActive[hashes[i]] || seenHash[hashes[i]] {
+			verrs[prefix+".file"] = validation.NewError(
+				"validation_issue_duplicate_file_hash", "duplicate file hash",
+			)
+			continue
+		}
+		seenHash[hashes[i]] = true
+	}
+
+	return verrs
+}
+
+// issuePrepareCredentials encrypts files, persists them to storage, and builds
+// domain.Credential entities with extract_status=pending. Returns *domain.Error
+// on encryption or storage failure (caller cleans up orphan files).
+func (s *credentialService) issuePrepareCredentials(
+	ctx context.Context,
+	items []CredentialIssuance,
+) ([]domain.Credential, error) {
 	authUser := httpContext.MustGetUser(ctx)
 
-	if err := s.policy.IssuePreFetch(ctx, lo.Map(items, func(it CredentialIssuance, _ int) domain.Credential {
-		return domain.Credential{HolderUserID: it.HolderUserID}
-	})); err != nil {
-		return nil, nil, err
-	}
-
-	// Single IN-query for all holders — NO per-item lookup.
-	holderIDs := lo.Map(items, func(it CredentialIssuance, _ int) string { return it.HolderUserID })
-	holders, err := s.userRepo.FindByIds(ctx, holderIDs...)
-	if err != nil {
-		return nil, nil, err
-	}
-	holderByID := lo.SliceToMap(holders, func(h domain.User) (string, domain.User) { return h.Id, h })
-
-	// Single batch dup-hash lookup.
-	hashes := make([]string, len(items))
+	creds := make([]domain.Credential, len(items))
 	for i, it := range items {
-		hashes[i] = "0x" + hex.EncodeToString(ethCrypto.Keccak256(it.FileBytes))
-	}
-
-	// On-chain global duplicate check (1 RPC)
-	statusHashes := make([][32]byte, len(items))
-	for i, it := range items {
-		copy(statusHashes[i][:], ethCrypto.Keccak256(it.FileBytes))
-	}
-	statuses, statusErr := s.registryService.GetCredentialHashStatuses(ctx, statusHashes)
-	if statusErr != nil {
-		return nil, nil, domain.NewError(domain.CodeCredentialIssueBlockchainSyncFailed,
-			domain.WithError(statusErr))
-	}
-	activeDup := map[string]bool{}
-	for i, st := range statuses {
-		if st.Status == 1 { // 1 = Issued
-			activeDup[hashes[i]] = true
-		}
-	}
-
-	// In-batch duplicate pre-check — mark all occurrences of a dup hash so the
-	// first item in a same-hash pair is also rejected.
-	seenHash := map[string]bool{}
-	for _, h := range hashes {
-		if seenHash[h] {
-			activeDup[h] = true
-		}
-		seenHash[h] = true
-	}
-
-	type prepared struct {
-		idx  int
-		cred domain.Credential
-	}
-	errs := map[string][]string{}
-	results := make([]domain.Credential, len(items))
-	var survivors []prepared
-	var fileURIs []string
-	claimedHash := map[string]bool{}
-
-	for i, it := range items {
-		if _, ok := holderByID[it.HolderUserID]; !ok {
-			errs[fmt.Sprintf("credentials.%d.holder_user_id", i)] = append(
-				errs[fmt.Sprintf("credentials.%d.holder_user_id", i)], "credential.issue.holder_not_found")
-			continue
-		}
-		if activeDup[hashes[i]] || claimedHash[hashes[i]] {
-			errs[fmt.Sprintf("credentials.%d.file", i)] = append(
-				errs[fmt.Sprintf("credentials.%d.file", i)], "credential.issue.duplicate_file_hash")
-			continue
-		}
 		ext := strings.ToLower(filepath.Ext(it.Filename))
 		if ext == "" {
 			ext = ".bin"
 		}
 		encryptedHex, encErr := infraCrypto.Encrypt(it.FileBytes, []byte(*s.cfg.FileEncryptionKey))
 		if encErr != nil {
-			errs[fmt.Sprintf("credentials.%d.file", i)] = append(
-				errs[fmt.Sprintf("credentials.%d.file", i)], "credential.issue.encryption_failed")
-			continue
+			return nil, domain.NewError(domain.CodeCredentialIssueStorageFailed,
+				domain.WithError(encErr))
 		}
 		filename := ulid.Make().String() + ext
 		filePath := filepath.Join(*s.cfg.CredentialFileStoragePath, filename)
-		_, err := s.storage.SaveBytes([]byte(encryptedHex), filePath)
-		if err != nil {
-			errs[fmt.Sprintf("credentials.%d.file", i)] = append(
-				errs[fmt.Sprintf("credentials.%d.file", i)], "credential.issue.storage_failed")
-			continue
+		if _, err := s.storage.SaveBytes([]byte(encryptedHex), filePath); err != nil {
+			return nil, domain.NewError(domain.CodeCredentialIssueStorageFailed,
+				domain.WithError(err))
 		}
-		fileURIs = append(fileURIs, filePath)
-		id := ulid.Make().String()
-		dbFileURI := filename
-		cred := domain.Credential{
-			ID:            id,
+		hash := "0x" + hex.EncodeToString(ethCrypto.Keccak256(it.FileBytes))
+		creds[i] = domain.Credential{
+			ID:            ulid.Make().String(),
 			HolderUserID:  it.HolderUserID,
 			IssuerUserID:  authUser.Id,
 			Name:          it.Name,
 			Meta:          it.Meta,
-			FileHash:      hashes[i],
-			FileURI:       &dbFileURI,
+			FileHash:      hash,
+			FileURI:       &filename,
 			ExtractStatus: domain.ExtractStatusPending,
 		}
-		survivors = append(survivors, prepared{idx: i, cred: cred})
-		claimedHash[hashes[i]] = true
+	}
+	return creds, nil
+}
+
+func (s *credentialService) issueCleanupOrphanFiles(creds []domain.Credential) {
+	paths := make([]string, 0, len(creds))
+	for _, c := range creds {
+		if c.FileURI != nil {
+			paths = append(paths, filepath.Join(*s.cfg.CredentialFileStoragePath, *c.FileURI))
+		}
+	}
+	s.cleanupOrphanFiles(paths)
+}
+
+// issueCommit runs the UoW transaction: Store credentials, mint on-chain,
+// update token IDs, and enqueue River extraction jobs. Chain failure or
+// enqueue failure rolls back the entire transaction.
+func (s *credentialService) issueCommit(
+	ctx context.Context,
+	authWallet domain.Wallet,
+	creds []domain.Credential,
+) ([]domain.Credential, error) {
+	holderIDs := lo.Map(creds, func(c domain.Credential, _ int) string { return c.HolderUserID })
+	holders, err := s.userRepo.FindByIds(ctx, holderIDs...)
+	if err != nil {
+		return nil, err
+	}
+	holderByID := lo.SliceToMap(holders, func(h domain.User) (string, domain.User) { return h.Id, h })
+
+	if err := s.policy.IssuePostFetch(ctx, creds, holders); err != nil {
+		return nil, err
 	}
 
-	if len(survivors) == 0 {
-		return results, errs, nil
-	}
-
-	survCreds := lo.Map(survivors, func(p prepared, _ int) domain.Credential { return p.cred })
-	if err := s.policy.IssuePostFetch(ctx, survCreds, holders); err != nil {
-		s.cleanupOrphanFiles(fileURIs)
-		return nil, nil, err
-	}
-
-	signerWallet := domain.WalletFromUser(*authUser)
 	var committed []domain.Credential
 	err = s.uow.Execute(ctx, func(uow domain.UnitOfWork) error {
-		stored, err := uow.Credential().Store(ctx, survCreds...)
+		stored, err := uow.Credential().Store(ctx, creds...)
 		if err != nil {
 			return err
 		}
-		// Invariant check BEFORE the on-chain mint: a credential without a
-		// file_uri is broken. Failing here rolls back the DB Store before any
-		// NFT is minted, avoiding an orphaned on-chain token.
 		for _, c := range stored {
 			if c.FileURI == nil {
 				return domain.NewError(domain.CodeCredentialIssueStorageFailed,
@@ -330,7 +319,7 @@ func (s *credentialService) Issue(ctx context.Context, items []CredentialIssuanc
 				URI:           c.ID,
 			}
 		}
-		tokenIds, err := s.syncBlockchainIssue(ctx, signerWallet, issuances)
+		tokenIds, err := s.syncBlockchainIssue(ctx, authWallet, issuances)
 		if err != nil {
 			return err
 		}
@@ -343,8 +332,6 @@ func (s *credentialService) Issue(ctx context.Context, items []CredentialIssuanc
 		if _, err := uow.Credential().Update(ctx, updates...); err != nil {
 			return err
 		}
-		// Enqueue is inside the UoW closure but uses a separate pgx pool — see
-		// issueEnqueueExtractJob doc for the cross-pool tradeoff.
 		for _, c := range stored {
 			fileURI := filepath.Join(*s.cfg.CredentialFileStoragePath, *c.FileURI)
 			if err := s.issueEnqueueExtractJob(ctx, c.ID, fileURI); err != nil {
@@ -354,18 +341,45 @@ func (s *credentialService) Issue(ctx context.Context, items []CredentialIssuanc
 		committed = stored
 		return nil
 	})
-	if err != nil {
-		s.cleanupOrphanFiles(fileURIs)
-		return nil, nil, err
+	return committed, err
+}
+
+// Issue performs the synchronous batch credential issuance flow.
+//
+// Architecture (Option A — sync chain, async embeddings):
+//  1. IssuePreFetch policy (signer is Issuer+)
+//  2. issueValidate — input-driven checks (holders, duplicate hashes)
+//  3. issuePrepareCredentials — encrypt, store, build entities
+//  4. issueCommit — UoW: Store → chain mint → update token IDs → enqueue
+// All-or-nothing: any validation failure returns validation.Errors;
+// any server-side failure rolls back the entire batch.
+func (s *credentialService) Issue(ctx context.Context, items []CredentialIssuance) ([]domain.Credential, error) {
+	authUser := httpContext.MustGetUser(ctx)
+
+	if err := s.policy.IssuePreFetch(ctx, lo.Map(items, func(it CredentialIssuance, _ int) domain.Credential {
+		return domain.Credential{HolderUserID: it.HolderUserID}
+	})); err != nil {
+		return nil, err
 	}
 
-	for i, p := range survivors {
-		results[p.idx] = committed[i]
+	if verrs := s.issueValidate(ctx, items); len(verrs) > 0 {
+		return nil, verrs
 	}
-	if len(errs) == 0 {
-		errs = nil
+
+	creds, err := s.issuePrepareCredentials(ctx, items)
+	if err != nil {
+		s.issueCleanupOrphanFiles(creds)
+		return nil, err
 	}
-	return results, errs, nil
+
+	authWallet := domain.WalletFromUser(*authUser)
+	committed, err := s.issueCommit(ctx, authWallet, creds)
+	if err != nil {
+		s.issueCleanupOrphanFiles(creds)
+		return nil, err
+	}
+
+	return committed, nil
 }
 
 // issueEnqueueExtractJob enqueues a River extraction job.
