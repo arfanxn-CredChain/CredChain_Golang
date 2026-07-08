@@ -52,4 +52,6 @@ type OverviewChainDetails struct {
 	AuthorityContract string `json:"authority_contract"`
 	RegistryContract  string `json:"registry_contract"`
 	LastBlock         uint64 `json:"last_block"`
+	RelayerAddress    string `json:"relayer_address"`
+	RelayerBalance    string `json:"relayer_balance"`
 }
