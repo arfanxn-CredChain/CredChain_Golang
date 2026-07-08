@@ -140,6 +140,8 @@ func TestGet_Issuer(t *testing.T) {
 	assert.NotNil(t, result.ChainDetails)
 	assert.Equal(t, "0xAuthority", result.ChainDetails.AuthorityContract)
 	assert.Equal(t, uint64(0), result.ChainDetails.LastBlock)
+	assert.Equal(t, "", result.ChainDetails.RelayerAddress)
+	assert.Equal(t, "0.00", result.ChainDetails.RelayerBalance)
 	assert.NotEmpty(t, result.Recents.StoredUsers)
 
 	repo.AssertExpectations(t)

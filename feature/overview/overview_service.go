@@ -103,16 +103,24 @@ func (s *overviewService) Get(ctx context.Context, q *domainQuery.Query) (*respo
 		ov.Recents.StoredUsers = mapUsers(recentUsers)
 
 		var lastBlock uint64
+		var relayerAddress string
+		var relayerBalance = "0.00"
 		if s.chainClient != nil {
 			lastBlock, err = s.chainClient.BlockNumber(ctx)
 			if err != nil {
 				lastBlock = 0
+			}
+			relayerAddress = s.chainClient.Relayer.From.Hex()
+			if balance, balErr := s.chainClient.RelayerBalance(ctx); balErr == nil {
+				relayerBalance = balance
 			}
 		}
 		ov.ChainDetails = &response.OverviewChainDetails{
 			AuthorityContract: *s.cfg.AuthorityContract,
 			RegistryContract:  *s.cfg.RegistryContract,
 			LastBlock:         lastBlock,
+			RelayerAddress:    relayerAddress,
+			RelayerBalance:    relayerBalance,
 		}
 	}
 
