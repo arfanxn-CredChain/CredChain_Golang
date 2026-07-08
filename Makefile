@@ -174,7 +174,7 @@ docker-backup:
 	@echo "Backing up Postgres..."
 	docker compose exec backend pg_dump -Fc -U root -h postgres credchain > docker/backups/postgres_$(BACKUP_TIMESTAMP).dump
 	@echo "Backing up MongoDB..."
-	docker compose exec backend mongodump --uri="mongodb://root:root@mongo:27017" --archive > docker/backups/mongo_$(BACKUP_TIMESTAMP).archive
+	docker compose exec backend mongodump --uri="mongodb://$(grep MONGO_INITDB_ROOT_USERNAME .env.docker | cut -d= -f2):$(grep MONGO_INITDB_ROOT_PASSWORD .env.docker | cut -d= -f2)@mongo:27017" --archive > docker/backups/mongo_$(BACKUP_TIMESTAMP).archive
 	@echo "Backing up credential files..."
 	docker compose exec backend tar czf /backups/credentials_$(BACKUP_TIMESTAMP).tar.gz -C $$(grep CREDENTIAL_FILE_STORAGE_PATH .env.docker | cut -d= -f2 || echo "credentials") .
 	@echo "manifest" > docker/backups/manifest_$(BACKUP_TIMESTAMP).txt
@@ -185,11 +185,12 @@ docker-backup:
 	@echo "Backup complete: docker/backups/manifest_$(BACKUP_TIMESTAMP).txt"
 
 docker-restore:
+	@echo "Restoring from backup: $(BACKUP_TIMESTAMP)..."
 	@test -n "$(BACKUP_TIMESTAMP)" || (echo "error: set BACKUP_TIMESTAMP, e.g. BACKUP_TIMESTAMP=20260709_120000 make docker-restore" && exit 1)
 	@echo "Restoring Postgres..."
 	docker compose exec -T backend pg_restore -Fc -U root -h postgres -d credchain --clean < docker/backups/postgres_$(BACKUP_TIMESTAMP).dump
 	@echo "Restoring MongoDB..."
-	docker compose exec -T backend mongorestore --uri="mongodb://root:root@mongo:27017" --archive --drop < docker/backups/mongo_$(BACKUP_TIMESTAMP).archive
+	docker compose exec -T backend mongorestore --uri="mongodb://$(grep MONGO_INITDB_ROOT_USERNAME .env.docker | cut -d= -f2):$(grep MONGO_INITDB_ROOT_PASSWORD .env.docker | cut -d= -f2)@mongo:27017" --archive --drop < docker/backups/mongo_$(BACKUP_TIMESTAMP).archive
 	@echo "Restoring credential files..."
 	docker compose exec backend tar xzf /backups/credentials_$(BACKUP_TIMESTAMP).tar.gz -C $$(grep CREDENTIAL_FILE_STORAGE_PATH .env.docker | cut -d= -f2 || echo "credentials")
 	@echo "Restore complete."
