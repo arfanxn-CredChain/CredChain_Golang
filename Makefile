@@ -10,6 +10,7 @@ endif
 	docker-migrate-up docker-migrate-down docker-up-build docker-up \
 	docker-down docker-restart docker-logs docker-ps docker-fresh \
 	docker-clean-data docker-check-backend-healthy \
+	docker-backup docker-restore \
 	credential-extraction-benchmark
 
 help:
@@ -166,3 +167,29 @@ docker-fresh:
 	@make docker-up-build
 	@make docker-ps
 	@make docker-migrate-up
+
+BACKUP_TIMESTAMP ?= $(shell date +%Y%m%d_%H%M%S)
+
+docker-backup:
+	@echo "Backing up Postgres..."
+	docker compose exec backend pg_dump -Fc -U root -h postgres credchain > docker/backups/postgres_$(BACKUP_TIMESTAMP).dump
+	@echo "Backing up MongoDB..."
+	docker compose exec backend mongodump --uri="mongodb://root:root@mongo:27017" --archive > docker/backups/mongo_$(BACKUP_TIMESTAMP).archive
+	@echo "Backing up credential files..."
+	docker compose exec backend tar czf /backups/credentials_$(BACKUP_TIMESTAMP).tar.gz -C $$(grep CREDENTIAL_FILE_STORAGE_PATH .env.docker | cut -d= -f2 || echo "credentials") .
+	@echo "manifest" > docker/backups/manifest_$(BACKUP_TIMESTAMP).txt
+	@echo "---------" >> docker/backups/manifest_$(BACKUP_TIMESTAMP).txt
+	@echo "postgres: postgres_$(BACKUP_TIMESTAMP).dump" >> docker/backups/manifest_$(BACKUP_TIMESTAMP).txt
+	@echo "mongo: mongo_$(BACKUP_TIMESTAMP).archive" >> docker/backups/manifest_$(BACKUP_TIMESTAMP).txt
+	@echo "credentials: credentials_$(BACKUP_TIMESTAMP).tar.gz" >> docker/backups/manifest_$(BACKUP_TIMESTAMP).txt
+	@echo "Backup complete: docker/backups/manifest_$(BACKUP_TIMESTAMP).txt"
+
+docker-restore:
+	@test -n "$(BACKUP_TIMESTAMP)" || (echo "error: set BACKUP_TIMESTAMP, e.g. BACKUP_TIMESTAMP=20260709_120000 make docker-restore" && exit 1)
+	@echo "Restoring Postgres..."
+	docker compose exec -T backend pg_restore -Fc -U root -h postgres -d credchain --clean < docker/backups/postgres_$(BACKUP_TIMESTAMP).dump
+	@echo "Restoring MongoDB..."
+	docker compose exec -T backend mongorestore --uri="mongodb://root:root@mongo:27017" --archive --drop < docker/backups/mongo_$(BACKUP_TIMESTAMP).archive
+	@echo "Restoring credential files..."
+	docker compose exec backend tar xzf /backups/credentials_$(BACKUP_TIMESTAMP).tar.gz -C $$(grep CREDENTIAL_FILE_STORAGE_PATH .env.docker | cut -d= -f2 || echo "credentials")
+	@echo "Restore complete."

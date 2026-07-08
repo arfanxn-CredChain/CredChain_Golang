@@ -30,6 +30,7 @@ services:
     volumes:
       - ./.env.docker:/app/.env:ro
       - ./logs:/app/logs
+      - ./docker/backups:/backups
     working_dir: /app
     ports:
       - "8080:8080"

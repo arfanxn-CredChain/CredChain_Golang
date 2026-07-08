@@ -17,6 +17,8 @@ FROM alpine:3.19
 RUN apk add --no-cache ca-certificates tzdata && \
     adduser -D -h /app app
 
+RUN apk add --no-cache postgresql16-client mongodb-tools
+
 WORKDIR /app
 COPY --from=builder /server .
 COPY --from=builder /src/infrastructure/database/migrations ./infrastructure/database/migrations
