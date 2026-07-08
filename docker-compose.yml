@@ -112,3 +112,4 @@ services:
 networks:
   frontend:
   backend:
+    external: true
