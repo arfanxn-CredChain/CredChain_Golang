@@ -2,6 +2,8 @@ package http
 
 import (
 	"context"
+	"net/http"
+	"time"
 
 	"CredChain_Golang/config"
 	"CredChain_Golang/domain"
@@ -116,19 +118,29 @@ func RegisterRoutes(p RouteParams) {
 			secure.GET("/credentials/:id/file", p.CredentialHandler.DownloadFile)
 		}
 	}
+	srv := &http.Server{
+		Addr:         ":" + *p.Config.GinPort,
+		Handler:      p.Router,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
 	p.Lifecycle.Append(fx.Hook{
 		OnStart: func(context.Context) error {
 			go func() {
 				p.Logger.Info("credchain golang backend starting", zap.String("port", *p.Config.GinPort))
-				if err := p.Router.Run(":" + *p.Config.GinPort); err != nil {
+				if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 					p.Logger.Error("server failed to start", zap.Error(err))
 				}
 			}()
 			return nil
 		},
-		OnStop: func(context.Context) error {
+		OnStop: func(ctx context.Context) error {
 			p.Logger.Info("stopping server")
-			return nil
+			shutdownCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+			defer cancel()
+			return srv.Shutdown(shutdownCtx)
 		},
 	})
 }
