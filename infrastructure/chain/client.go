@@ -3,6 +3,7 @@ package chain
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"strings"
 
 	"CredChain_Golang/config"
@@ -125,4 +126,13 @@ func (c *Client) ChainID(ctx context.Context) (uint64, error) {
 		return 0, err
 	}
 	return chainID.Uint64(), nil
+}
+
+func (c *Client) RelayerBalance(ctx context.Context) (string, error) {
+	balance, err := c.EthClient.BalanceAt(ctx, c.Relayer.From, nil)
+	if err != nil {
+		return "", err
+	}
+	eth := new(big.Float).Quo(new(big.Float).SetInt(balance), big.NewFloat(1e18))
+	return eth.Text('f', 2), nil
 }
