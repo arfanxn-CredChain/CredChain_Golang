@@ -638,6 +638,16 @@ Before pushing, run the repo's canonical verification command and confirm it pas
 - `CredChain_Python`: `make lint && make typecheck && make test`
 - `CredChain_React`: `npm run lint && npm run build && npm run test && npm run check-locales`
 
+### Python AI Service API Key
+
+The AI service requires an `API_KEY` for authentication. After generating it
+in the Python project (`make docker-generate-api-key`), copy the key:
+
+1. Read `API_KEY=...` from `CredChain_Python/.env.docker`
+2. Set `PYTHON_AI_API_KEY=<that-value>` in `.env.docker`
+
+Mismatched keys cause all AI requests to fail with 401.
+
 ## See Also
 
 - `ROLES.md` — comprehensive role system reference
