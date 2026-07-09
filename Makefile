@@ -159,7 +159,7 @@ docker-ps:
 	docker compose ps
 
 docker-clean-data:
-	rm -rf docker/postgres/data/* docker/mongo/data/*
+	rm -rf docker/postgres/data/* docker/mongo/data/* uploads/*
 
 docker-check-golang-healthy:
 	@echo "waiting for golang to be healthy..."

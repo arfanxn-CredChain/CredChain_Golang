@@ -31,6 +31,7 @@ services:
       - ./.env.docker:/app/.env:ro
       - ./logs:/app/logs
       - ./docker/backups:/backups
+      - ./uploads:/app/uploads
     working_dir: /app
     ports:
       - "8080:8080"
@@ -94,7 +95,7 @@ services:
     env_file:
       - .env.docker
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-root}
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INIT_DB_USERNAME:-root}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-root}
     volumes:
       - ./docker/mongo/data:/data/db
@@ -103,7 +104,7 @@ services:
     networks:
       - backend
     healthcheck:
-      test: ["CMD", "mongosh", "--username", "${MONGO_INITDB_ROOT_USERNAME:-root}", "--password", "${MONGO_INITDB_ROOT_PASSWORD:-root}", "--authenticationDatabase", "admin", "--eval", "db.adminCommand('ping')"]
+      test: ["CMD", "mongosh", "--username", "${MONGO_INIT_DB_USERNAME:-root}", "--password", "${MONGO_INITDB_ROOT_PASSWORD:-root}", "--authenticationDatabase", "admin", "--eval", "db.adminCommand('ping')"]
       interval: 10s
       timeout: 10s
       retries: 5
