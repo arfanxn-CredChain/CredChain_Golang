@@ -673,7 +673,7 @@ Mismatched keys cause all AI requests to fail with 401.
 
 ## See Also
 
-- `ROLES.md` — comprehensive role system reference
+- `ROLE.md` — comprehensive role system reference
 - `CREDENTIAL.md` — comprehensive credential system reference
 - `Makefile` — canonical commands
 - `CredChain_postman_collection.json` — endpoint testing collection
