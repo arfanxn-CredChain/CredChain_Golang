@@ -361,7 +361,9 @@ func (s *credentialService) Issue(ctx context.Context, items []CredentialIssuanc
 
 	hashBytes := make([][32]byte, len(items))
 	for i, it := range items {
-		copy(hashBytes[i][:], ethCrypto.Keccak256(it.FileBytes))
+		rawHash := ethCrypto.Keccak256(it.FileBytes)
+		hashStr := "0x" + hex.EncodeToString(rawHash)
+		copy(hashBytes[i][:], ethCrypto.Keccak256([]byte(hashStr)))
 	}
 	statuses, err := s.registryService.GetCredentialHashStatuses(ctx, hashBytes)
 	if err != nil {
