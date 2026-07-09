@@ -1,5 +1,7 @@
 # CredChain Credential System
 
+> **Related docs:** For the role hierarchy and general authorization rules, see [ROLE.md](ROLE.md).
+
 ## Entity Definitions
 
 ### `domain.Credential` (`domain/credential.go:37-58`)
@@ -92,13 +94,16 @@ New credentials are created with `extract_status=pending`. On-chain issuance is 
 
 ### Token ID Derivation
 
-**Current:** `uint256(keccak256(abi.encodePacked(hash)))` — token ID derived solely from file hash.
+**Token ID derivation** (`chain/registry_service.go:254-258`):
 
-`uint256(keccak256(abi.encodePacked(issuer, nonce, holder, hash)))` — token ID derived from issuer address, Registry nonce, holder address, and file hash.
+packed := append(issuer.Bytes(), common.LeftPadBytes(nonce.Bytes(), 32)...)
+packed = append(packed, holder.Bytes()...)
+packed = append(packed, []byte(hash)...)
+return new(big.Int).SetBytes(crypto.Keccak256(packed))
 
-A unique nonce ensures that even reissuing the same hash (after revocation) produces a different token ID.
+Token ID = `uint256(keccak256(issuer || zeroPadLeft(nonce, 32) || holder || hash))`
 
-**Sources:** `chain/registry_service.go:247-250` (current impl), Solidity `CredentialRegistry.sol` token ID derivation.
+This matches the Solidity side in `CredentialRegistry.sol:160-169`.
 
 ### On-Chain Storage
 
@@ -184,24 +189,25 @@ No separate DB status column — revocation is timestamp-driven. The on-chain `C
 
 **Route middleware chain:** `ErrorLoggerMiddleware` → `I18nMiddleware` → `ApiRateLimitMiddleware` → `AuthMiddleware` → `IssuerRoleMiddleware` (for credential management routes).
 
-**Credential policy checks use DB-stored role rank** (`signerIsIssuerOrAbove` at `credential_policy.go:73-76`), not on-chain — double-check with the `CREDENTIAL.md` conventions above. (The ROLES.md already notes this: "Credential policy checks use DB-stored role rank, not on-chain.")
+Credential policy checks use **DB-stored role rank**, not on-chain.
 
 ---
 
 ## Policy Rules
 
-### Credential Policy (`feature/credential/credential_policy.go:37-76`)
+### Credential Policy Rules
 
-| Method | Rule | Code |
-|--------|------|------|
-| `IssuePreFetch` | Signer must be Issuer+ (DB role) | `CodeAuthForbidden` (200142) |
-| `IssuePostFetch` | No-op (hook for future per-target rules) | — |
-| `RevokePreFetch` | Signer must be Issuer+ (DB role) | `CodeAuthForbidden` (200142) |
-| `RevokePostFetch` | No-op | — |
-| `VerifyPreFetch` | **No-op (public endpoint)** — external verifiers need no auth | — |
-| `ReExtractPreFetch` | Signer must be Issuer+ (DB role) | `CodeAuthForbidden` (200142) |
+The credential policy interface lives at `feature/credential/credential_policy.go:16-20`. It defines three methods:
 
-All check `user.Role.Rank() >= RoleIssuer.Rank()` from `httpContext.MustGetUser(ctx)` — this is the DB-stored role, not on-chain.
+| Method | Line | Purpose |
+|---|---|---|
+| `IssuePostFetch` | 30 | Validates credentials after fetch for issue; no-op (role enforcement is via `IssuerRoleMiddleware`, on-chain) |
+| `RevokePostFetch` | 34 | Validates credentials after fetch for revoke; no-op (role enforcement is via `IssuerRoleMiddleware`, on-chain) |
+| `DownloadFilePreFetch` | 38 | Enforces that only issuers and above can download credential files |
+
+Role enforcement for issue/revoke/reextract is done at the **route level** by `IssuerRoleMiddleware` (on-chain check), not by credential policy. The route-level guard is applied in `router.go:112-116`.
+
+There is no `IssuePreFetch`, `RevokePreFetch`, `VerifyPreFetch`, or `ReExtractPreFetch` method. The verify route is public (no auth middleware — `router.go:88`).
 
 ---
 
@@ -230,7 +236,7 @@ All check `user.Role.Rank() >= RoleIssuer.Rank()` from `httpContext.MustGetUser(
 
 Architecture: sync chain, async embeddings.
 
-1. `IssuePreFetch` policy (signer is Issuer+)
+1. Role enforcement via `IssuerRoleMiddleware` (route-level, on-chain check) — no policy gate
 2. `issueValidate` — pre-computed holder lookup + on-chain `GetCredentialHashStatuses` batch → holder existence + duplicate file hash checks
 3. `issuePrepareCredentials` — encrypt files, persist to storage, build domain entities with `extract_status=pending`
 4. `issueCommit` (within UoW): `Store` → check `file_uri` invariant → `syncBlockchainIssue` → `Update` token IDs → enqueue River extraction jobs
@@ -244,7 +250,7 @@ Architecture: sync chain, async embeddings.
 
 ### Revoke (`credential_service.go:362-427`)
 
-1. `RevokePreFetch` policy
+1. Role enforcement via `IssuerRoleMiddleware` (route-level, on-chain check) — no policy gate
 2. UoW: `FindByIds` targets → validate all found → check none already revoked → `RevokePostFetch` → CASE batch UPDATE (revoked_at, revoker_user_id) → `syncBlockchainRevoke` with decimal token IDs
 3. Already-revoked check: `CodeCredentialRevokeAlreadyRevoked` (400342)
 4. Missing targets: `CodeCredentialRevokeNotFound` (400341)
@@ -252,7 +258,7 @@ Architecture: sync chain, async embeddings.
 
 ### ReExtract (`credential_service.go:628-677`)
 
-1. `ReExtractPreFetch` policy
+1. Role enforcement via `IssuerRoleMiddleware` (route-level, on-chain check) — no policy gate
 2. UoW: `FindByIds` targets → validate all exist + are failed + have file_uri → CASE batch UPDATE (extract_status=pending, extract_error="") → enqueue River jobs
 3. On enqueue failure: **compensate** — stamp back to failed with `"reenqueue failed"` error
 
@@ -436,7 +442,7 @@ Verdict codes (400401-400412) deliberately avoid CC 01-12 for other credential c
 |------|----------|------|---------|
 | 400500 | `CodeCredentialReExtractSuccess` | 200 | Re-extraction queued |
 | 400540 | `CodeCredentialReExtractNotFound` | 404 | One or more credential IDs not found |
-| 400541 | `CodeCredentialReExtractNotFailed` | 409 | One or more credentials not in failed state (or missing file_uri) |
+| 400541 | `CodeCredentialReExtractNotEligible` | 409 | One or more credentials not in failed state (or missing file_uri) |
 
 ### Credential File Download (40-06)
 
