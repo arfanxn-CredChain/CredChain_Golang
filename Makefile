@@ -9,7 +9,7 @@ endif
 .PHONY: help check-env check-env-docker clean build serve dev migrate-up migrate-down migrate-up-mongo migrate-down-mongo init-super-admin get-google-id-token seed seed-chain \
 	docker-migrate-up docker-migrate-down docker-up-build docker-up \
 	docker-down docker-restart docker-logs docker-ps docker-fresh \
-	docker-clean-data docker-check-backend-healthy \
+	docker-clean-data docker-check-golang-healthy \
 	docker-backup docker-restore \
 	credential-extraction-benchmark
 
@@ -133,11 +133,11 @@ docker-down:
 
 docker-restart: docker-down docker-up-build
 
-docker-migrate-up: docker-check-backend-healthy
-	docker compose exec backend ./server migrate up
+docker-migrate-up: docker-check-golang-healthy
+	docker compose exec golang ./server migrate up
 
-docker-migrate-down: docker-check-backend-healthy
-	docker compose exec backend ./server migrate down
+docker-migrate-down: docker-check-golang-healthy
+	docker compose exec golang ./server migrate down
 
 docker-logs:
 	docker compose logs -f
@@ -148,17 +148,17 @@ docker-ps:
 docker-clean-data:
 	rm -rf docker/postgres/data/* docker/mongo/data/*
 
-docker-check-backend-healthy:
-	@echo "waiting for backend to be healthy..."
+docker-check-golang-healthy:
+	@echo "waiting for golang to be healthy..."
 	@for i in 1 2 3 4 5 6 7 8 9 10; do \
-		if docker compose ps backend | grep -q "(healthy)"; then \
-			echo "backend is healthy"; \
+		if docker compose ps golang | grep -q "(healthy)"; then \
+			echo "golang is healthy"; \
 			exit 0; \
 		fi; \
 		echo "waiting... ($$i/10)"; \
 		sleep 3; \
 	done; \
-	echo "error: backend did not become healthy in time"; \
+	echo "error: golang did not become healthy in time"; \
 	exit 1
 
 docker-fresh:
@@ -172,11 +172,11 @@ BACKUP_TIMESTAMP ?= $(shell date +%Y%m%d_%H%M%S)
 
 docker-backup:
 	@echo "Backing up Postgres..."
-	docker compose exec backend pg_dump -Fc -U root -h postgres credchain > docker/backups/postgres_$(BACKUP_TIMESTAMP).dump
+	docker compose exec golang pg_dump -Fc -U root -h postgres credchain > docker/backups/postgres_$(BACKUP_TIMESTAMP).dump
 	@echo "Backing up MongoDB..."
-	docker compose exec backend mongodump --uri="mongodb://$(grep MONGO_INITDB_ROOT_USERNAME .env.docker | cut -d= -f2):$(grep MONGO_INITDB_ROOT_PASSWORD .env.docker | cut -d= -f2)@mongo:27017" --archive > docker/backups/mongo_$(BACKUP_TIMESTAMP).archive
+	docker compose exec golang mongodump --uri="mongodb://$(grep MONGO_INITDB_ROOT_USERNAME .env.docker | cut -d= -f2):$(grep MONGO_INITDB_ROOT_PASSWORD .env.docker | cut -d= -f2)@mongo:27017" --archive > docker/backups/mongo_$(BACKUP_TIMESTAMP).archive
 	@echo "Backing up credential files..."
-	docker compose exec backend tar czf /backups/credentials_$(BACKUP_TIMESTAMP).tar.gz -C $$(grep CREDENTIAL_FILE_STORAGE_PATH .env.docker | cut -d= -f2 || echo "credentials") .
+	docker compose exec golang tar czf /backups/credentials_$(BACKUP_TIMESTAMP).tar.gz -C $$(grep CREDENTIAL_FILE_STORAGE_PATH .env.docker | cut -d= -f2 || echo "credentials") .
 	@echo "manifest" > docker/backups/manifest_$(BACKUP_TIMESTAMP).txt
 	@echo "---------" >> docker/backups/manifest_$(BACKUP_TIMESTAMP).txt
 	@echo "postgres: postgres_$(BACKUP_TIMESTAMP).dump" >> docker/backups/manifest_$(BACKUP_TIMESTAMP).txt
@@ -188,9 +188,9 @@ docker-restore:
 	@echo "Restoring from backup: $(BACKUP_TIMESTAMP)..."
 	@test -n "$(BACKUP_TIMESTAMP)" || (echo "error: set BACKUP_TIMESTAMP, e.g. BACKUP_TIMESTAMP=20260709_120000 make docker-restore" && exit 1)
 	@echo "Restoring Postgres..."
-	docker compose exec -T backend pg_restore -Fc -U root -h postgres -d credchain --clean < docker/backups/postgres_$(BACKUP_TIMESTAMP).dump
+	docker compose exec -T golang pg_restore -Fc -U root -h postgres -d credchain --clean < docker/backups/postgres_$(BACKUP_TIMESTAMP).dump
 	@echo "Restoring MongoDB..."
-	docker compose exec -T backend mongorestore --uri="mongodb://$(grep MONGO_INITDB_ROOT_USERNAME .env.docker | cut -d= -f2):$(grep MONGO_INITDB_ROOT_PASSWORD .env.docker | cut -d= -f2)@mongo:27017" --archive --drop < docker/backups/mongo_$(BACKUP_TIMESTAMP).archive
+	docker compose exec -T golang mongorestore --uri="mongodb://$(grep MONGO_INITDB_ROOT_USERNAME .env.docker | cut -d= -f2):$(grep MONGO_INITDB_ROOT_PASSWORD .env.docker | cut -d= -f2)@mongo:27017" --archive --drop < docker/backups/mongo_$(BACKUP_TIMESTAMP).archive
 	@echo "Restoring credential files..."
-	docker compose exec backend tar xzf /backups/credentials_$(BACKUP_TIMESTAMP).tar.gz -C $$(grep CREDENTIAL_FILE_STORAGE_PATH .env.docker | cut -d= -f2 || echo "credentials")
+	docker compose exec golang tar xzf /backups/credentials_$(BACKUP_TIMESTAMP).tar.gz -C $$(grep CREDENTIAL_FILE_STORAGE_PATH .env.docker | cut -d= -f2 || echo "credentials")
 	@echo "Restore complete."
