@@ -54,5 +54,12 @@ uploads/
 # Benchmark output directory
 benchmarks/
 
+# Superpowers artifacts
+.superpowers/
+
+# Superpowers docs (QA reports, plans, specs)
+docs/qa/
+docs/superpowers/
+
 # Backups directory
 docker/backups/
