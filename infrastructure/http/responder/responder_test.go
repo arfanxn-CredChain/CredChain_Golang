@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"CredChain_Golang/domain"
-	"CredChain_Golang/infrastructure/testutil/gintest"
+	"CredChain_Golang/tests/gintest"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/go-ozzo/ozzo-validation/v4/is"

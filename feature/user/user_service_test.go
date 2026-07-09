@@ -11,8 +11,8 @@ import (
 	domainQuery "CredChain_Golang/domain/query"
 	httpContext "CredChain_Golang/infrastructure/http/context"
 	"CredChain_Golang/infrastructure/oauth"
-	"CredChain_Golang/infrastructure/testutil/fixtures"
-	"CredChain_Golang/infrastructure/testutil/mocks"
+	"CredChain_Golang/tests/fixtures"
+	"CredChain_Golang/tests/mocks"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/stretchr/testify/assert"

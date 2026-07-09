@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"CredChain_Golang/domain"
-	"CredChain_Golang/infrastructure/testutil/fixtures"
-	"CredChain_Golang/infrastructure/testutil/gintest"
+	"CredChain_Golang/tests/fixtures"
+	"CredChain_Golang/tests/gintest"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nicksnyder/go-i18n/v2/i18n"

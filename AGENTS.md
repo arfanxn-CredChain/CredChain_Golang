@@ -150,12 +150,12 @@ CredChain_Golang/
     storage/            → local.go, ipfs.go (no tests). Storage holds *Config, methods
                           use all-in-one `path` argument: SaveBytes/SaveFile/ReadBytes/Delete(path).
                           Base directory from STORAGE_PATH env (default "uploads").
-    testutil/           → test-only helpers (never imported by production)
-      db/sqlite.go      → in-memory SQLite via glebarez (pure Go, no CGO)
-      fixtures/         → NewDomainUser, NewModelUser, NewDomainUserToken, NewWallet, TestWalletEncryptionKey
-      gintest/          → NewContext, LoadTestI18nBundle
-      mocks/            → testify mocks: repos, UoW, AuthorityService, UserPolicy, GoogleOAuthClient, bindings
   locales/en.json, locales/id.json   → tracked i18n locale files
+  tests/              → test-only helpers (never imported by production)
+    db/sqlite.go      → in-memory SQLite via glebarez (pure Go, no CGO)
+    fixtures/         → NewDomainUser, NewModelUser, NewDomainUserToken, NewWallet, TestWalletEncryptionKey
+    gintest/          → NewContext, LoadTestI18nBundle
+    mocks/            → testify mocks: repos, UoW, AuthorityService, UserPolicy, GoogleOAuthClient, bindings
   Makefile              → 22+ targets
   Dockerfile            → multi-stage Go 1.25-alpine → alpine:3.19
   docker-compose.yml    → backend + nginx + postgres:15 + mongo:8.0
@@ -541,13 +541,13 @@ All Config fields are pointers (`*T`); `nil` = not provided, non-nil = provided 
 | 30–55% | `feature/auth` (54%), `oauth` (50%), `database/gorm` (32%) |
 | 0% (intentional) | `cmd`, `ai`, `chain/contracts`, `http`, `logger`, `storage` |
 
-**Test Infrastructure** (`infrastructure/testutil/`, test-only, never imported by production):
+**Test Infrastructure** (`tests/`, test-only, never imported by production):
 
-- `testutil/db/sqlite.go` — `OpenInMemorySQLite(t)` opens in-memory SQLite, auto-migrates `model.User`, `model.UserToken`, `model.Credential`; parallel-safe via random per-call shared-cache name
-- `testutil/fixtures/` — entity builders with options pattern: `NewDomainUser(opts...)`, `NewModelUser(opts...)`, `NewDomainUserToken(opts...)`, `NewWallet(t)`, `TestWalletEncryptionKey()`
-- `testutil/gintest/` — `NewContext(t, opts...)` builds gin context with i18n/user injection; `LoadTestI18nBundle(t)` loads real `locales/` (cached via `runtime.Caller`)
-- `testutil/mocks/` — `stretchr/testify/mock` implementations: `MockUserRepository`, `MockUserTokenRepository`, `MockCredentialRepository`, `MockUnitOfWork` + `RunUnitOfWorkFn(uow, inner)` helper, `PropagatingUnitOfWork` (for chain-failure rollback testing), `MockAuthorityService`, `MockUserPolicy`, `MockGoogleOAuthClient`, `MockAuthorityBinding`, `MockRegistryBinding`
-- `chain/authority_service_test.go` defines `localAuthorityBinding` / `localRegistryBinding` inline to avoid import cycle (`testutil/mocks` → `chain`)
+- `tests/db/sqlite.go` — `OpenInMemorySQLite(t)` opens in-memory SQLite, auto-migrates `model.User`, `model.UserToken`, `model.Credential`; parallel-safe via random per-call shared-cache name
+- `tests/fixtures/` — entity builders with options pattern: `NewDomainUser(opts...)`, `NewModelUser(opts...)`, `NewDomainUserToken(opts...)`, `NewWallet(t)`, `TestWalletEncryptionKey()`
+- `tests/gintest/` — `NewContext(t, opts...)` builds gin context with i18n/user injection; `LoadTestI18nBundle(t)` loads real `locales/` (cached via `runtime.Caller`)
+- `tests/mocks/` — `stretchr/testify/mock` implementations: `MockUserRepository`, `MockUserTokenRepository`, `MockCredentialRepository`, `MockUnitOfWork` + `RunUnitOfWorkFn(uow, inner)` helper, `PropagatingUnitOfWork` (for chain-failure rollback testing), `MockAuthorityService`, `MockUserPolicy`, `MockGoogleOAuthClient`, `MockAuthorityBinding`, `MockRegistryBinding`
+- `chain/authority_service_test.go` defines `localAuthorityBinding` / `localRegistryBinding` inline to avoid import cycle (would create `tests/mocks` → `chain` cycle)
 
 **Locale coverage** (`infrastructure/http/responder/locale_keys_test.go`):
 
@@ -609,7 +609,7 @@ When adding a new endpoint or service method, add at least: one happy-path test,
 - **Environment files:** `.env` and `.env.docker` contain credentials and are NOT tracked by git; use `.env.example` as template.
 - **`GoogleOAuthClient` is an interface** (not concrete pointer) — `*oauth.GoogleOAuthClient` does not exist; use `oauth.GoogleOAuthClient` directly.
 - **Chain bindings:** hand-written code holds `chain.AuthorityBinding` / `chain.RegistryBinding`, not concrete `*contracts.Authority` / `*contracts.Registry`.
-- **Test infrastructure** lives at `infrastructure/testutil/` — never imported by production code.
+- **Test infrastructure** lives at `tests/` — never imported by production code.
 - **Repository search** is dialect-agnostic via `LOWER(...) LIKE LOWER(...)` — works on Postgres and SQLite.
 - **`model.Meta`** uses `serializer:json` — required for SQLite test compatibility.
 - **Locale message templates:** any `{{.X}}` placeholder must be backed by either an auto-injected key or a `WithMetadata("X", ...)` call in Go source (enforced by `locale_keys_test.go`).

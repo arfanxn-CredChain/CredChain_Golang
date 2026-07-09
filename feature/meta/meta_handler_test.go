@@ -8,7 +8,7 @@ import (
 
 	"CredChain_Golang/domain"
 	"CredChain_Golang/infrastructure/http/response"
-	"CredChain_Golang/infrastructure/testutil/gintest"
+	"CredChain_Golang/tests/gintest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"

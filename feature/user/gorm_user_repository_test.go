@@ -7,8 +7,8 @@ import (
 
 	"CredChain_Golang/domain"
 	domainQuery "CredChain_Golang/domain/query"
-	"CredChain_Golang/infrastructure/testutil/db"
-	"CredChain_Golang/infrastructure/testutil/fixtures"
+	"CredChain_Golang/tests/db"
+	"CredChain_Golang/tests/fixtures"
 
 	"github.com/stretchr/testify/assert"
 )

@@ -8,8 +8,8 @@ import (
 
 	"CredChain_Golang/domain"
 	domainQuery "CredChain_Golang/domain/query"
-	"CredChain_Golang/infrastructure/testutil/fixtures"
-	"CredChain_Golang/infrastructure/testutil/gintest"
+	"CredChain_Golang/tests/fixtures"
+	"CredChain_Golang/tests/gintest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"

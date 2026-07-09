@@ -5,7 +5,7 @@ import (
 
 	domainQuery "CredChain_Golang/domain/query"
 	"CredChain_Golang/infrastructure/database/gorm/model"
-	"CredChain_Golang/infrastructure/testutil/db"
+	"CredChain_Golang/tests/db"
 
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"

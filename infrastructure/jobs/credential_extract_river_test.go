@@ -10,7 +10,7 @@ import (
 	"CredChain_Golang/infrastructure/ai/pyai"
 	infraCrypto "CredChain_Golang/infrastructure/crypto"
 	"CredChain_Golang/infrastructure/storage"
-	"CredChain_Golang/infrastructure/testutil/mocks"
+	"CredChain_Golang/tests/mocks"
 
 	"github.com/riverqueue/river/rivertype"
 	"github.com/samber/lo"

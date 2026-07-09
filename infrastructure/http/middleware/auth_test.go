@@ -12,8 +12,8 @@ import (
 	"CredChain_Golang/domain"
 	httpContext "CredChain_Golang/infrastructure/http/context"
 	"CredChain_Golang/infrastructure/security"
-	"CredChain_Golang/infrastructure/testutil/fixtures"
-	"CredChain_Golang/infrastructure/testutil/mocks"
+	"CredChain_Golang/tests/fixtures"
+	"CredChain_Golang/tests/mocks"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"

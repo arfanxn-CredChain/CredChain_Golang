@@ -12,7 +12,7 @@ import (
 	"CredChain_Golang/config"
 	"CredChain_Golang/domain"
 	httpContext "CredChain_Golang/infrastructure/http/context"
-	"CredChain_Golang/infrastructure/testutil/fixtures"
+	"CredChain_Golang/tests/fixtures"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"

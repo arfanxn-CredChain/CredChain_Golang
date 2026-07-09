@@ -14,8 +14,8 @@ import (
 	httpContext "CredChain_Golang/infrastructure/http/context"
 	"CredChain_Golang/infrastructure/jobs"
 	"CredChain_Golang/infrastructure/storage"
-	"CredChain_Golang/infrastructure/testutil/fixtures"
-	"CredChain_Golang/infrastructure/testutil/mocks"
+	"CredChain_Golang/tests/fixtures"
+	"CredChain_Golang/tests/mocks"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-ozzo/ozzo-validation/v4"

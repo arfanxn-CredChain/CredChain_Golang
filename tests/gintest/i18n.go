@@ -26,8 +26,8 @@ func LoadTestI18nBundle(t *testing.T) *i18n.Bundle {
 		if !ok {
 			t.Fatalf("runtime.Caller failed")
 		}
-		// From infrastructure/testutil/gintest/i18n.go up to CredChain_Golang/
-		repoRoot := filepath.Join(filepath.Dir(filename), "..", "..", "..")
+		// From tests/gintest/i18n.go up to CredChain_Golang/
+		repoRoot := filepath.Join(filepath.Dir(filename), "..", "..")
 		localesDir := filepath.Join(repoRoot, "locales")
 
 		bundle := i18n.NewBundle(language.Indonesian)

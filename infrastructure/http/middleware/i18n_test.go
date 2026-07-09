@@ -7,7 +7,7 @@ import (
 
 	"CredChain_Golang/config"
 	appI18n "CredChain_Golang/infrastructure/i18n"
-	"CredChain_Golang/infrastructure/testutil/gintest"
+	"CredChain_Golang/tests/gintest"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"

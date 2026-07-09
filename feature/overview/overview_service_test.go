@@ -9,7 +9,7 @@ import (
 	"CredChain_Golang/config"
 	"CredChain_Golang/domain"
 	domainQuery "CredChain_Golang/domain/query"
-	"CredChain_Golang/infrastructure/testutil/gintest"
+	"CredChain_Golang/tests/gintest"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"

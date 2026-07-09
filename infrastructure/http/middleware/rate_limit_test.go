@@ -8,7 +8,7 @@ import (
 	"time"
 
 	httpContext "CredChain_Golang/infrastructure/http/context"
-	"CredChain_Golang/infrastructure/testutil/fixtures"
+	"CredChain_Golang/tests/fixtures"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"

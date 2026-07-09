@@ -9,8 +9,8 @@ import (
 	"CredChain_Golang/feature/credential"
 	"CredChain_Golang/feature/user"
 	"CredChain_Golang/infrastructure/database/gorm"
-	"CredChain_Golang/infrastructure/testutil/db"
-	"CredChain_Golang/infrastructure/testutil/fixtures"
+	"CredChain_Golang/tests/db"
+	"CredChain_Golang/tests/fixtures"
 
 	"github.com/stretchr/testify/assert"
 )
