@@ -12,6 +12,14 @@ Sibling to `CredChain_Solidity/` (smart contracts), `CredChain_React/` (frontend
 - **`CredChain_React/`:** sole HTTP consumer of this API. All routes live under `/api`. Frontend communicates via httpOnly cookies set by `/api/auth/google` and `/api/auth/refresh`.
 - **`CredChain_Python/`:** AI service called over HTTP for OCR, extraction, similarity. The Go backend serializes requests to it (single-worker on the Python side).
 
+## Documentation Map
+
+| Doc | Purpose |
+|---|---|
+| **AGENTS.md** (this file) | Project overview, commands, architecture, patterns, deployment |
+| [**ROLE.md**](ROLE.md) | Role hierarchy, authorization matrix, user policy rules |
+| [**CREDENTIAL.md**](CREDENTIAL.md) | Credential lifecycle, verification pipeline, credential policies |
+
 ## Critical Commands
 
 ```bash
@@ -52,7 +60,7 @@ No CI pipeline is configured. No lint or typecheck make targets exist beyond `go
 
 ## Environment Setup
 
-**Required services:** PostgreSQL 15 + MongoDB 8.0 must be running before `make serve`.
+**Required services:** PostgreSQL 16 + MongoDB 8.0 must be running before `make serve`.
 
 ```bash
 cd CredChain_Golang
@@ -121,8 +129,12 @@ CredChain_Golang/
     credential/         → credential_handler.go, credential_service.go,
                           gorm_credential_repository.go, credential_policy.go,
                           credential_request.go, mock_credential_service_test.go (+ tests, 67% coverage)
+    meta/               → meta_handler.go, meta_service.go (+ tests)
+    overview/           → overview_handler.go, overview_service.go,
+                          gorm_overview_repository.go (+ tests)
   infrastructure/
-    ai/gemini.go        → Gemini API client (no tests)
+    ai/pyai/client.go   → Python AI service HTTP client (no tests)
+    jobs/               → River workers for async credential extraction
     chain/              → go-ethereum chain infrastructure
       contracts/        → abigen-generated bindings (DO NOT EDIT)
       bindings.go       → AuthorityBinding + RegistryBinding interfaces
@@ -158,7 +170,7 @@ CredChain_Golang/
     mocks/            → testify mocks: repos, UoW, AuthorityService, UserPolicy, GoogleOAuthClient, bindings
   Makefile              → 22+ targets
   Dockerfile            → multi-stage Go 1.25-alpine → alpine:3.19
-  docker-compose.yml    → backend + nginx + postgres:15 + mongo:8.0
+  docker-compose.yml    → backend + nginx + postgres:16 + mongo:8.0
   .air.toml             → hot reload config
   go.mod                → module CredChain_Golang (underscore), Go 1.25.1
   CredChain_postman_collection.json → API testing collection
@@ -303,24 +315,13 @@ Adding a new `domain.Code*` constant requires updating: `mapper.go` (both `CodeT
 
 **Trashed-user pagination:** `GET /api/users` exposes trashed via the `deleted_at` column allowlist on filters and sorts. Operator vocabulary: `deleted_at!_` (only trashed), `deleted_at_` (only live, explicit), `deleted_at..a and b` (trashed in date range), `-deleted_at` (sort desc, mixes live+trashed).
 
-### Two-Method Policy Splits
+### Policy Layer
 
-`UpdateRole` and `Update` rules are split into pre-fetch (no DB) and post-fetch (target users in hand) methods.
+CredChain uses a two-method policy split: `PreFetch` methods validate before gorm operations, `PostFetch` methods validate after.
 
-- `UpdateRolePreFetch` blocks below-Admin signers, SuperAdmin promotion, self-targeting.
-- `UpdateRolePostFetch` blocks Admin-updating-Admin, Admin-promoting-to-Admin, same-role updates.
-- `UpdatePreFetch` + `UpdatePostFetch` mirror this for the batch user update endpoint.
-- `DeletePreFetch` blocks below-Admin signers and self-targeting.
-- `DeletePostFetch` blocks Admin-deleting-Admin/SuperAdmin.
-- `RestorePreFetch` blocks below-Admin signers and self-targeting.
-- `RestorePostFetch` blocks SuperAdmin target restoration and non-trashed targets.
-- `DownloadFilePreFetch` allows if user owns credential or is Issuer+; returns `CodeCredentialFileDownloadForbidden` (400641, 403) otherwise.
+**User policies:** See [ROLE.md §Policy Rules](ROLE.md) for the complete user policy interface.
 
-Service methods contain zero role/rank comparisons — all authorization lives in policy. `UpdatePostFetch` signature: `(ctx, targets []domain.User, updates []domain.User)` — receives both the fetched targets and the proposed updates so role-hierarchy rules apply to both current and requested roles.
-
-**UoW consistency:** `UpdateRole` and `Delete` use a single `s.uow.Execute` call (fetch + validate + DB mutation + chain sync in one transaction), mirroring the `Update` flow.
-
-**Self-target codes:** `UpdateRolePreFetch` returns `CodeUserRoleSelfTargetForbidden` (300546); `DeletePreFetch` returns `CodeUserDeleteSelfTargetForbidden` (300743). Both map to HTTP 403. Do NOT use `CodeAuthForbidden` — wrong locale message.
+**Credential policies:** See [CREDENTIAL.md §Policy Rules](CREDENTIAL.md) for credential-specific policy methods.
 
 ### Chain Infrastructure
 
@@ -374,11 +375,14 @@ Backend validates **ID tokens only** (not the full OAuth flow). Use `make get-go
 
 ### API Routes
 
+> **For full authorization details** (exact role requirements, on-chain vs DB role sources, denied operations), see [ROLE.md §Route Authorization](ROLE.md).
+
 All under `/api` prefix. Middleware order: `ErrorLoggerMiddleware` → `I18nMiddleware`.
 
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | GET | `/api/health` | None | Health check |
+| GET | `/api/meta` | None | Public metadata endpoint (QRIS, email, phone patterns) |
 | POST | `/api/auth/google` | None | Google OAuth login |
 | POST | `/api/auth/refresh` | None | Refresh token (rotates) |
 | POST | `/api/auth/logout` | Authenticated | Revoke all refresh tokens |
@@ -522,12 +526,31 @@ All Config fields are pointers (`*T`); `nil` = not provided, non-nil = provided 
 | `RIVER_MAX_WORKERS` | no | `10` | River job worker pool size |
 | `STORAGE_PATH` | no | `uploads` | Base directory for file storage |
 | `CREDENTIAL_FILE_STORAGE_PATH` | no | `credentials` | Subdirectory under STORAGE_PATH for credential files |
+| `ISSUING_ORGANIZATION_NAME` | no | — | Organization name displayed on issued credentials |
+| `RELAYER_PRIVATE_KEY` | **yes** | — | Relayer wallet private key for on-chain transactions |
+| `HARDHAT_MNEMONIC` | no | — | Hardhat development mnemonic (local dev only) |
+| `PYTHON_AI_BASE_URL` | no | — | Python AI service base URL |
+| `PYTHON_AI_TIMEOUT_SECONDS` | no | — | Python AI request timeout |
+| `POSTGRES_USER` | **yes** | — | PostgreSQL user |
+| `POSTGRES_PASSWORD` | **yes** | — | PostgreSQL password |
+| `POSTGRES_DB` | **yes** | — | PostgreSQL database name |
+| `DB_MAX_OPEN_CONNS` | no | — | Max open DB connections |
+| `DB_MAX_IDLE_CONNS` | no | — | Max idle DB connections |
+| `DB_CONN_MAX_LIFETIME` | no | — | Max connection lifetime |
+| `DB_CONN_MAX_IDLE_TIME` | no | — | Max idle connection time |
+| `MONGO_INIT_DB_USERNAME` | no | — | MongoDB init username |
+| `MONGO_INITDB_ROOT_PASSWORD` | no | — | MongoDB root password |
+| `JWT_ACCESS_EXPIRY_MINUTES` | no | — | JWT access token expiry in minutes |
+| `JWT_REFRESH_EXPIRY_HOURS` | no | — | JWT refresh token expiry in hours |
+| `CREDENTIAL_EXTRACT_WORKER_COUNT` | no | — | Credential extract worker count |
+| `CREDENTIAL_EXTRACT_WORKER_POLL_SECONDS` | no | — | Credential extract poll interval |
+| `CREDENTIAL_EXTRACT_WORKER_MAX_ATTEMPTS` | no | — | Credential extract max attempts |
 
 ## Testing
 
 - **Framework:** `stretchr/testify/assert` (assertions) + `stretchr/testify/mock` (mocks)
 - **Style:** white-box, in-package (same package as source)
-- **Count:** ~40 test files
+- **Count:** 61+ test files
 - **Database tests:** in-memory SQLite via `github.com/glebarez/sqlite` (pure Go, no CGO). Postgres-specific JSONB operators are not exercised — `Meta` round-trips via `serializer:json`. `UserTokenType` Postgres ENUM stores as TEXT in SQLite.
 - **No integration tests** against real Postgres / MongoDB / IPFS / RPC.
 
