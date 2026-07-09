@@ -11,6 +11,7 @@ endif
 	docker-down docker-restart docker-logs docker-ps docker-fresh \
 	docker-clean-data docker-check-golang-healthy \
 	docker-backup docker-restore \
+	docker-init-super-admin docker-seed docker-seed-chain \
 	credential-extraction-benchmark
 
 help:
@@ -49,6 +50,9 @@ help:
 	@echo "  make docker-migrate-down  - Rollback database migrations (Docker)"
 	@echo "  make docker-logs       - View container logs"
 	@echo "  make docker-ps         - List running containers"
+	@echo "  make docker-init-super-admin - Create super admin user (Docker)"
+	@echo "  make docker-seed        - Seed development data (Docker)"
+	@echo "  make docker-seed-chain  - Register seeded user roles on-chain (Docker)"
 	@echo ""
 	@echo "Utilities:"
 	@echo "  make clean            - Clean build artifacts and Docker resources"
@@ -138,6 +142,15 @@ docker-migrate-up: docker-check-golang-healthy
 
 docker-migrate-down: docker-check-golang-healthy
 	docker compose exec golang ./server migrate down
+
+docker-init-super-admin: docker-check-golang-healthy
+	docker compose exec golang ./server init-super-admin
+
+docker-seed: docker-check-golang-healthy
+	docker compose exec golang ./server seed
+
+docker-seed-chain: docker-check-golang-healthy
+	docker compose exec golang ./server seed-chain
 
 docker-logs:
 	docker compose logs -f

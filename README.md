@@ -11,8 +11,6 @@ Go 1.25 · Gin v1.12 · GORM v1.31 (PostgreSQL 16 + SQLite for tests) · MongoDB
 ```bash
 cp .env.example .env
 # Fill in required vars (see .env.example for full list)
-make install
-make migrate-up-pg
 make serve     # or make dev for hot reload
 ```
 
@@ -39,9 +37,14 @@ CredChain_Golang/
 | `make serve` | Start API server |
 | `make dev` | Start with hot reload (requires air) |
 | `make test` | Run all tests |
-| `make migrate-up-pg` | Run PostgreSQL migrations |
+| `make migrate-up` | Run PostgreSQL migrations |
 | `make migrate-up-mongo` | Create MongoDB indexes |
-| `make seed` | Seed development data |
+| `make init-super-admin` | Create super admin (local CLI) |
+| `make docker-init-super-admin` | Create super admin (Docker) |
+| `make seed` | Seed development data (local CLI) |
+| `make docker-seed` | Seed development data (Docker) |
+| `make seed-chain` | Register roles on-chain (local CLI) |
+| `make docker-seed-chain` | Register roles on-chain (Docker) |
 | `docker compose up -d` | Start infrastructure containers |
 
 ## Related Docs

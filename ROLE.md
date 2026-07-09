@@ -288,7 +288,7 @@ Verify credential (public)      ✓      ✓       ✓       ✓       ✓
 
 ### SuperAdmin Creation
 
-**Only via CLI (`make init-super-admin`).** Source: `cmd/init_super_admin.go`
+**Only via CLI (`make init-super-admin` or `make docker-init-super-admin`).** Source: `cmd/init_super_admin.go`
 
 Pre-conditions:
 1. Wallet must have `SuperAdmin` role on-chain in CredentialAuthority contract

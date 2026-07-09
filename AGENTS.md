@@ -32,10 +32,13 @@ make migrate-up                     # Run DB migrations (also provisions River t
 make migrate-down                   # Rollback ONE migration step (not all)
 make migrate-up-mongo               # Run MongoDB index migrations
 make migrate-down-mongo             # Rollback MongoDB index migrations
-make init-super-admin               # Create super admin (CLI only, not via API)
+make init-super-admin               # Create super admin user (local CLI)
+make docker-init-super-admin        # Create super admin user (Docker)
 make get-google-id-token            # Obtain Google ID token via OAuth (for Postman)
-make seed                           # Run database seeders (populate 15 users)
-make seed-chain                     # Register seeded user roles on-chain
+make seed                           # Seed development data (local CLI)
+make docker-seed                    # Seed development data (Docker)
+make seed-chain                     # Register seeded user roles on-chain (local CLI)
+make docker-seed-chain              # Register seeded user roles on-chain (Docker)
 make build                          # Build binary to bin/credchain
 make docker-up-build                # Start all services in Docker
 make docker-fresh                   # Full reset: down → clean → up → migrate
@@ -74,6 +77,10 @@ For full Docker: use `.env.docker` (Docker-internal hostnames `postgres`, `mongo
 ```bash
 rm -rf docker/postgres/data/* docker/mongo/data/*
 ```
+
+**Note:** `init-super-admin` and `seed` are **mutually exclusive** — both create a SuperAdmin user with email `arfan2173@gmail.com`. Running one after the other causes a duplicate email error.
+- **Production bootstrap:** `make docker-init-super-admin` (creates one SuperAdmin)
+- **Testing/data seeding:** `make docker-seed` → `make docker-seed-chain` (populates 15 test users + registers roles on-chain)
 
 **Required env vars** (app exits at startup if empty or invalid):
 
@@ -455,8 +462,10 @@ via `RPC_URL=http://127.0.0.1:8545` in `.env`.
 Setup:
 ```bash
 docker compose up -d anvil postgres mongo          # infrastructure only
-make migrate-up && make init-super-admin            # schema + super admin
-make seed && make seed-chain                        # populate + register
+make migrate-up                                    # schema
+# Pick ONE path — they are mutually exclusive:
+# Production: make init-super-admin                 # creates one SuperAdmin
+# Testing:    make seed && make seed-chain          # populates 15 test users + on-chain roles
 make serve                                          # start Go locally
 ```
 
