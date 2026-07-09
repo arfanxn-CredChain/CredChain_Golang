@@ -1,5 +1,7 @@
 # CredChain Role System
 
+> **Related docs:** For the credential system (issuance, verification, storage), see [CREDENTIAL.md](CREDENTIAL.md). For project-level commands and architecture, see [AGENTS.md](AGENTS.md).
+
 ## Role Definitions
 
 Five roles form strict hierarchy (0=lowest, 4=highest):
@@ -13,7 +15,7 @@ Five roles form strict hierarchy (0=lowest, 4=highest):
 | 4 | `RoleSuperAdmin` | `"super_admin"` | `SuperAdmin` | 4 | `super_admin` | Full system control |
 
 **Sources:**
-- Go: `domain/user.go:11-19` (constants), `domain/user.go:45-60` (`ToUint8`), `domain/user.go:63-78` (`RoleFromUint8`)
+- Go: `domain/user.go:14-18` (constants), `domain/user.go:45-60` (`ToUint8`), `domain/user.go:63-78` (`RoleFromUint8`)
 - Solidity: `CredentialAuthority.sol:19-25` (enum)
 - Postgres: `infrastructure/database/migrations/000001_initial_schema.up.sql:1-6`
 
@@ -57,6 +59,7 @@ Middleware chain: `ErrorLoggerMiddleware` → `I18nMiddleware` → `ApiRateLimit
 | Route | Method | Auth | Min Role (on-chain) |
 |-------|--------|------|---------------------|
 | `/api/health` | GET | None | None |
+| `/api/meta` | GET | None | — | Public metadata endpoint (QRIS, email, phone patterns) |
 | `/api/auth/google` | POST | None | None |
 | `/api/auth/refresh` | POST | None | None |
 | `/api/auth/logout` | POST | Authenticated | Any |
@@ -177,18 +180,9 @@ Allowed combos: Admin creates Holder/Issuer; SuperAdmin creates anything except 
 |------|-----------|------|
 | Cannot transfer to self | Target ID == signer ID | `CodeUserTransferSuperAdminSelfTargetForbidden` (300641) |
 
-### Credential Policy (`feature/credential/credential_policy.go`)
+### Credential Policy Rules
 
-| Method | Rule | Code |
-|--------|------|------|
-| `IssuePreFetch` | Signer must be Issuer+ (DB role) | `CodeAuthForbidden` (200142) |
-| `IssuePostFetch` | No-op | — |
-| `RevokePreFetch` | Signer must be Issuer+ (DB role) | `CodeAuthForbidden` (200142) |
-| `RevokePostFetch` | No-op | — |
-| `VerifyPreFetch` | **No-op (public endpoint)** — verifier (HR, employer) needs no auth | — |
-| `ReExtractPreFetch` | Signer must be Issuer+ (DB role) | `CodeAuthForbidden` (200142) |
-
-Credential policy checks use **DB-stored role rank** (`signerIsIssuerOrAbove` at line 73-76), not on-chain.
+Credential-specific policies are documented in [CREDENTIAL.md](CREDENTIAL.md). Role enforcement for credential operations (issue, revoke, re-extract) is at the route level via `IssuerRoleMiddleware` (on-chain check at `router.go:112-116`).
 
 ---
 
@@ -308,10 +302,11 @@ Endpoint: `POST /api/users/self/transfer-super-admin`
 
 Flow:
 1. SuperAdmin calls endpoint targeting another user
-2. Policy blocks self-transfer (`CodeUserTransferSuperAdminSelfTargetForbidden`)
-3. On-chain: `authorityService.TransferSuperAdmin()` — atomic swap (signer→Admin, target→SuperAdmin)
-4. DB: both users' roles updated
-5. Refresh tokens revoked for both users
+2. Policy blocks self-transfer (`CodeUserTransferSuperAdminSelfTargetForbidden`, step 5 in `TransferSuperAdminPreFetch`)
+3. The trashed-target check (`CodeUserTransferSuperAdminTrashedForbidden`, 300643) happens in the **service layer** (`user_service.go:443-446`), not in `TransferSuperAdminPreFetch`. The policy method only checks that the caller is not transferring to themselves.
+4. On-chain: `authorityService.TransferSuperAdmin()` — atomic swap (signer→Admin, target→SuperAdmin)
+5. DB: both users' roles updated
+6. Refresh tokens revoked for both users
 
 ### On-Chain Role Sync
 
