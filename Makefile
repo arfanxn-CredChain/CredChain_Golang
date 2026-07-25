@@ -3,10 +3,10 @@
 # Go via air + React via vite on host).
 
 ENV_FILE ?= .env
-ifneq (,$(wildcard $(ENV_FILE)))
-    include $(ENV_FILE)
-    export
-endif
+# NOTE: do not `include`+`export` .env here. setup-contracts.py rewrites contract
+# addresses into .env mid-run; make's export would freeze the pre-deploy values in
+# each recipe's env, and godotenv.Load (config.go) won't override them, so `go run
+# ... --env .env` would read stale addresses. Recipes load .env themselves via --env.
 
 .PHONY: help up down fresh logs backup restore dev-up dev-fresh dev \
 	test lint get-google-id-token credential-extraction-benchmark wait-golang
