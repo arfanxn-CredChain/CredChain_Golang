@@ -25,23 +25,35 @@ Sibling to `CredChain_Solidity/` (smart contracts), `CredChain_React/` (frontend
 ```bash
 cd CredChain_Golang
 
-make serve                          # Start server (requires PostgreSQL + MongoDB)
-make dev                            # Hot reload via Air (requires `go install github.com/cosmtrek/air@latest`)
-make serve ENV=.env.docker          # Start with Docker env overrides
-make migrate-up                     # Run DB migrations (also provisions River tables via `jobs.MigrateRiver`)
-make migrate-down                   # Rollback ONE migration step (not all)
-make migrate-up-mongo               # Run MongoDB index migrations
-make migrate-down-mongo             # Rollback MongoDB index migrations
-make init-super-admin               # Create super admin user (local CLI)
-make docker-init-super-admin        # Create super admin user (Docker)
+# This repo is the orchestrator for the whole monorepo.
+
+# Full stack (Docker / prod)
+make up                             # network, contracts, migrate, super-admin, all services
+make down                           # Stop all containers (React + Python + Golang/infra)
+make fresh                          # Wipe volumes + uploads, then up
+make logs                           # Follow backend/infra logs
+make backup BACKUP=<ts>             # Dump Postgres + Mongo + uploads
+make restore BACKUP=<ts>            # Restore from a backup
+
+# Local hybrid (infra in Docker, Go on host)
+make dev-up                         # Infra + Anvil + Python in Docker, deploy contracts, migrate, seed
+make dev-fresh                      # dev-up after wiping local infra data + chain (clean reset + reseed)
+make dev                            # Hot reload via Air (requires `go install github.com/air-verse/air@latest`)
+
+# Backend tasks
+make test                           # go test ./...
+make lint                           # go vet + gofmt
 make get-google-id-token            # Obtain Google ID token via OAuth (for Postman)
-make seed                           # Seed development data (local CLI)
-make docker-seed                    # Seed development data (Docker)
-make seed-chain                     # Register seeded user roles on-chain (local CLI)
-make docker-seed-chain              # Register seeded user roles on-chain (Docker)
-make build                          # Build binary to bin/credchain
-make docker-up-build                # Start all services in Docker
-make docker-fresh                   # Full reset: down → clean → up → migrate
+make credential-extraction-benchmark
+
+# migrate / seed / seed-chain / init-super-admin are NOT standalone targets —
+# they run automatically inside `make up` (init-super-admin) and `make dev-up`
+# (seed + seed-chain). For the rare standalone need, call the CLI directly:
+go run main.go migrate up --env .env          # (also provisions River tables)
+go run main.go migrate-mongo up --env .env    # MongoDB index migrations
+go run main.go seed --env .env
+go run main.go seed-chain --env .env          # register seeded roles on-chain
+go run main.go init-super-admin --env .env
 
 go test ./...                       # Run all tests
 go test ./domain/... -v             # Run single package tests
@@ -59,28 +71,29 @@ Hot reload via Air: config in `.air.toml` — watches `**/*.go`, excludes `vendo
 
 All CLI commands use `go run main.go <command> --env <path>` (the `--env`/`-e` flag is required).
 
-No CI pipeline is configured. No lint or typecheck make targets exist beyond `go vet` and `gofmt`.
+No CI pipeline is configured. `make lint` = `go vet ./... && gofmt -l .`; there is no separate typecheck step.
 
 ## Environment Setup
 
-**Required services:** PostgreSQL 16 + MongoDB 8.0 must be running before `make serve`.
+**Local hybrid run** (infra in Docker, Go on host — uses `.env`):
 
 ```bash
 cd CredChain_Golang
-cp .env.example .env                    # create .env from template
-docker compose up -d postgres mongo     # start only the databases
-make serve                              # run Go app locally (uses .env)
+cp .env.example .env                    # create .env from template (first time)
+make dev-up                             # infra + Anvil + Python, deploy contracts, migrate, seed
+make dev                                # run Go app locally with hot reload
 ```
 
-For full Docker: use `.env.docker` (Docker-internal hostnames `postgres`, `mongo`, `host.docker.internal`). Before `make docker-fresh`, clear stale persisted data:
+**Full Docker run** (prod — uses `.env.docker`, hostnames `postgres`, `mongo`, `anvil`):
 
 ```bash
-rm -rf docker/postgres/data/* docker/mongo/data/*
+make up                                 # brings the whole stack up
+make fresh                              # same, but wipes persisted data first
 ```
 
-**Note:** `init-super-admin` and `seed` are **mutually exclusive** — both create a SuperAdmin user with email `arfan2173@gmail.com`. Running one after the other causes a duplicate email error.
-- **Production bootstrap:** `make docker-init-super-admin` (creates one SuperAdmin)
-- **Testing/data seeding:** `make docker-seed` → `make docker-seed-chain` (populates 15 test users + registers roles on-chain)
+**Note:** `init-super-admin` and `seed` both create a SuperAdmin (`arfan2173@gmail.com`) and are **mutually exclusive** — but the two modes keep them apart automatically:
+- **`make up`** (prod bootstrap) runs `init-super-admin` (one SuperAdmin).
+- **`make dev-up`** (dev seeding) runs `seed` → `seed-chain` (15 test users + on-chain roles).
 
 **Required env vars** (app exits at startup if empty or invalid):
 
@@ -429,7 +442,7 @@ All under `/api` prefix. Middleware order: `ErrorLoggerMiddleware` → `I18nMidd
 
 **Credentials schema note:** the `credentials.embeddings` column is removed. Extraction data (text, ids, embedding) now lives in MongoDB `credential_extractions`.
 
-**MongoDB:** Actively used. Two collections: `credential_extractions` (text, ids, embedding, file_hash) and `credential_verifications` (TTL-bounded verify cache keyed by uploaded_file_hash). Migration via `make migrate-up-mongo` / `make migrate-down-mongo`. `infrastructure/database/mongo/client.go` provides FX providers.
+**MongoDB:** Actively used. Two collections: `credential_extractions` (text, ids, embedding, file_hash) and `credential_verifications` (TTL-bounded verify cache keyed by uploaded_file_hash). Migration runs inside `make up` / `make dev-up`; standalone via `go run main.go migrate-mongo up` / `migrate-mongo down --env .env`. `infrastructure/database/mongo/client.go` provides FX providers.
 
 **Repository Store error translation:** `gormUserRepository.Store` catches Postgres `*pgconn.PgError` with code `23505` (unique_violation) and translates to `CodeUserStoreEmailDuplicateInDatabase` with input emails as metadata. Handles concurrent batch creates that race past the pre-check in `userService.storeValidateEmails`.
 
@@ -443,7 +456,7 @@ All under `/api` prefix. Middleware order: `ErrorLoggerMiddleware` → `I18nMidd
 
 **Repository nil-safety (Get):** `Get` and the shared helpers `ApplySorts` / `ApplyPagination` accept a nil `*Query` — nil queries skip search, filters, and pagination, returning all rows. The default sort is still applied.
 
-**Database Seeder:** `infrastructure/database/seeder/` implements a `Seeder` interface with a `Registry` runner accepting variadic `--names` flags, executable via `make seed` and `make seed-chain`. The `UserSeeder` creates 15 users (5 defined + 10 randomised Indonesian names, 60/40 Holder/Issuer tilt) with wallet keys derived from the standard Hardhat mnemonic via BIP44 (`DeriveKeyFromMnemonic`). All users receive an employee number (NIP, 18-digit `YYYYMMDDYYYYMMXNNN`) for Issuer+ roles or a student number (NIM, `2209XXXX`) for Holder roles. Half the users receive random `{"key":"...}` metadata. Five users are soft-deleted (Anna Sorokin at index 4 + 4 users at indices 10-13). All timestamps (created_at, updated_at, deleted_at) are deterministically generated from a seeded RNG. Chain roles are registered via `make seed-chain`, which reads the database with a nil query and signs batch `UpdateUserRole` transactions in chunks of ≤100 (respecting `MAX_BATCH_ROLE=100` limit in the CredentialAuthority contract) with the SuperAdmin wallet (Hardhat node #1). SuperAdmin and users whose target role is `RoleNone` on a fresh deploy are skipped to avoid contract reverts (`SuperAdminRoleNotUpdatableError`, `SameRoleUpdateError`). The phone sanitizer (`SanitizePhone`) ensures E.164 compliance for all generated phone numbers. Soft-deleted users are created with `DeletedAt` pre-set; `make seed-chain` detects these via `DeletedAt != nil` and assigns `RoleNone` on-chain.
+**Database Seeder:** `infrastructure/database/seeder/` implements a `Seeder` interface with a `Registry` runner accepting variadic `--names` flags, run inside `make dev-up`; standalone via `go run main.go seed` and `go run main.go seed-chain --env .env`. The `UserSeeder` creates 15 users (5 defined + 10 randomised Indonesian names, 60/40 Holder/Issuer tilt) with wallet keys derived from the standard Hardhat mnemonic via BIP44 (`DeriveKeyFromMnemonic`). All users receive an employee number (NIP, 18-digit `YYYYMMDDYYYYMMXNNN`) for Issuer+ roles or a student number (NIM, `2209XXXX`) for Holder roles. Half the users receive random `{"key":"...}` metadata. Five users are soft-deleted (Anna Sorokin at index 4 + 4 users at indices 10-13). All timestamps (created_at, updated_at, deleted_at) are deterministically generated from a seeded RNG. Chain roles are registered via the `seed-chain` CLI, which reads the database with a nil query and signs batch `UpdateUserRole` transactions in chunks of ≤100 (respecting `MAX_BATCH_ROLE=100` limit in the CredentialAuthority contract) with the SuperAdmin wallet (Hardhat node #1). SuperAdmin and users whose target role is `RoleNone` on a fresh deploy are skipped to avoid contract reverts (`SuperAdminRoleNotUpdatableError`, `SameRoleUpdateError`). The phone sanitizer (`SanitizePhone`) ensures E.164 compliance for all generated phone numbers. Soft-deleted users are created with `DeletedAt` pre-set; the `seed-chain` CLI detects these via `DeletedAt != nil` and assigns `RoleNone` on-chain.
 
 ### Docker
 
@@ -451,7 +464,7 @@ All under `/api` prefix. Middleware order: `ErrorLoggerMiddleware` → `I18nMidd
 
 **Note:** `docker-compose.yml` healthcheck hardcodes port 8080 (`wget -qO- http://localhost:8080/api/health`). If you change `GIN_PORT`, update the healthcheck too.
 
-**Stale data issue:** Delete `docker/postgres/data/*` and `docker/mongo/data/*` before `make docker-fresh` or tests may fail.
+**Stale data issue:** `make fresh` wipes `docker/postgres/data/*` and `docker/mongo/data/*` (and Anvil data + uploads) before rebooting, so a clean reset needs no manual deletion.
 
 **Chain persistence:** The `anvil` service persists chain state to
 `./docker/anvil/data/state.json` via bind mount. State survives
@@ -459,15 +472,15 @@ container restarts and `docker compose down`. For local development,
 the Go backend runs natively (no Docker build) and connects to Anvil
 via `RPC_URL=http://127.0.0.1:8545` in `.env`.
 
-Setup:
+Setup (one command does infra + deploy + migrate + seed, then run Go on the host):
 ```bash
-docker compose up -d anvil postgres mongo          # infrastructure only
-make migrate-up                                    # schema
-# Pick ONE path — they are mutually exclusive:
-# Production: make init-super-admin                 # creates one SuperAdmin
-# Testing:    make seed && make seed-chain          # populates 15 test users + on-chain roles
-make serve                                          # start Go locally
+make dev-up                                         # anvil/postgres/mongo, deploy contracts → .env, migrate, seed, seed-chain
+make dev                                            # air hot-reload
 ```
+
+`make dev-up` seeds test users (dev path). For a single SuperAdmin instead of seed data,
+use the full-Docker path `make up`, which runs `init-super-admin`. The two paths are mutually
+exclusive. Rare standalone steps: `go run main.go <migrate|seed|seed-chain|init-super-admin> --env .env`.
 
 ### Postman Collection
 
@@ -629,7 +642,7 @@ When adding a new endpoint or service method, add at least: one happy-path test,
 - **Go module path** is `CredChain_Golang` (with underscore) — imports use this, not a URL path.
 - **`WALLET_ENCRYPTION_KEY`** must be exactly 32 bytes (AES-256 key). Validated at startup in `config.NewConfig` — app fails fast with clear error if length is wrong.
 - **`FILE_ENCRYPTION_KEY`** must be exactly 32 bytes (AES-256). Same validation — credential files encrypted at rest with this key.
-- **SuperAdmin** can only be created via `make init-super-admin` CLI, never via API.
+- **SuperAdmin** can only be created via the `init-super-admin` CLI (run automatically by `make up`, or `go run main.go init-super-admin --env .env`), never via API.
 - **Transfer Super Admin**: Only the current SuperAdmin can transfer their role via `POST /api/users/self/transfer-super-admin`. Caller is downgraded to Admin, target promoted to SuperAdmin. Refresh tokens for both users are revoked.
 - **Self-profile lockdown**: `PUT /api/users/self/profile` only accepts `phone_number`. Name, number, birth_date, and meta are admin-managed via `PUT /api/users/batch`. **SuperAdmin** may include their own ID in `PUT /api/users/batch` to self-edit profile fields (other roles cannot self-target via batch — `CodeUserUpdateSelfForbidden`). However, **no role can change their own email via batch** (`CodeUserUpdateSelfEmailForbidden` 300847, 403) — email changes must go through `PUT /api/users/self/email` which requires a fresh Google ID token. This prevents accidentally locking the account out with an inaccessible email.
 - **`init-super-admin`** validates wallet has SuperAdmin role on-chain before database initialization; checks for existing SuperAdmin by role using `FindByRole`, not by email. Filters out trashed users from the existence check.
@@ -665,15 +678,15 @@ Reviewers MUST reject any code path that issues queries inside a loop.
 
 Before pushing, run the repo's canonical verification command and confirm it passes:
 
-- `CredChain_Golang`: `go test ./... && go vet ./... && gofmt -l .` (last must produce zero output)
-- `CredChain_Solidity`: `npx hardhat compile && npx hardhat test`
-- `CredChain_Python`: `make lint && make typecheck && make test`
+- `CredChain_Golang`: `make test && make lint` (lint = `go vet ./... && gofmt -l .`; the `gofmt` list must be empty)
+- `CredChain_Solidity`: `make compile && make test`
+- `CredChain_Python`: `make check`
 - `CredChain_React`: `npm run lint && npm run build && npm run test && npm run check-locales`
 
 ### Python AI Service API Key
 
 The AI service requires an `API_KEY` for authentication. After generating it
-in the Python project (`make docker-generate-api-key`), copy the key:
+in the Python project (`make generate-api-key`), copy the key:
 
 1. Read `API_KEY=...` from `CredChain_Python/.env.docker`
 2. Set `PYTHON_AI_API_KEY=<that-value>` in `.env.docker`

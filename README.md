@@ -11,10 +11,11 @@ Go 1.25 · Gin v1.12 · GORM v1.31 (PostgreSQL 16 + SQLite for tests) · MongoDB
 ```bash
 cp .env.example .env
 # Fill in required vars (see .env.example for full list)
-make serve     # or make dev for hot reload
+make dev-up    # infra + Anvil + Python in Docker, deploy contracts, migrate, seed
+make dev       # run the API on host with hot reload
 ```
 
-The API starts on port 8080. Requires PostgreSQL, MongoDB, and a local Ethereum node (Hardhat/Anvil).
+The API starts on port 8080. `make dev-up` brings up the PostgreSQL, MongoDB, and Anvil containers it depends on. For the full-Docker stack instead, use `make up`.
 
 ## Project Structure
 
@@ -32,20 +33,22 @@ CredChain_Golang/
 
 ## Key Commands
 
+This repo is the **orchestrator** for the whole monorepo. Run `make help` for the full list.
+
 | Command | Purpose |
 |---|---|
-| `make serve` | Start API server |
-| `make dev` | Start with hot reload (requires air) |
+| `make up` | Full stack in Docker (contracts, migrate, super-admin, all services) |
+| `make down` | Stop all containers |
+| `make fresh` | Wipe volumes + uploads, then `up` |
+| `make logs` | Follow backend/infra logs |
+| `make dev-up` | Local hybrid: infra + Anvil + Python in Docker, deploy contracts, migrate, seed |
+| `make dev-fresh` | `dev-up` after wiping local infra data + chain (clean reset + reseed) |
+| `make dev` | Run API on host with hot reload (requires air) |
 | `make test` | Run all tests |
-| `make migrate-up` | Run PostgreSQL migrations |
-| `make migrate-up-mongo` | Create MongoDB indexes |
-| `make init-super-admin` | Create super admin (local CLI) |
-| `make docker-init-super-admin` | Create super admin (Docker) |
-| `make seed` | Seed development data (local CLI) |
-| `make docker-seed` | Seed development data (Docker) |
-| `make seed-chain` | Register roles on-chain (local CLI) |
-| `make docker-seed-chain` | Register roles on-chain (Docker) |
-| `docker compose up -d` | Start infrastructure containers |
+| `make lint` | `go vet` + `gofmt` |
+| `make backup` / `make restore` | Dump / restore Postgres + Mongo + uploads (`BACKUP=<ts>`) |
+
+Migrate / seed / seed-chain / init-super-admin run automatically inside `up`/`dev-up`. For a standalone run, call the CLI: `go run main.go <cmd> --env .env`.
 
 ## Related Docs
 

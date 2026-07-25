@@ -44,6 +44,10 @@ logs/
 tmp/
 temp/
 
+# Python bytecode (orchestrator deploy script)
+__pycache__/
+*.pyc
+
 # Go workspace file
 go.work
 docker/anvil/data/

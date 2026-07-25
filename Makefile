@@ -1,4 +1,6 @@
-# CredChain - Makefile Commands
+# CredChain — orchestrator + backend
+# Run everything from here. Prod = full Docker. Local = hybrid (infra in Docker,
+# Go via air + React via vite on host).
 
 ENV_FILE ?= .env
 ifneq (,$(wildcard $(ENV_FILE)))
@@ -6,117 +8,100 @@ ifneq (,$(wildcard $(ENV_FILE)))
     export
 endif
 
-.PHONY: help check-env check-env-docker clean build serve dev migrate-up migrate-down migrate-up-mongo migrate-down-mongo init-super-admin get-google-id-token seed seed-chain \
-	docker-migrate-up docker-migrate-down docker-up-build docker-up \
-	docker-down docker-restart docker-logs docker-ps docker-fresh \
-	docker-clean-data docker-check-golang-healthy \
-	docker-backup docker-restore \
-	docker-init-super-admin docker-seed docker-seed-chain \
-	credential-extraction-benchmark
+.PHONY: help up down fresh logs backup restore dev-up dev-fresh dev \
+	test lint get-google-id-token credential-extraction-benchmark wait-golang
 
 help:
-	@echo "CredChain - Available Commands:"
+	@echo "CredChain — make targets"
 	@echo ""
-	@echo "Usage:"
-	@echo "  make serve ENV=.env.docker      # Use custom env file"
+	@echo "Stack (Docker / prod):"
+	@echo "  up        Bring up the whole stack in Docker (contracts, migrate, super-admin, all services)"
+	@echo "  down      Stop all containers"
+	@echo "  fresh     Wipe volumes + uploads, then up"
+	@echo "  logs      Follow backend/infra logs"
+	@echo "  backup    Dump Postgres + Mongo + uploads      (BACKUP=<ts>)"
+	@echo "  restore   Restore from a backup                 (BACKUP=<ts>)"
 	@echo ""
-	@echo "Local Development:"
-	@echo "  make build              - Build the application"
-	@echo "  make serve             - Start the application server"
-	@echo "  make dev               - Start the application server with hot reload (requires air)"
-	@echo "  make migrate-up        - Run database migrations up (local)"
-	@echo "  make migrate-down      - Rollback database migrations (local)"
-	@echo "  make init-super-admin  - Create super admin user (local)"
-	@echo "  make get-google-id-token - Obtain Google ID token via OAuth (for Postman)"
-	@echo "  make seed              - Run database seeders (populate 15 users)"
-	@echo "  make seed-chain        - Register seeded user roles on-chain"
+	@echo "Local (hybrid):"
+	@echo "  dev-up    Infra + Anvil + Python in Docker, deploy contracts, migrate, seed"
+	@echo "  dev-fresh Wipe local infra data + uploads, then dev-up (clean chain + reseed)"
+	@echo "  dev       Run Go backend hot-reload (air). Then run 'make dev' in CredChain_React."
 	@echo ""
-	@echo "Benchmark:"
-	@echo "  make credential-extraction-benchmark        - Run credential extraction benchmark"
-	@echo "  Pipeline: generate PDF -> encrypt -> decrypt -> POST to Python AI -> parse."
-	@echo "  Env vars:"
-	@echo "    CREDENTIAL_EXTRACTION_BENCH_COUNT    (default: 3)"
-	@echo "    CREDENTIAL_EXTRACTION_BENCH_COUNT    (default: 3)"
-	@echo "    CREDENTIAL_EXTRACTION_BENCH_CSV   (set to 1 to enable CSV output)"
-	@echo "    CREDENTIAL_EXTRACTION_BENCH_PROFILE  (set to 1 to enable CPU+mem+trace profiling)"
-	@echo "  Example: make credential-extraction-benchmark CREDENTIAL_EXTRACTION_BENCH_CSV=1"
-	@echo ""
-	@echo "Docker:"
-	@echo "  make docker-up         - Start all services with Docker"
-	@echo "  make docker-up-build   - Rebuild and start all services"
-	@echo "  make docker-down       - Stop and remove all containers"
-	@echo "  make docker-restart    - Restart all services with rebuild"
-	@echo "  make docker-migrate-up    - Run database migrations (Docker)"
-	@echo "  make docker-migrate-down  - Rollback database migrations (Docker)"
-	@echo "  make docker-logs       - View container logs"
-	@echo "  make docker-ps         - List running containers"
-	@echo "  make docker-init-super-admin - Create super admin user (Docker)"
-	@echo "  make docker-seed        - Seed development data (Docker)"
-	@echo "  make docker-seed-chain  - Register seeded user roles on-chain (Docker)"
-	@echo ""
-	@echo "Utilities:"
-	@echo "  make clean            - Clean build artifacts and Docker resources"
+	@echo "Backend:"
+	@echo "  test      go test ./..."
+	@echo "  lint      go vet + gofmt"
+	@echo "  get-google-id-token          Obtain Google ID token (Postman)"
+	@echo "  credential-extraction-benchmark   Run extraction benchmark"
 
-check-env:
-	@if [ ! -f $(ENV_FILE) ]; then \
-		echo "error: $(ENV_FILE) file not found."; \
-		exit 1; \
-	fi
+# ---------------------------------------------------------------- full stack (Docker)
 
-check-env-docker:
-	@if [ ! -f .env.docker ]; then \
-		echo "error: .env.docker file not found."; \
-		exit 1; \
-	fi
+up:
+	-docker network create credchain
+	docker compose up -d anvil postgres mongo
+	python3 scripts/setup-contracts.py
+	docker compose up -d --build golang
+	@$(MAKE) wait-golang
+	docker compose run --rm golang ./server migrate up
+	-docker compose run --rm golang ./server migrate-mongo up
+	-docker compose exec golang ./server init-super-admin
+	cd ../CredChain_React && docker compose --env-file .env.docker up -d --build
+	docker compose up -d nginx
+	cd ../CredChain_Python && docker compose up -d --build
+	@echo "up: all services started"
 
-clean:
-	@if [ -f bin/credchain ]; then rm bin/credchain; fi
-	docker compose down -v 2>/dev/null || true
+down:
+	-cd ../CredChain_React && docker compose down
+	-cd ../CredChain_Python && docker compose down
+	docker compose down
 
-build:
-	mkdir -p bin
-	go build -o bin/credchain main.go
+fresh:
+	@$(MAKE) down
+	rm -rf docker/postgres/data/* docker/mongo/data/* docker/anvil/data/* uploads/*
+	@$(MAKE) up
 
-serve:
-	go run main.go serve --env $(ENV_FILE)
+logs:
+	docker compose logs -f
 
-dev: check-env
-	@if ! command -v air &> /dev/null; then \
-		echo "error: air is not installed. Run: go install github.com/cosmtrek/air@latest"; \
-		exit 1; \
-	fi
+# ---------------------------------------------------------------- local (hybrid)
+
+dev-up:
+	-docker network create credchain
+	docker compose up -d anvil postgres mongo
+	cd ../CredChain_Python && docker compose up -d --build
+	ENV_FILE=.env python3 scripts/setup-contracts.py
+	go run main.go migrate up --env .env
+	-go run main.go migrate-mongo up --env .env
+	go run main.go seed --env .env
+	go run main.go seed-chain --env .env
+	@echo "dev-up ready. Run 'make dev' here, and 'make dev' in CredChain_React."
+
+dev-fresh:
+	-cd ../CredChain_Python && docker compose down
+	docker compose down
+	rm -rf docker/postgres/data/* docker/mongo/data/* docker/anvil/data/* uploads/*
+	@$(MAKE) dev-up
+
+dev:
+	@command -v air >/dev/null 2>&1 || { echo "error: air not installed. Run: go install github.com/air-verse/air@latest"; exit 1; }
 	air -c .air.toml
 
-migrate-up:
-	go run main.go migrate up --env $(ENV_FILE)
+# ---------------------------------------------------------------- backend tasks
 
-migrate-down:
-	go run main.go migrate down --env $(ENV_FILE)
+test:
+	go test ./...
 
-migrate-up-mongo:
-	go run main.go migrate-mongo up --env $(ENV_FILE)
-
-migrate-down-mongo:
-	go run main.go migrate-mongo down --env $(ENV_FILE)
-
-init-super-admin:
-	go run main.go init-super-admin --env $(ENV_FILE)
+lint:
+	go vet ./... && gofmt -l .
 
 get-google-id-token:
 	go run main.go get-google-id-token --env $(ENV_FILE)
-
-seed:
-	go run main.go seed --env $(ENV_FILE)
-
-seed-chain:
-	go run main.go seed-chain --env $(ENV_FILE)
 
 CREDENTIAL_EXTRACTION_BENCH_COUNT ?= 3
 CREDENTIAL_EXTRACTION_BENCH_DIRECTORY ?= benchmarks/credential-extraction
 CREDENTIAL_EXTRACTION_BENCH_CSV ?=
 CREDENTIAL_EXTRACTION_BENCH_PROFILE ?=
 
-credential-extraction-benchmark: check-env
+credential-extraction-benchmark:
 	mkdir -p $(CREDENTIAL_EXTRACTION_BENCH_DIRECTORY)
 	@FLAGS="" && \
 	if [ -n "$(CREDENTIAL_EXTRACTION_BENCH_CSV)" ]; then FLAGS="$$FLAGS --output $(CREDENTIAL_EXTRACTION_BENCH_DIRECTORY)/results.csv"; fi && \
@@ -126,84 +111,31 @@ credential-extraction-benchmark: check-env
 		$$FLAGS \
 		--env $(ENV_FILE)
 
-docker-up-build: check-env-docker
-	docker compose up -d --build
+# ---------------------------------------------------------------- backup / restore
+# Creds read from each container's own env (.env.docker), so no Makefile var juggling.
 
-docker-up: check-env-docker
-	docker compose up -d
+BACKUP ?= $(shell date +%Y%m%d_%H%M%S)
 
-docker-down:
-	docker compose down
+backup:
+	@mkdir -p docker/backups
+	docker compose exec -T postgres sh -c 'PGPASSWORD=$$POSTGRES_PASSWORD pg_dump -Fc -U $$POSTGRES_USER $$POSTGRES_DB' > docker/backups/pg_$(BACKUP).dump
+	docker compose exec -T mongo sh -c 'mongodump --archive -u $$MONGO_INITDB_ROOT_USERNAME -p $$MONGO_INITDB_ROOT_PASSWORD --authenticationDatabase admin' > docker/backups/mongo_$(BACKUP).archive
+	tar czf docker/backups/uploads_$(BACKUP).tar.gz uploads
+	@echo "backup $(BACKUP)"
 
-docker-restart: docker-down docker-up-build
+restore:
+	@test -n "$(BACKUP)" || { echo "error: set BACKUP=<timestamp>, e.g. make restore BACKUP=20260725_120000"; exit 1; }
+	docker compose exec -T postgres sh -c 'PGPASSWORD=$$POSTGRES_PASSWORD pg_restore -U $$POSTGRES_USER -d $$POSTGRES_DB --clean' < docker/backups/pg_$(BACKUP).dump
+	docker compose exec -T mongo sh -c 'mongorestore --archive --drop -u $$MONGO_INITDB_ROOT_USERNAME -p $$MONGO_INITDB_ROOT_PASSWORD --authenticationDatabase admin' < docker/backups/mongo_$(BACKUP).archive
+	tar xzf docker/backups/uploads_$(BACKUP).tar.gz
+	@echo "restore $(BACKUP) done"
 
-docker-migrate-up: docker-check-golang-healthy
-	docker compose exec golang ./server migrate up
+# ---------------------------------------------------------------- helpers
 
-docker-migrate-down: docker-check-golang-healthy
-	docker compose exec golang ./server migrate down
-
-docker-init-super-admin: docker-check-golang-healthy
-	docker compose exec golang ./server init-super-admin
-
-docker-seed: docker-check-golang-healthy
-	docker compose exec golang ./server seed
-
-docker-seed-chain: docker-check-golang-healthy
-	docker compose exec golang ./server seed-chain
-
-docker-logs:
-	docker compose logs -f
-
-docker-ps:
-	docker compose ps
-
-docker-clean-data:
-	rm -rf docker/postgres/data/* docker/mongo/data/* uploads/*
-
-docker-check-golang-healthy:
+wait-golang:
 	@echo "waiting for golang to be healthy..."
 	@for i in 1 2 3 4 5 6 7 8 9 10; do \
-		if docker compose ps golang | grep -q "(healthy)"; then \
-			echo "golang is healthy"; \
-			exit 0; \
-		fi; \
-		echo "waiting... ($$i/10)"; \
-		sleep 3; \
+		if docker compose ps golang | grep -q "(healthy)"; then echo "golang is healthy"; exit 0; fi; \
+		echo "waiting... ($$i/10)"; sleep 3; \
 	done; \
-	echo "error: golang did not become healthy in time"; \
-	exit 1
-
-docker-fresh:
-	@make docker-down
-	@make clean
-	@make docker-up-build
-	@make docker-ps
-	@make docker-migrate-up
-
-BACKUP_TIMESTAMP ?= $(shell date +%Y%m%d_%H%M%S)
-
-docker-backup:
-	@echo "Backing up Postgres..."
-	docker compose exec golang pg_dump -Fc -U root -h postgres credchain > docker/backups/postgres_$(BACKUP_TIMESTAMP).dump
-	@echo "Backing up MongoDB..."
-	docker compose exec golang mongodump --uri="mongodb://$(grep MONGO_INITDB_ROOT_USERNAME .env.docker | cut -d= -f2):$(grep MONGO_INITDB_ROOT_PASSWORD .env.docker | cut -d= -f2)@mongo:27017" --archive > docker/backups/mongo_$(BACKUP_TIMESTAMP).archive
-	@echo "Backing up credential files..."
-	docker compose exec golang tar czf /backups/credentials_$(BACKUP_TIMESTAMP).tar.gz -C $$(grep CREDENTIAL_FILE_STORAGE_PATH .env.docker | cut -d= -f2 || echo "credentials") .
-	@echo "manifest" > docker/backups/manifest_$(BACKUP_TIMESTAMP).txt
-	@echo "---------" >> docker/backups/manifest_$(BACKUP_TIMESTAMP).txt
-	@echo "postgres: postgres_$(BACKUP_TIMESTAMP).dump" >> docker/backups/manifest_$(BACKUP_TIMESTAMP).txt
-	@echo "mongo: mongo_$(BACKUP_TIMESTAMP).archive" >> docker/backups/manifest_$(BACKUP_TIMESTAMP).txt
-	@echo "credentials: credentials_$(BACKUP_TIMESTAMP).tar.gz" >> docker/backups/manifest_$(BACKUP_TIMESTAMP).txt
-	@echo "Backup complete: docker/backups/manifest_$(BACKUP_TIMESTAMP).txt"
-
-docker-restore:
-	@echo "Restoring from backup: $(BACKUP_TIMESTAMP)..."
-	@test -n "$(BACKUP_TIMESTAMP)" || (echo "error: set BACKUP_TIMESTAMP, e.g. BACKUP_TIMESTAMP=20260709_120000 make docker-restore" && exit 1)
-	@echo "Restoring Postgres..."
-	docker compose exec -T golang pg_restore -Fc -U root -h postgres -d credchain --clean < docker/backups/postgres_$(BACKUP_TIMESTAMP).dump
-	@echo "Restoring MongoDB..."
-	docker compose exec -T golang mongorestore --uri="mongodb://$(grep MONGO_INITDB_ROOT_USERNAME .env.docker | cut -d= -f2):$(grep MONGO_INITDB_ROOT_PASSWORD .env.docker | cut -d= -f2)@mongo:27017" --archive --drop < docker/backups/mongo_$(BACKUP_TIMESTAMP).archive
-	@echo "Restoring credential files..."
-	docker compose exec golang tar xzf /backups/credentials_$(BACKUP_TIMESTAMP).tar.gz -C $$(grep CREDENTIAL_FILE_STORAGE_PATH .env.docker | cut -d= -f2 || echo "credentials")
-	@echo "Restore complete."
+	echo "error: golang did not become healthy in time"; exit 1
