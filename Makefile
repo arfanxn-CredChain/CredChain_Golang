@@ -83,6 +83,8 @@ dev-fresh:
 
 dev:
 	@command -v air >/dev/null 2>&1 || { echo "error: air not installed. Run: go install github.com/air-verse/air@latest"; exit 1; }
+	@PORT=$$(grep -E '^GIN_PORT=' $(ENV_FILE) | cut -d= -f2); \
+	if [ -n "$$PORT" ]; then echo "freeing port $$PORT"; kill $$(lsof -ti tcp:$$PORT) 2>/dev/null || true; fi
 	air -c .air.toml
 
 # ---------------------------------------------------------------- backend tasks
