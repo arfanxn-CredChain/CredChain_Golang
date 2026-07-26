@@ -15,7 +15,7 @@ make dev-up    # infra + Anvil + Python in Docker, deploy contracts, migrate, se
 make dev       # run the API on host with hot reload
 ```
 
-The API starts on port 8080. `make dev-up` brings up the PostgreSQL, MongoDB, and Anvil containers it depends on. For the full-Docker stack instead, use `make up`.
+The API starts on port 8080. `make dev-up` brings up the PostgreSQL, MongoDB, and Anvil containers it depends on. For the full-Docker stack instead, use `make local-up`.
 
 ## Project Structure
 
@@ -37,9 +37,11 @@ This repo is the **orchestrator** for the whole monorepo. Run `make help` for th
 
 | Command | Purpose |
 |---|---|
-| `make up` | Full stack in Docker (contracts, migrate, super-admin, all services) |
+| `make local-up` | Full stack in Docker (contracts, migrate, super-admin, all services) |
+| `make prod-up` | Full stack from prebuilt images (VPS deploy; builds nothing) |
+| `make prod-fresh` | Wipe volumes + uploads, then `prod-up` |
 | `make down` | Stop all containers |
-| `make fresh` | Wipe volumes + uploads, then `up` |
+| `make local-fresh` | Wipe volumes + uploads, then `up` |
 | `make logs` | Follow backend/infra logs |
 | `make dev-up` | Local hybrid: infra + Anvil + Python in Docker, deploy contracts, migrate, seed |
 | `make dev-fresh` | `dev-up` after wiping local infra data + chain (clean reset + reseed) |

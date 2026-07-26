@@ -28,9 +28,10 @@ cd CredChain_Golang
 # This repo is the orchestrator for the whole monorepo.
 
 # Full stack (Docker / prod)
-make up                             # network, contracts, migrate, super-admin, all services
+make local-up                             # network, contracts, migrate, super-admin, all services
+make prod-up                        # full stack from prebuilt images (VPS; builds nothing)
 make down                           # Stop all containers (React + Python + Golang/infra)
-make fresh                          # Wipe volumes + uploads, then up
+make local-fresh                          # Wipe volumes + uploads, then up
 make logs                           # Follow backend/infra logs
 make backup BACKUP=<ts>             # Dump Postgres + Mongo + uploads
 make restore BACKUP=<ts>            # Restore from a backup
@@ -47,7 +48,7 @@ make get-google-id-token            # Obtain Google ID token via OAuth (for Post
 make credential-extraction-benchmark
 
 # migrate / seed / seed-chain / init-super-admin are NOT standalone targets —
-# they run automatically inside `make up` (init-super-admin) and `make dev-up`
+# they run automatically inside `make local-up` (init-super-admin) and `make dev-up`
 # (seed + seed-chain). For the rare standalone need, call the CLI directly:
 go run main.go migrate up --env .env          # (also provisions River tables)
 go run main.go migrate-mongo up --env .env    # MongoDB index migrations
@@ -87,12 +88,12 @@ make dev                                # run Go app locally with hot reload
 **Full Docker run** (prod — uses `.env.docker`, hostnames `postgres`, `mongo`, `anvil`):
 
 ```bash
-make up                                 # brings the whole stack up
-make fresh                              # same, but wipes persisted data first
+make local-up                                 # brings the whole stack up
+make local-fresh                              # same, but wipes persisted data first
 ```
 
 **Note:** `init-super-admin` and `seed` both create a SuperAdmin (`arfan2173@gmail.com`) and are **mutually exclusive** — but the two modes keep them apart automatically:
-- **`make up`** (prod bootstrap) runs `init-super-admin` (one SuperAdmin).
+- **`make local-up`** (prod bootstrap) runs `init-super-admin` (one SuperAdmin).
 - **`make dev-up`** (dev seeding) runs `seed` → `seed-chain` (15 test users + on-chain roles).
 
 **Required env vars** (app exits at startup if empty or invalid):
@@ -442,7 +443,7 @@ All under `/api` prefix. Middleware order: `ErrorLoggerMiddleware` → `I18nMidd
 
 **Credentials schema note:** the `credentials.embeddings` column is removed. Extraction data (text, ids, embedding) now lives in MongoDB `credential_extractions`.
 
-**MongoDB:** Actively used. Two collections: `credential_extractions` (text, ids, embedding, file_hash) and `credential_verifications` (TTL-bounded verify cache keyed by uploaded_file_hash). Migration runs inside `make up` / `make dev-up`; standalone via `go run main.go migrate-mongo up` / `migrate-mongo down --env .env`. `infrastructure/database/mongo/client.go` provides FX providers.
+**MongoDB:** Actively used. Two collections: `credential_extractions` (text, ids, embedding, file_hash) and `credential_verifications` (TTL-bounded verify cache keyed by uploaded_file_hash). Migration runs inside `make local-up` / `make dev-up`; standalone via `go run main.go migrate-mongo up` / `migrate-mongo down --env .env`. `infrastructure/database/mongo/client.go` provides FX providers.
 
 **Repository Store error translation:** `gormUserRepository.Store` catches Postgres `*pgconn.PgError` with code `23505` (unique_violation) and translates to `CodeUserStoreEmailDuplicateInDatabase` with input emails as metadata. Handles concurrent batch creates that race past the pre-check in `userService.storeValidateEmails`.
 
@@ -464,7 +465,7 @@ All under `/api` prefix. Middleware order: `ErrorLoggerMiddleware` → `I18nMidd
 
 **Note:** `docker-compose.yml` healthcheck hardcodes port 8080 (`wget -qO- http://localhost:8080/api/health`). If you change `GIN_PORT`, update the healthcheck too.
 
-**Stale data issue:** `make fresh` wipes `docker/postgres/data/*` and `docker/mongo/data/*` (and Anvil data + uploads) before rebooting, so a clean reset needs no manual deletion.
+**Stale data issue:** `make local-fresh` wipes `docker/postgres/data/*` and `docker/mongo/data/*` (and Anvil data + uploads) before rebooting, so a clean reset needs no manual deletion.
 
 **Chain persistence:** The `anvil` service persists chain state to
 `./docker/anvil/data/state.json` via bind mount. State survives
@@ -479,7 +480,7 @@ make dev                                            # air hot-reload
 ```
 
 `make dev-up` seeds test users (dev path). For a single SuperAdmin instead of seed data,
-use the full-Docker path `make up`, which runs `init-super-admin`. The two paths are mutually
+use the full-Docker path `make local-up`, which runs `init-super-admin`. The two paths are mutually
 exclusive. Rare standalone steps: `go run main.go <migrate|seed|seed-chain|init-super-admin> --env .env`.
 
 ### Postman Collection
@@ -642,7 +643,7 @@ When adding a new endpoint or service method, add at least: one happy-path test,
 - **Go module path** is `CredChain_Golang` (with underscore) — imports use this, not a URL path.
 - **`WALLET_ENCRYPTION_KEY`** must be exactly 32 bytes (AES-256 key). Validated at startup in `config.NewConfig` — app fails fast with clear error if length is wrong.
 - **`FILE_ENCRYPTION_KEY`** must be exactly 32 bytes (AES-256). Same validation — credential files encrypted at rest with this key.
-- **SuperAdmin** can only be created via the `init-super-admin` CLI (run automatically by `make up`, or `go run main.go init-super-admin --env .env`), never via API.
+- **SuperAdmin** can only be created via the `init-super-admin` CLI (run automatically by `make local-up`, or `go run main.go init-super-admin --env .env`), never via API.
 - **Transfer Super Admin**: Only the current SuperAdmin can transfer their role via `POST /api/users/self/transfer-super-admin`. Caller is downgraded to Admin, target promoted to SuperAdmin. Refresh tokens for both users are revoked.
 - **Self-profile lockdown**: `PUT /api/users/self/profile` only accepts `phone_number`. Name, number, birth_date, and meta are admin-managed via `PUT /api/users/batch`. **SuperAdmin** may include their own ID in `PUT /api/users/batch` to self-edit profile fields (other roles cannot self-target via batch — `CodeUserUpdateSelfForbidden`). However, **no role can change their own email via batch** (`CodeUserUpdateSelfEmailForbidden` 300847, 403) — email changes must go through `PUT /api/users/self/email` which requires a fresh Google ID token. This prevents accidentally locking the account out with an inaccessible email.
 - **`init-super-admin`** validates wallet has SuperAdmin role on-chain before database initialization; checks for existing SuperAdmin by role using `FindByRole`, not by email. Filters out trashed users from the existence check.
