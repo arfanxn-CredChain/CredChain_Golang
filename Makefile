@@ -8,17 +8,20 @@ ENV_FILE ?= .env
 # each recipe's env, and godotenv.Load (config.go) won't override them, so `go run
 # ... --env .env` would read stale addresses. Recipes load .env themselves via --env.
 
-.PHONY: help up down fresh logs backup restore dev-up dev-fresh dev \
-	test lint get-google-id-token credential-extraction-benchmark wait-golang
+.PHONY: help local-up prod-up down local-fresh prod-fresh logs backup restore \
+	dev-up dev-fresh dev test lint get-google-id-token \
+	credential-extraction-benchmark wait-golang
 
 help:
 	@echo "CredChain — make targets"
 	@echo ""
-	@echo "Stack (Docker / prod):"
-	@echo "  up        Bring up the whole stack in Docker (contracts, migrate, super-admin, all services)"
-	@echo "  down      Stop all containers"
-	@echo "  fresh     Wipe volumes + uploads, then up"
-	@echo "  logs      Follow backend/infra logs"
+	@echo "Stack (Docker):"
+	@echo "  local-up   Full stack in Docker, building images locally (Mac smoke test)"
+	@echo "  prod-up    Full stack in Docker, pulling prebuilt images (VPS; builds nothing)"
+	@echo "  down       Stop all containers"
+	@echo "  local-fresh Wipe volumes + uploads, then local-up"
+	@echo "  prod-fresh  Wipe volumes + uploads, then prod-up (recover fresh/partial chain)"
+	@echo "  logs       Follow backend/infra logs"
 	@echo "  backup    Dump Postgres + Mongo + uploads      (BACKUP=<ts>)"
 	@echo "  restore   Restore from a backup                 (BACKUP=<ts>)"
 	@echo ""
@@ -35,7 +38,7 @@ help:
 
 # ---------------------------------------------------------------- full stack (Docker)
 
-up:
+local-up:
 	-docker network create credchain
 	docker compose up -d anvil postgres mongo
 	python3 scripts/setup-contracts.py
@@ -49,15 +52,37 @@ up:
 	cd ../CredChain_Python && docker compose up -d --build
 	@echo "up: all services started"
 
+prod-up:
+	-docker network create credchain
+	docker compose pull anvil postgres mongo
+	docker compose up -d anvil postgres mongo
+	python3 scripts/setup-contracts.py
+	docker compose pull golang
+	docker compose up -d --no-build golang
+	@$(MAKE) wait-golang
+	docker compose run --rm golang ./server migrate up
+	-docker compose run --rm golang ./server migrate-mongo up
+	-docker compose exec golang ./server init-super-admin
+	cd ../CredChain_React && docker compose --env-file .env.docker pull && docker compose --env-file .env.docker up -d --no-build
+	docker compose pull nginx
+	docker compose up -d nginx
+	cd ../CredChain_Python && docker compose pull && docker compose up -d --no-build
+	@echo "prod-up: all services started (pulled images)"
+
 down:
 	-cd ../CredChain_React && docker compose down
 	-cd ../CredChain_Python && docker compose down
 	docker compose down
 
-fresh:
+local-fresh:
 	@$(MAKE) down
 	rm -rf docker/postgres/data/* docker/mongo/data/* docker/anvil/data/* uploads/*
-	@$(MAKE) up
+	@$(MAKE) local-up
+
+prod-fresh:
+	@$(MAKE) down
+	rm -rf docker/postgres/data/* docker/mongo/data/* docker/anvil/data/* uploads/*
+	@$(MAKE) prod-up
 
 logs:
 	docker compose logs -f
