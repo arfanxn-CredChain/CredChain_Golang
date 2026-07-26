@@ -120,6 +120,7 @@ const (
 	CodeCredentialVerifyExtractFailed      = 400443
 	CodeCredentialVerifyAiServiceFailed    = 400444
 	CodeCredentialVerifyCredentialNotFound = 400445
+	CodeCredentialVerifyDocumentUnreadable = 400446
 
 	// Verify verdict outcomes use the success sub-range CC=01-12 (all HTTP 200
 	// except IntegrityWarning=409). These are deliberate verdict codes, NOT

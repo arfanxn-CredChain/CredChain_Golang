@@ -122,6 +122,9 @@ func TestVerify_RequestShape(t *testing.T) {
 				assert.JSONEq(t, `[[0.1,0.2]]`, string(b))
 			case "files":
 				filesFound = true
+				// Must carry the real MIME (test.pdf -> application/pdf), not
+				// application/octet-stream, or Python's validate_file rejects it.
+				assert.Equal(t, "application/pdf", part.Header.Get("Content-Type"))
 			}
 		}
 

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"mime"
@@ -17,6 +18,13 @@ import (
 
 	"CredChain_Golang/config"
 )
+
+// ErrVerifyFileUnprocessable means the Python AI service accepted the /verify
+// request (HTTP 200) but could not verify the file itself — it rejected the
+// upload or extracted no readable text. This is a document problem the user can
+// fix, NOT the AI service being down (transport/decode failures return other
+// errors). Callers should surface a "we couldn't read your document" message.
+var ErrVerifyFileUnprocessable = errors.New("verify: file could not be processed")
 
 // ExtractedID is one identifier extracted from a credential document by Python.
 type ExtractedID struct {
@@ -172,7 +180,13 @@ func (c *pythonAIClient) Verify(ctx context.Context, file ExtractFile, storedEmb
 	}
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
-	part, err := writer.CreateFormFile("files", file.Filename)
+	// Set the real Content-Type on the file part. multipart.CreateFormFile
+	// hardcodes application/octet-stream, which Python's validate_file rejects
+	// (only pdf/jpeg/png/webp/tiff allowed) — mirror buildMultipartFiles here.
+	h := make(textproto.MIMEHeader)
+	h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="files"; filename="%s"`, file.Filename))
+	h.Set("Content-Type", file.resolveMIME())
+	part, err := writer.CreatePart(h)
 	if err != nil {
 		return nil, fmt.Errorf("python verify: create form file: %w", err)
 	}
@@ -205,7 +219,14 @@ func (c *pythonAIClient) Verify(ctx context.Context, file ExtractFile, storedEmb
 		return nil, fmt.Errorf("python verify: decode: %w", err)
 	}
 	if len(parsed.Data) == 0 || parsed.Data[0] == nil {
-		return nil, fmt.Errorf("python verify: empty result (code %d)", parsed.Code)
+		// HTTP 200 but no result for this file: Python rejected the upload or
+		// extracted no text. Surface as an unprocessable-file error (distinct
+		// from a service-down error) so callers can show a human message.
+		reason := "no result"
+		if msgs, ok := parsed.Errors["files.0"]; ok && len(msgs) > 0 {
+			reason = msgs[0]
+		}
+		return nil, fmt.Errorf("%w: %s (code %d)", ErrVerifyFileUnprocessable, reason, parsed.Code)
 	}
 	d := parsed.Data[0]
 	return &VerifyResult{

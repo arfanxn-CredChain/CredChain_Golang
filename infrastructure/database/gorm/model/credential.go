@@ -64,15 +64,20 @@ func (m Credential) ToDomain() domain.Credential {
 		IssuedAt:      m.IssuedAt,
 		RevokedAt:     m.RevokedAt,
 	}
-	if m.HolderUserId != "" {
+	// Guard on the preloaded row's own PK, not the foreign key: the *User
+	// association fields are value types, so an un-preloaded relation is a
+	// zero User{} (empty Id). Keying off the FK would fabricate an empty
+	// user whenever the FK is set but the row wasn't preloaded (e.g. verify
+	// doesn't preload revoker) — surfacing a phantom blank avatar in the UI.
+	if m.HolderUser.Id != "" {
 		u := m.HolderUser.ToDomain()
 		c.Holder = &u
 	}
-	if m.IssuerUserId != "" {
+	if m.IssuerUser.Id != "" {
 		u := m.IssuerUser.ToDomain()
 		c.Issuer = &u
 	}
-	if m.RevokerUserId != nil && *m.RevokerUserId != "" {
+	if m.RevokerUser.Id != "" {
 		u := m.RevokerUser.ToDomain()
 		c.Revoker = &u
 	}

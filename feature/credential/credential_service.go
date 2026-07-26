@@ -488,7 +488,7 @@ func (s *credentialService) Revoke(ctx context.Context, ids ...string) ([]domain
 func (s *credentialService) Verify(ctx context.Context, file pyai.ExtractFile) (int, *domain.Credential, *float64, *string, error) {
 	uploadedHash := "0x" + hex.EncodeToString(ethCrypto.Keccak256(file.Data))
 
-	verifyQuery := &domainQuery.Query{Includes: []string{"holder", "issuer"}}
+	verifyQuery := &domainQuery.Query{Includes: []string{"holder", "issuer", "revoker"}}
 
 	// CACHE LOOKUP
 	cached, err := s.verificationRepo.FindByUploadedFileHash(ctx, uploadedHash)
@@ -609,6 +609,9 @@ func (s *credentialService) Verify(ctx context.Context, file pyai.ExtractFile) (
 	best := s.verifyPickBestMatch(ctx, ranked, values)
 	result, err := s.aiClient.Verify(ctx, file, best.Embedding)
 	if err != nil {
+		if errors.Is(err, pyai.ErrVerifyFileUnprocessable) {
+			return 0, nil, nil, nil, domain.NewError(domain.CodeCredentialVerifyDocumentUnreadable, domain.WithError(err))
+		}
 		return 0, nil, nil, nil, domain.NewError(domain.CodeCredentialVerifyAiServiceFailed, domain.WithError(err))
 	}
 
