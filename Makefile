@@ -16,7 +16,7 @@ help:
 	@echo "CredChain — make targets"
 	@echo ""
 	@echo "Stack (Docker):"
-	@echo "  local-up   Full stack in Docker, building images locally (Mac smoke test)"
+	@echo "  local-up   Full stack in Docker: build amd64+arm64, push to Docker Hub, pull back and run (Mac smoke test + release)"
 	@echo "  prod-up    Full stack in Docker, pulling prebuilt images (VPS; builds nothing)"
 	@echo "  down       Stop all containers"
 	@echo "  local-fresh Wipe volumes + uploads, then local-up"
@@ -42,15 +42,24 @@ local-up:
 	-docker network create credchain
 	docker compose up -d anvil postgres mongo
 	python3 scripts/setup-contracts.py
-	docker compose up -d --build golang
+	docker buildx build --platform linux/amd64,linux/arm64 -t arfanxn/credchain-golang:latest --push .
+	docker compose pull golang
+	docker compose up -d --no-build golang
 	@$(MAKE) wait-golang
 	docker compose run --rm golang ./server migrate up
 	-docker compose run --rm golang ./server migrate-mongo up
 	-docker compose exec golang ./server init-super-admin
-	cd ../CredChain_React && docker compose --env-file .env.docker up -d --build
+	docker buildx build --platform linux/amd64,linux/arm64 \
+		--build-arg VITE_GOOGLE_CLIENT_ID="$$(grep -E '^VITE_GOOGLE_CLIENT_ID=' ../CredChain_React/.env.docker | cut -d= -f2-)" \
+		--build-arg VITE_APP_ENV=production \
+		--build-arg VITE_SUPPORT_EMAIL="$$(grep -E '^VITE_SUPPORT_EMAIL=' ../CredChain_React/.env.docker | cut -d= -f2-)" \
+		-t arfanxn/credchain-react:latest --push ../CredChain_React
+	cd ../CredChain_React && docker compose --env-file .env.docker pull && docker compose --env-file .env.docker up -d --no-build
 	docker compose up -d nginx
-	cd ../CredChain_Python && docker compose up -d --build
-	@echo "up: all services started"
+	docker buildx build --platform linux/amd64,linux/arm64 -t arfanxn/credchain-python:latest --push ../CredChain_Python
+	cd ../CredChain_Python && docker compose pull && docker compose up -d --no-build
+	-docker image prune -f
+	@echo "local-up: all services built (amd64+arm64), pushed, pulled, and started"
 
 prod-up:
 	-docker network create credchain
@@ -67,6 +76,7 @@ prod-up:
 	docker compose pull nginx
 	docker compose up -d nginx
 	cd ../CredChain_Python && docker compose pull && docker compose up -d --no-build
+	-docker image prune -f
 	@echo "prod-up: all services started (pulled images)"
 
 down:
@@ -98,6 +108,7 @@ dev-up:
 	-go run main.go migrate-mongo up --env .env
 	go run main.go seed --env .env
 	go run main.go seed-chain --env .env
+	-docker image prune -f
 	@echo "dev-up ready. Run 'make dev' here, and 'make dev' in CredChain_React."
 
 dev-fresh:
