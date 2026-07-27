@@ -44,10 +44,10 @@ local-up:
 	python3 scripts/setup-contracts.py
 	docker buildx build --platform linux/amd64,linux/arm64 -t arfanxn/credchain-golang:latest --push .
 	docker compose pull golang
-	docker compose up -d --no-build golang
-	@$(MAKE) wait-golang
 	docker compose run --rm golang ./server migrate up
 	-docker compose run --rm golang ./server migrate-mongo up
+	docker compose up -d --no-build golang
+	@$(MAKE) wait-golang
 	-docker compose exec golang ./server init-super-admin
 	docker buildx build --platform linux/amd64,linux/arm64 \
 		--build-arg VITE_GOOGLE_CLIENT_ID="$$(grep -E '^VITE_GOOGLE_CLIENT_ID=' ../CredChain_React/.env.docker | cut -d= -f2-)" \
@@ -67,10 +67,10 @@ prod-up:
 	docker compose up -d anvil postgres mongo
 	python3 scripts/setup-contracts.py
 	docker compose pull golang
-	docker compose up -d --no-build golang
-	@$(MAKE) wait-golang
 	docker compose run --rm golang ./server migrate up
 	-docker compose run --rm golang ./server migrate-mongo up
+	docker compose up -d --no-build golang
+	@$(MAKE) wait-golang
 	-docker compose exec golang ./server init-super-admin
 	cd ../CredChain_React && docker compose --env-file .env.docker pull && docker compose --env-file .env.docker up -d --no-build
 	docker compose pull nginx
