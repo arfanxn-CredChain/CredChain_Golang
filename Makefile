@@ -8,7 +8,7 @@ ENV_FILE ?= .env
 # each recipe's env, and godotenv.Load (config.go) won't override them, so `go run
 # ... --env .env` would read stale addresses. Recipes load .env themselves via --env.
 
-.PHONY: help local-up prod-up down local-fresh prod-fresh logs backup restore \
+.PHONY: help local-up build-push prod-up down local-fresh prod-fresh logs backup restore \
 	dev-up dev-fresh dev test lint get-google-id-token \
 	credential-extraction-benchmark wait-golang
 
@@ -60,6 +60,16 @@ local-up:
 	cd ../CredChain_Python && docker compose pull && docker compose up -d --no-build
 	-docker image prune -f
 	@echo "local-up: all services built (amd64+arm64), pushed, pulled, and started"
+
+build-push:
+	docker buildx build --platform linux/amd64,linux/arm64 -t arfanxn/credchain-golang:latest --push .
+	docker buildx build --platform linux/amd64,linux/arm64 \
+		--build-arg VITE_GOOGLE_CLIENT_ID="$$(grep -E '^VITE_GOOGLE_CLIENT_ID=' ../CredChain_React/.env.docker | cut -d= -f2-)" \
+		--build-arg VITE_APP_ENV=production \
+		--build-arg VITE_SUPPORT_EMAIL="$$(grep -E '^VITE_SUPPORT_EMAIL=' ../CredChain_React/.env.docker | cut -d= -f2-)" \
+		-t arfanxn/credchain-react:latest --push ../CredChain_React
+	docker buildx build --platform linux/amd64,linux/arm64 -t arfanxn/credchain-python:latest --push ../CredChain_Python
+	@echo "build-push: all 3 images built (amd64+arm64) and pushed"
 
 prod-up:
 	-docker network create credchain
