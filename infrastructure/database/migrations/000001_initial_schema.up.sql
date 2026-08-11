@@ -7,8 +7,7 @@ CREATE TYPE role AS ENUM (
 
 CREATE TYPE gender AS ENUM (
     'male',
-    'female',
-    'other'
+    'female'
 );
 
 CREATE TABLE users (

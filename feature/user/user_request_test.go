@@ -19,7 +19,7 @@ func TestUserStoreInput_Validate(t *testing.T) {
 		{name: "Valid Request", req: UserStoreInput{Name: "John Doe", Email: "john@example.com", Role: domain.RoleHolder}, shouldErr: false},
 		{name: "Valid Gender Male", req: UserStoreInput{Name: "John", Email: "john1@example.com", Role: domain.RoleHolder, Gender: lo.ToPtr("male")}, shouldErr: false},
 		{name: "Valid Gender Female", req: UserStoreInput{Name: "Jane", Email: "jane@example.com", Role: domain.RoleHolder, Gender: lo.ToPtr("female")}, shouldErr: false},
-		{name: "Valid Gender Other", req: UserStoreInput{Name: "Alex", Email: "alex@example.com", Role: domain.RoleHolder, Gender: lo.ToPtr("other")}, shouldErr: false},
+		{name: "Invalid Gender Other", req: UserStoreInput{Name: "Alex", Email: "alex@example.com", Role: domain.RoleHolder, Gender: lo.ToPtr("other")}, shouldErr: true},
 		{name: "Invalid Gender", req: UserStoreInput{Name: "Pat", Email: "pat@example.com", Role: domain.RoleHolder, Gender: lo.ToPtr("unknown")}, shouldErr: true},
 		{name: "Nil Gender is valid", req: UserStoreInput{Name: "Sam", Email: "sam@example.com", Role: domain.RoleHolder, Gender: nil}, shouldErr: false},
 		{name: "Missing Name", req: UserStoreInput{Email: "john@example.com", Role: domain.RoleHolder}, shouldErr: true},

@@ -52,8 +52,24 @@ This repo is the **orchestrator** for the whole monorepo. Run `make help` for th
 
 Migrate / seed / seed-chain / init-super-admin run automatically inside `up`/`dev-up`. For a standalone run, call the CLI: `go run main.go <cmd> --env .env`.
 
+## Deployment
+
+Live at **https://credchain.web.id** (Tencent VPS). Prebuilt images run the whole stack — nothing builds on the server.
+
+```bash
+# On the VPS — pull images + run everything (contracts, migrate, seed, all services)
+make prod-up
+
+# Redeploy after code changes: build+push from your Mac, then pull+run on the VPS
+make build-push                        # Mac
+git pull && make prod-up               # VPS
+```
+
+Full step-by-step runbook (VPS bootstrap, DNS, TLS/certbot, and hard-won gotchas) → **[DEPLOYMENT.md](DEPLOYMENT.md)**.
+
 ## Related Docs
 
+- [DEPLOYMENT.md](DEPLOYMENT.md) — VPS deployment runbook + production gotchas
 - [AGENTS.md](AGENTS.md) — Full architecture, patterns, conventions, deployment
 - [ROLE.md](ROLE.md) — Role hierarchy, authorization matrix, user policy rules
 - [CREDENTIAL.md](CREDENTIAL.md) — Credential lifecycle, verification pipeline, storage

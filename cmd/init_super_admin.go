@@ -45,7 +45,7 @@ func init() {
 	initSuperAdminCmd.Flags().StringVar(&initSuperAdminEmail, "email", "", "Super admin email (required)")
 	initSuperAdminCmd.Flags().StringVar(&initSuperAdminPrivKey, "private-key", "", "Super admin wallet private key (required)")
 	initSuperAdminCmd.Flags().StringVar(&initSuperAdminBirthDate, "birth-date", "", "Super admin birth date in ISO 8601 format (YYYY-MM-DD, optional)")
-	initSuperAdminCmd.Flags().StringVar(&initSuperAdminGender, "gender", "", "Super admin gender: male, female, or other (optional)")
+	initSuperAdminCmd.Flags().StringVar(&initSuperAdminGender, "gender", "", "Super admin gender: male or female (optional)")
 	initSuperAdminCmd.Flags().StringVar(&initSuperAdminMeta, "meta", "", "Super admin meta as JSON string (optional)")
 }
 
@@ -202,11 +202,11 @@ func initSuperAdminGetGender(cfg *config.Config, genderFlag string) *domain.Gend
 		return nil
 	}
 	switch raw {
-	case "male", "female", "other":
+	case "male", "female":
 		g := domain.Gender(raw)
 		return &g
 	default:
-		log.Fatalf("invalid gender %q: must be one of: male, female, other", raw)
+		log.Fatalf("invalid gender %q: must be one of: male, female", raw)
 		return nil
 	}
 }
@@ -345,7 +345,7 @@ Environment Variables:
   INITIAL_SUPER_ADMIN_EMAIL        Super admin email address (required)
   INITIAL_SUPER_ADMIN_PRIVATE_KEY  Super admin wallet private key, 64-char hex with 0x prefix (required)
   INITIAL_SUPER_ADMIN_BIRTH_DATE   Super admin birth date in ISO 8601 format YYYY-MM-DD (optional)
-  INITIAL_SUPER_ADMIN_GENDER       Super admin gender: male, female, or other (optional)
+  INITIAL_SUPER_ADMIN_GENDER       Super admin gender: male or female (optional)
   INITIAL_SUPER_ADMIN_META         Super admin metadata as JSON string (optional)
 
 CLI Flags (take priority over env vars):
@@ -355,7 +355,7 @@ CLI Flags (take priority over env vars):
   --email         Super admin email (required)
   --private-key   Super admin wallet private key (required)
   --birth-date    Super admin birth date (YYYY-MM-DD, optional)
-  --gender        Super admin gender: male, female, or other (optional)
+  --gender        Super admin gender: male or female (optional)
   --meta          Super admin meta as JSON string (optional)
 
 Examples:

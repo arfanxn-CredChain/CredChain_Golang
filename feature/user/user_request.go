@@ -34,7 +34,7 @@ func (n UserStoreInput) Validate() error {
 		validation.Field(&n.Number, validation.Length(0, 256)),
 		validation.Field(&n.PhoneNumber, validation.Length(0, 18), strictE164Rule),
 		validation.Field(&n.BirthDate, validation.Date("2006-01-02")),
-		validation.Field(&n.Gender, validation.In("male", "female", "other")),
+		validation.Field(&n.Gender, validation.In("male", "female")),
 	)
 }
 
@@ -155,7 +155,7 @@ func (n UserUpdateInput) Validate() error {
 		validation.Field(&n.Number, validation.Length(0, 256)),
 		validation.Field(&n.PhoneNumber, validation.Length(0, 18), strictE164Rule),
 		validation.Field(&n.BirthDate, validation.Date("2006-01-02")),
-		validation.Field(&n.Gender, validation.In("male", "female", "other")),
+		validation.Field(&n.Gender, validation.In("male", "female")),
 		validation.Field(&n.Email, is.Email, validation.Length(1, 256)),
 		validation.Field(&n.Role, validation.In(domain.RoleAdmin, domain.RoleIssuer, domain.RoleHolder)),
 	)

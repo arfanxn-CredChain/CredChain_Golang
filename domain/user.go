@@ -83,7 +83,6 @@ type Gender string
 const (
 	GenderMale   Gender = "male"
 	GenderFemale Gender = "female"
-	GenderOther  Gender = "other"
 )
 
 // String returns the string representation of the gender

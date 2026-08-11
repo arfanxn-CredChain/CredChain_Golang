@@ -48,10 +48,10 @@ func (s *UserSeeder) seedBuildUsers(rng *rand.Rand) []domain.User {
 	users[0] = s.seedBuildUser(seedBuildUserParams{
 		index: 1, name: "Muhammad Arfan", email: "arfan2173@gmail.com",
 		phoneNumber: lo.ToPtr("+6289506089254"), birthDate: seedMustParseDate("2003-07-21"),
-		gender:    seedGenderPtr(domain.GenderOther),
+		gender:    seedGenderPtr(domain.GenderMale),
 		meta:      map[string]any{"key": "A1B2C3D4"},
 		role:      domain.RoleSuperAdmin,
-		number:    seedGenerateNIP(time.Date(2003, 7, 21, 0, 0, 0, 0, time.UTC), seedGenderPtr(domain.GenderOther), &nipSeq),
+		number:    seedGenerateNIP(time.Date(2003, 7, 21, 0, 0, 0, 0, time.UTC), seedGenderPtr(domain.GenderMale), &nipSeq),
 		createdAt: createdAt0,
 		updatedAt: lo.ToPtr(createdAt0.Add(time.Duration(1+rng.Int63n(30)) * 24 * time.Hour)),
 	})
@@ -206,8 +206,6 @@ func seedGenerateNIP(dob time.Time, gender *domain.Gender, seq *int) string {
 			genderDigit = '1'
 		case domain.GenderFemale:
 			genderDigit = '2'
-		default:
-			genderDigit = '3'
 		}
 	}
 	*seq++
@@ -316,7 +314,7 @@ func seedRandomBirthDate(rng *rand.Rand) time.Time {
 	return min.Add(time.Duration(rng.Int63n(delta)) * time.Second)
 }
 
-var seedGenders = []domain.Gender{domain.GenderMale, domain.GenderFemale, domain.GenderOther}
+var seedGenders = []domain.Gender{domain.GenderMale, domain.GenderFemale}
 
 func seedRandomGender(rng *rand.Rand) domain.Gender {
 	return seedGenders[rng.Intn(len(seedGenders))]
